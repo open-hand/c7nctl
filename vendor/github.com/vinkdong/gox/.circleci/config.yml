@@ -1,0 +1,22 @@
+version: 2
+jobs:
+   build:
+     docker:
+       - image: circleci/golang:1.8
+     working_directory: /go/src/github.com/VinkDong/gox
+
+     steps:
+       - checkout
+    
+       - run: go test -v ./...
+
+test:
+   build:
+     docker:
+       - image: circleci/golang:1.8.1
+     steps:
+       - checkout
+       - run:
+             name: Test
+             command: go test -v ./...
+    
