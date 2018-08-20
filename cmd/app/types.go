@@ -5,7 +5,7 @@ import "k8s.io/api/core/v1"
 type InstallDefine struct {
 	Version string
 	Metadata  Metadata
-	Spec  Spec
+	Spec Spec
 }
 
 type Metadata struct {

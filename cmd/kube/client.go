@@ -41,3 +41,9 @@ func GetTunnel() *kube.Tunnel {
 	}
 	return tunnel
 }
+
+func GetClient() kubernetes.Interface{
+	config,_ := getConfig()
+	_ ,client, _ := getClientset(config)
+	return client
+}

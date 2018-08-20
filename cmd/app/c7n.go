@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"k8s.io/helm/pkg/helm"
 	"io/ioutil"
-	"github.com/containous/traefik/log"
+	"github.com/vinkdong/gox/log"
 	"os"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"encoding/json"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -29,7 +30,6 @@ var (
 	settings     helm_env.EnvSettings
 	installFile  string
 	installConfig = &InstallDefine{}
-	client
 )
 
 func PrepareEnv()  {
@@ -66,10 +66,33 @@ func getInstallInfo() {
 	}
 }
 
-func checkResource() bool {
+func getClusterMemoryAndCpu() (int64, int64)  {
+	var sumMemory int64
+	var sumCpu int64
+	client := c_kube.GetClient()
+	list, _ := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
+	for _,v := range list.Items{
+		sumMemory += v.Status.Capacity.Memory().Value()
+		sumCpu += v.Status.Capacity.Cpu().Value()
+	}
+	return sumMemory,sumCpu
+}
 
+func CheckResource(file string) bool {
+	installFile = file
+	getInstallInfo()
 	request := installConfig.Spec.Resources.Requests
 	reqMemory := request.Memory().Value()
 	reqCpu := request.Cpu().Value()
-
+	clusterMemory,clusterCpu := getClusterMemoryAndCpu()
+	fmt.Print(reqMemory)
+	if clusterMemory < reqMemory {
+		log.Errorf("clusterMemory not Enough! require %dGi",reqMemory / (1024*1024*1024))
+		return false
+	}
+	if clusterCpu < reqCpu {
+		log.Errorf("clusterCpu not Enough! require %dc", reqCpu/1000)
+		return false
+	}
+	return true
 }

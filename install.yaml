@@ -1,0 +1,8 @@
+version: 0.9
+metadata:
+  name: install-all
+spec:
+  resources:
+    requests:
+      cpu: 10000m
+      memory: 97Gi
