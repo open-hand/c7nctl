@@ -1,0 +1,47 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+{{ include "service.labels.standard" . | indent 4 }}
+{{ include "service.logging.deployment.label" . | indent 4 }}
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+{{ include "service.labels.standard" . | indent 6 }}
+  template:
+    metadata:
+      annotations:
+{{ include "service.monitoring.pod.annotations" . | indent 8 }}
+      labels:
+{{ include "service.labels.standard" . | indent 8 }}
+    spec:
+      containers:
+      - name: {{ .Release.Name }}
+        env:
+{{- range $name, $value := .Values.env }}
+{{- if not (empty $value) }}
+        - name: {{ $name | quote }}
+          value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+        image: c7n:{{ .Release.Version }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+      {{- with .Values.resources }}
+        resources:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

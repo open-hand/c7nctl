@@ -15,8 +15,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/choerodon/c7n/cmd/app"
+	"os"
+	"fmt"
 )
 
 // installCmd represents the install command
@@ -25,18 +27,22 @@ var installCmd = &cobra.Command{
 	Short: "Install Choerodon",
 	Long: `Install Choerodon quickly.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(cmd.Flags().GetString("config-file"))
-		fmt.Println("install called")
+		fmt.Println(InstallFile)
+		if !app.CheckResource(InstallFile){
+			os.Exit(1)
+		}
+		fmt.Print("install succeed")
 		return nil
 	},
 }
 
 var (
 	ConfigFile string
+	InstallFile string
 )
 
 func init() {
-
+	installCmd.Flags().StringVarP(&InstallFile,"install-file","i","","Install Config file to read from")
 	installCmd.Flags().StringVarP(&ConfigFile,"config-file","f","","Config file to read from")
 	rootCmd.AddCommand(installCmd)
 
