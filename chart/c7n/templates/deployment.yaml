@@ -27,7 +27,7 @@ spec:
           value: {{ $value | quote }}
 {{- end }}
 {{- end }}
-        image: c7n:{{ .Release.Version }}
+        image: c7n:{{ .Chart.Version }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
       {{- with .Values.resources }}
         resources:
