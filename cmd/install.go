@@ -15,35 +15,39 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/choerodon/c7n/cmd/app"
-	"os"
-	"fmt"
+	"github.com/spf13/cobra"
+	"github.com/vinkdong/gox/log"
 )
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install Choerodon",
-	Long: `Install Choerodon quickly.`,
+	Long:  `Install Choerodon quickly.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(InstallFile)
-		if !app.CheckResource(InstallFile){
-			os.Exit(1)
+		if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			log.EnableDebug()
 		}
-		fmt.Print("install succeed")
+		err := app.Install(cmd)
+		if err !=nil{
+			log.Error(err)
+			log.Error("install failed")
+		}
 		return nil
 	},
 }
 
 var (
-	ConfigFile string
-	InstallFile string
+	ConfigFile  string
+	ResourceFile string
 )
 
+
 func init() {
-	installCmd.Flags().StringVarP(&InstallFile,"install-file","i","","Install Config file to read from")
-	installCmd.Flags().StringVarP(&ConfigFile,"config-file","f","","Config file to read from")
+	installCmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
+	installCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
+	installCmd.Flags().Bool("debug", false, "enable debug output")
 	rootCmd.AddCommand(installCmd)
 
 	// Here you will define your flags and configuration settings.

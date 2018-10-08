@@ -1,8 +1,15 @@
-version: 0.9
+version: 0.5
 metadata:
   name: install-all
+  namespace: install
 spec:
+  persistence:
+    nfs:
+      server: 192.168.12.175
+      rootPath: /u01/install
   resources:
-    requests:
-      cpu: 10000m
-      memory: 97Gi
+    mysql:
+      host: 192.168.12.88
+      port: 3306
+      username: root
+      password: xxxxx

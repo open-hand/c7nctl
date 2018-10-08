@@ -1,15 +1,15 @@
 package kube
 
 import (
-	"k8s.io/client-go/tools/clientcmd"
+	"github.com/vinkdong/gox/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"github.com/vinkdong/gox/log"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 )
 
-func getConfig() (*rest.Config, error){
+func getConfig() (*rest.Config, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
@@ -21,7 +21,7 @@ func getConfig() (*rest.Config, error){
 		log.Error(err)
 	}
 
-	return config,err
+	return config, err
 }
 
 func getClientset(c *rest.Config) (*kube.Tunnel, kubernetes.Interface, error) {
@@ -42,8 +42,12 @@ func GetTunnel() *kube.Tunnel {
 	return tunnel
 }
 
-func GetClient() kubernetes.Interface{
-	config,_ := getConfig()
-	_ ,client, _ := getClientset(config)
+func GetConfig() (*rest.Config, error) {
+	return getConfig()
+}
+
+func GetClient() kubernetes.Interface {
+	config, _ := getConfig()
+	_, client, _ := getClientset(config)
 	return client
 }

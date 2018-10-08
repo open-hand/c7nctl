@@ -1,17 +1,22 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/vinkdong/gox/log"
+	yaml_v2 "gopkg.in/yaml.v2"
+	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
-	c_kube "github.com/choerodon/c7n/cmd/kube"
-	"fmt"
-	"k8s.io/helm/pkg/helm"
-	"io/ioutil"
-	"github.com/vinkdong/gox/log"
+	"net/http"
 	"os"
-	"k8s.io/apimachinery/pkg/util/yaml"
-	"encoding/json"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/choerodon/c7n/pkg/config"
+	"github.com/choerodon/c7n/pkg/install"
+	kube2 "github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7n/pkg/helm"
 )
 
 var (
@@ -26,73 +31,145 @@ var (
 	tlsCertDefault   = "$HELM_HOME/cert.pem"
 	tlsKeyDefault    = "$HELM_HOME/key.pem"
 
-	tillerTunnel *kube.Tunnel
-	settings     helm_env.EnvSettings
-	installFile  string
-	installConfig = &InstallDefine{}
+	tillerTunnel     *kube.Tunnel
+	settings         helm_env.EnvSettings
+	ResourceFile     string
+	currentVersion   Version
+	client           *helm.Client
+	defaultNamespace = "choerodon"
+	UserConfig       *config.Config
 )
 
-func PrepareEnv()  {
-	
+const (
+	remoteConfigUrlPrefix = "http://share.hd.wenqi.us/install"
+	versionPath           = "/version.yml"
+	installConfigPath     = "/%s/install.yml"
+	repoUrl               = "https://openchart.choerodon.com.cn/choerodon/c7n/"
+	C7nLabelKey           = "c7n-usage"
+	C7nLabelValue         = "c7n-installer"
+)
+
+func getVersions() Versions {
+	data := requireRemoteResource(versionPath)
+	versions := Versions{}
+	yaml_v2.Unmarshal(data, &versions)
+	return versions
 }
 
-func setupConnection() {
-	tunnel := c_kube.GetTunnel()
-	settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", tunnel.Local)
-	settings.TillerConnectionTimeout = 300
+func getVersion(set *pflag.FlagSet) Version {
+	versions := getVersions()
+	//todo: select version
+	return versions.GetLastStable()
 }
 
-func newClient() *helm.Client {
-	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
-	return helm.NewClient(options...)
-}
-
-func getInstallInfo() {
+func requireRemoteResource(resourcePath string) []byte {
+	log.Infof("getting resource %s", resourcePath)
 	var (
 		data []byte
 		err  error
 	)
-	if installFile != "" {
-		data, err = ioutil.ReadFile(installFile)
+	resp, err := http.Get(fmt.Sprintf("%s%s", remoteConfigUrlPrefix, resourcePath))
+	if err != nil {
+		log.Error(err)
+		os.Exit(127)
+	}
+	defer resp.Body.Close()
+
+	data, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Get resource %s failed", resourcePath)
+		log.Error(err)
+		os.Exit(127)
+	}
+	return data
+}
+
+func getInstallConfig() *install.Install {
+	var (
+		data []byte
+		err  error
+	)
+	var install = &install.Install{}
+
+	// request network resource
+	if ResourceFile == "" {
+		data = requireRemoteResource(fmt.Sprintf(installConfigPath, currentVersion.Version))
+
+	}
+	if ResourceFile != "" {
+		data, err = ioutil.ReadFile(ResourceFile)
 		if err != nil {
 			log.Error("read install file error")
 			os.Exit(127)
 		}
-		data2, err := yaml.ToJSON(data)
-		if err != nil {
-			panic(err)
-		}
-		json.Unmarshal(data2, installConfig)
 	}
+	data2, err := yaml.ToJSON(data)
+	if err != nil {
+		panic(err)
+	}
+	json.Unmarshal(data2, install)
+	return install
 }
 
-func getClusterMemoryAndCpu() (int64, int64)  {
-	var sumMemory int64
-	var sumCpu int64
-	client := c_kube.GetClient()
-	list, _ := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
-	for _,v := range list.Items{
-		sumMemory += v.Status.Capacity.Memory().Value()
-		sumCpu += v.Status.Capacity.Cpu().Value()
+func getUserConfig(filePath string) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Error(err)
+		os.Exit(124)
 	}
-	return sumMemory,sumCpu
+	userConfig := &config.Config{}
+	err = yaml_v2.Unmarshal(data, userConfig)
+	if err != nil {
+		log.Error(err)
+		os.Exit(124)
+	}
+	UserConfig = userConfig
+
+}
+func TearDown() {
+	tillerTunnel.Close()
 }
 
-func CheckResource(file string) bool {
-	installFile = file
-	getInstallInfo()
-	request := installConfig.Spec.Resources.Requests
-	reqMemory := request.Memory().Value()
-	reqCpu := request.Cpu().Value()
-	clusterMemory,clusterCpu := getClusterMemoryAndCpu()
-	fmt.Print(reqMemory)
-	if clusterMemory < reqMemory {
-		log.Errorf("clusterMemory not Enough! require %dGi",reqMemory / (1024*1024*1024))
-		return false
+func Install(cmd *cobra.Command) error {
+	var err error
+	// get current version to
+	currentVersion = getVersion(cmd.Flags())
+
+	// get install configFile
+	ResourceFile, err = cmd.Flags().GetString("resource-file")
+	if err != nil {
+		log.Error(err)
+		os.Exit(123)
 	}
-	if clusterCpu < reqCpu {
-		log.Errorf("clusterCpu not Enough! require %dc", reqCpu/1000)
-		return false
+
+	configFile, err := cmd.Flags().GetString("config-file")
+	getUserConfig(configFile)
+
+	// get install config
+	installConfig := getInstallConfig()
+
+	if installConfig.Version == "" {
+		log.Error("get install config error")
+		os.Exit(127)
 	}
-	return true
+
+	defer TearDown()
+	//tunnel.Close()
+
+	installConfig.UserConfig = UserConfig
+
+	commonLabels :=  make(map[string]string)
+	commonLabels[C7nLabelKey] = C7nLabelValue
+	installConfig.CommonLabels = commonLabels
+
+	// prepare environment
+	tillerTunnel = kube2.GetTunnel()
+	helmClient := &helm.Client{
+		Tunnel: tillerTunnel,
+	}
+	helmClient.InitClient()
+	installConfig.HelmClient = helmClient
+
+	// do install
+	return installConfig.Run()
 }
