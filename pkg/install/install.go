@@ -38,12 +38,7 @@ type Spec struct {
 
 type Basic struct {
 	RepoURL string
-	Slaver slaver.Slaver
-}
-
-type Resource struct {
-	Host string
-	Port int
+	Slaver  slaver.Slaver
 }
 
 type PreInstall struct {
@@ -62,15 +57,36 @@ type InfraResource struct {
 	Persistence []*Persistence
 	Client      *helm.Client
 	Home        *Install
-	Resource    Resource
+	Resource    config.Resource
 	PreInstall  []PreInstall
+	PreValues   PreValueList
+}
+
+type PreValueList []*PreValue
+
+func (pl *PreValueList) prepareValues() error {
+	for _, v := range *pl {
+		if err := v.renderValue(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (pl *PreValueList) getValues(key string) string {
+	for _, v := range *pl {
+		if v.Name == key {
+			return v.Value
+		}
+	}
+	return ""
 }
 
 func (infra *InfraResource) executePreCommands() error {
 	s := Ctx.Slaver
-	for _,pi:= range infra.PreInstall  {
-		for _,c := range pi.Commands{
-			if err:=s.ExecuteSql(c);err !=nil{
+	for _, pi := range infra.PreInstall {
+		for _, c := range pi.Commands {
+			if err := s.ExecuteSql(c); err != nil {
 				return err
 			}
 		}
@@ -109,11 +125,23 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 
 func (infra *InfraResource) CheckInstall() error {
 	news := Ctx.GetSucceed(infra.Name, ReleaseTYPE)
+	// 初始化value
+	if err := infra.executePreValues(); err != nil {
+		return err
+	}
 	if news != nil {
 		log.Infof("using exist release %s", news.RefName)
 		return nil
 	}
+	// 执行安装前命令
+	if err := infra.executePreCommands(); err != nil {
+		return err
+	}
 	return infra.Install()
+}
+
+func (infra *InfraResource) executePreValues() error {
+	return infra.PreValues.prepareValues()
 }
 
 // install infra
@@ -136,6 +164,7 @@ func (infra *InfraResource) Install() error {
 		RefName:   infra.Name,
 		Status:    FailedStatues,
 		Type:      ReleaseTYPE,
+		Resource:  infra.Resource,
 	}
 	defer Ctx.SaveNews(news)
 
@@ -165,6 +194,10 @@ func (infra *InfraResource) HelmValues() []string {
 	return values
 }
 
+func (infra *InfraResource) GetPreValue(key string) string {
+	return infra.PreValues.getValues(key)
+}
+
 func (infra *InfraResource) renderValue(tplString string) string {
 	tpl, err := template.New(infra.Name).Parse(tplString)
 	if err != nil {
@@ -186,6 +219,48 @@ type ChartValue struct {
 	Input Input
 }
 
+type PreValue struct {
+	Name  string
+	Value string
+	Check string
+}
+
+func (p *PreValue) renderValue() error {
+	tpl, err := template.New(p.Name).Parse(p.Value)
+	if err != nil {
+		return err
+	}
+	var data bytes.Buffer
+	err = tpl.Execute(&data, p)
+	if err != nil {
+		return err
+	}
+	switch p.Check {
+	case "domain":
+		//todo: add check domain
+		log.Infof("check domain of %s", data.String())
+	}
+
+	p.Value = data.String()
+	return nil
+}
+
+// 获取基础组件信息
+func (p *PreValue) GetResource(key string) *config.Resource {
+	news := Ctx.GetSucceed(key, ReleaseTYPE)
+	// get info from succeed
+	if news != nil {
+		return &news.Resource
+	} else {
+		if r, ok := Ctx.UserConfig.Spec.Resources[key]; ok {
+			return r
+		}
+	}
+	log.Errorf("can't get required resource [%s]", key)
+	os.Exit(188)
+	return nil
+}
+
 type Input struct {
 	Enabled bool
 	Regex   string
@@ -195,10 +270,6 @@ type Input struct {
 func (i *Install) InstallInfra() error {
 	// 安装基础组件
 	for _, infra := range i.Spec.Infra {
-		// 执行安装前命令
-		if err := infra.executePreCommands(); err != nil {
-			return err
-		}
 		// 准备pv和pvc
 		if err := infra.preparePersistence(i.Client, i.UserConfig); err != nil {
 			return err
@@ -298,6 +369,7 @@ func (i *Install) Run() error {
 		Client:       i.Client,
 		Namespace:    i.UserConfig.Metadata.Namespace,
 		CommonLabels: i.CommonLabels,
+		UserConfig:   i.UserConfig,
 	}
 
 	// prepare slaver to execute sql or make directory ..

@@ -18,7 +18,7 @@ type Metadata struct {
 
 type Spec struct {
 	Persistence Persistence
-	Resources  Resources
+	Resources   map[string]*Resource
 }
 
 type Persistence struct {
@@ -30,15 +30,19 @@ type Nfs struct {
 	RootPath string `yaml:"rootPath"`
 }
 
+// todo: remove
 type Resources struct {
-	Mysql Mysql
+	Mysql  Resource
+	Gitlab Resource
 }
 
-type Mysql struct {
+type Resource struct {
 	Host     string
 	Port     int
 	Username string
 	Password string
+	Schema   string
+	External bool
 }
 
 func (p *Persistence) GetPersistentVolumeSource(subPath string) v1.PersistentVolumeSource {

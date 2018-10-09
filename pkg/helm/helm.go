@@ -147,7 +147,7 @@ func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error
 		helm.InstallReuseName(false),
 		helm.InstallDisableHooks(false),
 		helm.InstallTimeout(300),
-		helm.InstallWait(true))
+		helm.InstallWait(false))
 	if err != nil {
 		return err
 	}

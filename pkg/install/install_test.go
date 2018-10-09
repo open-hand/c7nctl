@@ -1,6 +1,11 @@
 package install
 
-import "testing"
+import (
+	"testing"
+	"github.com/choerodon/c7n/pkg/config"
+	"github.com/vinkdong/gox/log"
+	"github.com/choerodon/c7n/pkg/kube"
+)
 
 func TestRenderValue(t *testing.T) {
 	infra := &InfraResource{
@@ -31,4 +36,33 @@ func TestHelmValues(t *testing.T) {
 		Name: "test-name-1",
 	}
 	infra.HelmValues()
+}
+
+func TestGetInfra(t *testing.T)  {
+
+	resource := make(map[string]*config.Resource)
+
+	gitlabResource := &config.Resource{
+		Host: "gitlab.example.io",
+	}
+	resource["gitlab"] = gitlabResource
+
+	c := &config.Config{
+		Spec:config.Spec{
+			Resources: resource,
+		},
+	}
+	Ctx.UserConfig = c
+	Ctx.Client = kube.GetClient()
+	Ctx.Namespace = ""
+
+	preValue := PreValue{
+		Name: "GITLAB_BASE_DOMAIN",
+		Value: "{{ ( .GetResource 'gitlab').Host }}",
+		Check: "domain",
+	}
+
+	r := preValue.GetResource("gitlab")
+	log.Info(r.Host)
+
 }

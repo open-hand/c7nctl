@@ -2,26 +2,24 @@ package app
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/cmd/kube"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7n/pkg/helm"
 )
 
 func TestNewClient(t *testing.T) {
 
-	setupConnection()
-	client := newClient()
+	tillerTunnel = kube.GetTunnel()
+	helmClient := &helm.Client{
+		Tunnel: tillerTunnel,
+	}
 
-	res, err := client.ListReleases()
+	res, err := helmClient.Client.ListReleases()
 	fmt.Println(err)
 	for _, v := range res.Releases {
 		fmt.Println(v.Name, v.Chart.Metadata.Name, v.Chart.Metadata.Version)
 	}
-}
-
-func TestGetInstallInfo(t *testing.T) {
-	installFile = "/Users/vink/temp/install.yaml"
-	getClusterMemoryAndCpu()
 }
 
 func TestGetNoInfo(t *testing.T) {
@@ -41,4 +39,11 @@ func TestGetNoInfo(t *testing.T) {
 
 func TestCheckResource(t *testing.T) {
 	//fmt.Print(CheckResource())
+}
+
+func TestGetUserConfig(t *testing.T)  {
+	getUserConfig("/Users/vink/go/src/github.com/choerodon/c7n/install.yaml")
+	if UserConfig.Spec.Resources["mysql"].Host!= "192.168.12.88" {
+		t.Error("read user config error")
+	}
 }

@@ -13,3 +13,8 @@ spec:
       port: 3306
       username: root
       password: xxxxx
+      external: false
+    gitlab:
+      host: gitlab.example.io
+      external: false
+      username: root

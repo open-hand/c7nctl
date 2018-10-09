@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"fmt"
 	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/choerodon/c7n/pkg/config"
 )
 
 var Ctx Context
@@ -38,6 +39,7 @@ type Context struct {
 	CommonLabels  map[string]string
 	SlaverAddress string
 	Slaver        *slaver.Slaver
+	UserConfig    *config.Config
 }
 
 // i want use log but it make ...
@@ -49,6 +51,7 @@ type News struct {
 	Status    string
 	Reason    string
 	Date      time.Time
+	Resource  config.Resource
 }
 
 type NewsResourceList struct {
@@ -113,8 +116,7 @@ func (ctx *Context) getSucceedData() *NewsResourceList {
 func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
 	cm, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	if err != nil {
-		status := err.(*errors.StatusError)
-		if status.ErrStatus.Code == 404 {
+		if errors.IsNotFound(err){
 			log.Info("creating logs to cluster")
 			cm = ctx.createNewsData()
 		}
