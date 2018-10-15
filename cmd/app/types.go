@@ -5,8 +5,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-
-
 type Versions struct {
 	Versions []Version
 }

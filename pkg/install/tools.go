@@ -1,21 +1,21 @@
 package install
 
 import (
-	"github.com/vinkdong/gox/log"
-	"k8s.io/client-go/kubernetes"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/api/core/v1"
-	"os"
-	"time"
-	"gopkg.in/yaml.v2"
-	"math/rand"
-	"golang.org/x/crypto/ssh/terminal"
-	"syscall"
-	"regexp"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/slaver"
 	"github.com/choerodon/c7n/pkg/config"
+	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/vinkdong/gox/log"
+	"golang.org/x/crypto/ssh/terminal"
+	"gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"math/rand"
+	"os"
+	"regexp"
+	"syscall"
+	"time"
 )
 
 var Ctx Context
@@ -52,6 +52,8 @@ type News struct {
 	Reason    string
 	Date      time.Time
 	Resource  config.Resource
+	Values    []ChartValue
+	PreValue  []PreValue
 }
 
 type NewsResourceList struct {
@@ -116,7 +118,7 @@ func (ctx *Context) getSucceedData() *NewsResourceList {
 func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
 	cm, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			log.Info("creating logs to cluster")
 			cm = ctx.createNewsData()
 		}

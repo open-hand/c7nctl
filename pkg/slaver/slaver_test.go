@@ -1,10 +1,10 @@
 package slaver
 
 import (
-	"testing"
 	"github.com/choerodon/c7n/pkg/kube"
-	"k8s.io/api/core/v1"
 	"github.com/vinkdong/gox/log"
+	"k8s.io/api/core/v1"
+	"testing"
 	"time"
 )
 
@@ -49,13 +49,13 @@ func TestPortForward(t *testing.T) {
 		Name:         "c7n-slaver",
 		CommonLabels: labels,
 		Image:        "vinkdong/timing",
-		Ports:        []v1.ContainerPort{v1.ContainerPort{
-			Name:"http",
+		Ports: []v1.ContainerPort{v1.ContainerPort{
+			Name:          "http",
 			ContainerPort: 9800,
 		}},
 	}
 	stopCh := make(chan struct{})
 	port := slaver.ForwardPort(stopCh)
-	log.Infof("success get listening port on %d",port)
+	log.Infof("success get listening port on %d", port)
 	time.Sleep(time.Second * 60)
 }

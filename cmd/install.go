@@ -30,7 +30,7 @@ var installCmd = &cobra.Command{
 			log.EnableDebug()
 		}
 		err := app.Install(cmd)
-		if err !=nil{
+		if err != nil {
 			log.Error(err)
 			log.Error("install failed")
 		}
@@ -39,10 +39,9 @@ var installCmd = &cobra.Command{
 }
 
 var (
-	ConfigFile  string
+	ConfigFile   string
 	ResourceFile string
 )
-
 
 func init() {
 	installCmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")

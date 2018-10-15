@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
+	helm_env "k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
 	"os"
 	"path/filepath"
 	"strings"
-	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/client-go/util/homedir"
-	"k8s.io/helm/pkg/kube"
 )
 
 type Client struct {
@@ -26,16 +26,16 @@ type Client struct {
 }
 
 type ChartArgs struct {
-	RepoUrl   string
-	Version   string
-	Namespace string
-	ReleaseName      string
-	Verify    bool
-	Keyring   string
-	CertFile  string
-	KeyFile   string
-	CaFile    string
-	ChartName string
+	RepoUrl     string
+	Version     string
+	Namespace   string
+	ReleaseName string
+	Verify      bool
+	Keyring     string
+	CertFile    string
+	KeyFile     string
+	CaFile      string
+	ChartName   string
 }
 
 func (client *Client) locateChartPath(chartArgs ChartArgs) (string, error) {
@@ -120,7 +120,6 @@ func (client *Client) InitClient() {
 }
 
 func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error {
-
 
 	cp, err := client.locateChartPath(chartArgs)
 	if err != nil {

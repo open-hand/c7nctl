@@ -1,10 +1,10 @@
 package install
 
 import (
-	"testing"
 	"github.com/choerodon/c7n/pkg/config"
-	"github.com/vinkdong/gox/log"
 	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/vinkdong/gox/log"
+	"testing"
 )
 
 func TestRenderValue(t *testing.T) {
@@ -38,7 +38,7 @@ func TestHelmValues(t *testing.T) {
 	infra.HelmValues()
 }
 
-func TestGetInfra(t *testing.T)  {
+func TestGetInfra(t *testing.T) {
 
 	resource := make(map[string]*config.Resource)
 
@@ -48,7 +48,7 @@ func TestGetInfra(t *testing.T)  {
 	resource["gitlab"] = gitlabResource
 
 	c := &config.Config{
-		Spec:config.Spec{
+		Spec: config.Spec{
 			Resources: resource,
 		},
 	}
@@ -57,7 +57,7 @@ func TestGetInfra(t *testing.T)  {
 	Ctx.Namespace = ""
 
 	preValue := PreValue{
-		Name: "GITLAB_BASE_DOMAIN",
+		Name:  "GITLAB_BASE_DOMAIN",
 		Value: "{{ ( .GetResource 'gitlab').Host }}",
 		Check: "domain",
 	}

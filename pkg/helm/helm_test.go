@@ -2,8 +2,8 @@ package helm
 
 import (
 	"fmt"
-	"testing"
 	"github.com/choerodon/c7n/pkg/kube"
+	"testing"
 )
 
 var (

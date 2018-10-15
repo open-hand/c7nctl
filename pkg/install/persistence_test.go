@@ -1,11 +1,11 @@
 package install
 
 import (
-	"testing"
+	"fmt"
 	"github.com/choerodon/c7n/pkg/kube"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"fmt"
+	"testing"
 )
 
 func TestCreatePv(t *testing.T) {

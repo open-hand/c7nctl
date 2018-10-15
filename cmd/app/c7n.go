@@ -3,6 +3,10 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/choerodon/c7n/pkg/config"
+	"github.com/choerodon/c7n/pkg/helm"
+	"github.com/choerodon/c7n/pkg/install"
+	kube2 "github.com/choerodon/c7n/pkg/kube"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/vinkdong/gox/log"
@@ -13,10 +17,6 @@ import (
 	"k8s.io/helm/pkg/kube"
 	"net/http"
 	"os"
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/install"
-	kube2 "github.com/choerodon/c7n/pkg/kube"
-	"github.com/choerodon/c7n/pkg/helm"
 )
 
 var (
@@ -158,7 +158,7 @@ func Install(cmd *cobra.Command) error {
 
 	installConfig.UserConfig = UserConfig
 
-	commonLabels :=  make(map[string]string)
+	commonLabels := make(map[string]string)
 	commonLabels[C7nLabelKey] = C7nLabelValue
 	installConfig.CommonLabels = commonLabels
 

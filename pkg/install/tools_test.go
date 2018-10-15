@@ -1,40 +1,39 @@
 package install
 
 import (
-	"testing"
+	"fmt"
 	"github.com/choerodon/c7n/pkg/kube"
 	"github.com/vinkdong/gox/log"
-	"fmt"
+	"testing"
 )
 
-func TestGetNewsData(t *testing.T)  {
+func TestGetNewsData(t *testing.T) {
 	ctx := Context{
-		Client: kube.GetClient(),
+		Client:    kube.GetClient(),
 		Namespace: "test",
 	}
-	log.Info(ctx.GetOrCreateConfigMapData(staticLogName,staticLogKey))
+	log.Info(ctx.GetOrCreateConfigMapData(staticLogName, staticLogKey))
 }
 
-func TestSaveNewsData(t *testing.T)  {
+func TestSaveNewsData(t *testing.T) {
 	ctx := Context{
-		Client: kube.GetClient(),
+		Client:    kube.GetClient(),
 		Namespace: "test",
 	}
 
 	news := &News{
-		Name: "testnews2",
+		Name:      "testnews2",
 		Namespace: "test",
-		Type: PvcType,
-		Status:FailedStatues,
-		Reason:"reason1 ",
+		Type:      PvcType,
+		Status:    FailedStatues,
+		Reason:    "reason1 ",
 	}
 	ctx.SaveNews(news)
 }
 
 func TestRandomString(t *testing.T) {
-	fmt.Println(RandomString(),RandomString())
-	if RandomString() == RandomString(){
+	fmt.Println(RandomString(), RandomString())
+	if RandomString() == RandomString() {
 		t.Error("Func RandowString not work")
 	}
 }
-

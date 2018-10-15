@@ -1,12 +1,12 @@
 package install
 
 import (
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/vinkdong/gox/log"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"fmt"
+	"github.com/vinkdong/gox/log"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Persistence struct {
@@ -65,7 +65,7 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		p.RefPvName = p.Name
 	}
 	if news := Ctx.GetSucceed(p.Name, PvType); news != nil {
-		log.Infof("using exist pv [%s]",news.RefName)
+		log.Infof("using exist pv [%s]", news.RefName)
 		p.RefPvName = news.RefName
 		return nil
 	}
@@ -92,7 +92,6 @@ checkpvc:
 	}
 	return p.CreatePvc()
 }
-
 
 func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 	log.Infof("creating pv %s", p.RefPvName)

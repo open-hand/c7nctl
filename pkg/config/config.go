@@ -1,8 +1,8 @@
 package config
 
 import (
-	"k8s.io/api/core/v1"
 	"fmt"
+	"k8s.io/api/core/v1"
 )
 
 type Config struct {
