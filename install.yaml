@@ -14,7 +14,8 @@ spec:
       username: root
       password: xxxxx
       external: false
-    gitlab:
+    gitlab2:
       host: gitlab.example.io
+      domain: gitlab2.exmape.io
       external: false
       username: root

@@ -11,6 +11,19 @@ type Config struct {
 	Spec     Spec
 }
 
+func (c *Config) GetResource( key string) *Resource {
+	if c == nil  {
+		return nil
+	}
+	if c.Spec.Resources == nil {
+		return nil
+	}
+	if val,ok := c.Spec.Resources[key];ok {
+		return val
+	}
+	return nil
+}
+
 type Metadata struct {
 	Name      string
 	Namespace string
@@ -30,18 +43,13 @@ type Nfs struct {
 	RootPath string `yaml:"rootPath"`
 }
 
-// todo: remove
-type Resources struct {
-	Mysql  Resource
-	Gitlab Resource
-}
-
 type Resource struct {
 	Host     string
 	Port     int
 	Username string
 	Password string
 	Schema   string
+	Domain   string
 	External bool
 }
 

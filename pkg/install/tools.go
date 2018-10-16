@@ -116,6 +116,10 @@ func (ctx *Context) getSucceedData() *NewsResourceList {
 }
 
 func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
+	if ctx.Client == nil {
+		log.Error("Get k8s client failed")
+		os.Exit(127)
+	}
 	cm, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

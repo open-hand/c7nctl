@@ -53,6 +53,25 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 	return nil
 }
 
+func (infra *InfraResource) applyUserResource() error {
+	r := Ctx.UserConfig.GetResource(infra.Name)
+	if r == nil {
+		log.Infof("no use config resource for %s",infra.Name)
+		return nil
+	}
+	if r.External {
+		infra.Resource = r
+		return nil
+	}
+// just override domain
+	if r.Domain != "" {
+		infra.Resource.Domain = r.Domain
+	}
+
+	return nil
+}
+
+
 func (infra *InfraResource) executePreValues() error {
 	return infra.PreValues.prepareValues()
 }
@@ -76,8 +95,17 @@ func (infra *InfraResource) GetPreValue(key string) string {
 	return infra.PreValues.getValues(key)
 }
 
-func (infra *InfraResource) GetRequirement(app, key string) string {
-	return "ok"
+func (infra *InfraResource) GetRequireResource(app string) config.Resource {
+	res := Ctx.UserConfig.Spec.Resources
+	if r, ok := res[app]; ok {
+		return *r
+	}
+	new := Ctx.GetSucceed(app, ReleaseTYPE)
+	if new == nil {
+		log.Errorf("require [%s] not right installed or defined", app)
+		os.Exit(121)
+	}
+	return new.Resource
 }
 
 // convert yml values to values list as xxx=yyy
@@ -101,7 +129,37 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 		v.Value = value
 		cvList[k] = v
 	}
+	// todo: no return cvList ?
+	infra.Values = cvList
 	return values, cvList
+}
+
+func (infra *InfraResource) GetValue(key string) string {
+	for _,v := range infra.Values{
+		if v.Name  == key{
+			return v.Value
+		}
+	}
+	log.Infof("can't get value '%s' of %s",key,infra.Name)
+	return ""
+}
+
+// only used for save log
+func (infra *InfraResource) renderResource() config.Resource {
+	//todo: just render password now, add more
+	r := infra.Resource
+	tpl,err  := template.New(fmt.Sprintf("r-%s-%s",infra.Name,"password")).Parse(r.Password)
+	if err != nil {
+		log.Info(err)
+		os.Exit(125)
+	}
+	var data bytes.Buffer
+	if err := tpl.Execute(&data,infra) ; err !=nil{
+		log.Error(err)
+		os.Exit(125)
+	}
+	r.Password = data.String()
+	return *r
 }
 
 // install infra
@@ -124,7 +182,7 @@ func (infra *InfraResource) Install() error {
 		RefName:   infra.Name,
 		Status:    FailedStatues,
 		Type:      ReleaseTYPE,
-		Resource:  infra.Resource,
+		Resource:  infra.renderResource(),
 		Values:    cvList,
 	}
 	defer Ctx.SaveNews(news)
@@ -139,6 +197,11 @@ func (infra *InfraResource) Install() error {
 
 func (infra *InfraResource) CheckInstall() error {
 	news := Ctx.GetSucceed(infra.Name, ReleaseTYPE)
+
+	// apply resource
+	if err := infra.applyUserResource(); err !=nil {
+		return err
+	}
 	// 初始化value
 	if err := infra.executePreValues(); err != nil {
 		return err

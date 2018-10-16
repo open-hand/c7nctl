@@ -30,18 +30,19 @@ type Metadata struct {
 }
 
 type InfraResource struct {
-	Name        string
-	Chart       string
-	Namespace   string
-	RepoURL     string
-	Version     string
-	Values      []ChartValue
-	Persistence []*Persistence
-	Client      *helm.Client
-	Home        *Install
-	Resource    config.Resource
-	PreInstall  []PreInstall
-	PreValues   PreValueList
+	Name         string
+	Chart        string
+	Namespace    string
+	RepoURL      string
+	Version      string
+	Values       []ChartValue
+	Persistence  []*Persistence
+	Client       *helm.Client
+	Home         *Install
+	Resource     *config.Resource
+	PreInstall   []PreInstall
+	PreValues    PreValueList
+	Requirements []string
 }
 
 type Spec struct {
@@ -103,10 +104,10 @@ func (p *PreValue) renderValue() error {
 	if err != nil {
 		return err
 	}
+	log.Infof("check %s %s", p.Check, data.String())
 	switch p.Check {
 	case "domain":
 		//todo: add check domain
-		log.Infof("check domain of %s", data.String())
 	}
 
 	p.Value = data.String()
