@@ -10,13 +10,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
+	"github.com/pkg/errors"
 )
 
 func (infra *InfraResource) executePreCommands() error {
 	s := Ctx.Slaver
 	for _, pi := range infra.PreInstall {
+		r := infra.GetResource(pi.InfraRef)
 		for _, c := range pi.Commands {
-			if err := s.ExecuteSql(c); err != nil {
+			if err := s.ExecuteSql(c,r); err != nil {
 				return err
 			}
 		}
@@ -195,11 +197,84 @@ func (infra *InfraResource) Install() error {
 	return nil
 }
 
+// get server definition
+func (infra *InfraResource) GetInfra(key string) *InfraResource {
+	infraList := infra.Home.Spec.Infra
+	for _, v := range infraList {
+		if v.Name == key {
+			return &v
+		}
+	}
+	return nil
+}
+
+// just search the key
+func (infra *InfraResource) CheckRunning(key string) error {
+	log.Infof("Waiting %s being running", key)
+	var err error
+	i := infra.GetInfra(key)
+
+	// check http
+	for _, h := range i.Health.HttpGet{
+		if !Ctx.Slaver.CheckHealth(
+			slaver.Checker{
+				Type:   "httpGet",
+				Host:   h.Host,
+				Port:   h.Port,
+				Schema: "http",
+			},
+		){
+			err = errors.Errorf("Waiting %s running timeout", key)
+		}
+	}
+
+	// check socket
+	for _, s := range i.Health.Socket{
+		if !Ctx.Slaver.CheckHealth(
+			slaver.Checker{
+				Type:   "socket",
+				Host:   s.Host,
+				Port:   s.Port,
+				Schema: "",
+			},
+		){
+			err = errors.Errorf("Waiting %s running timeout", key)
+		}
+	}
+
+	return err
+}
+
+// 获取基础组件信息
+/**
+读取安装成功或者用户配置的信息
+ */
+func (infra *InfraResource) GetResource(key string) *config.Resource {
+	news := Ctx.GetSucceed(key, ReleaseTYPE)
+	// get info from succeed
+	if news != nil {
+		return &news.Resource
+	} else {
+		if r, ok := Ctx.UserConfig.Spec.Resources[key]; ok {
+			return r
+		}
+	}
+	log.Errorf("can't get required resource [%s]", key)
+	os.Exit(188)
+	return nil
+}
+
 func (infra *InfraResource) CheckInstall() error {
 	news := Ctx.GetSucceed(infra.Name, ReleaseTYPE)
 
+	// check requirement started
+	for _, r := range infra.Requirements {
+		if err := infra.CheckRunning(r); err != nil {
+			return err
+		}
+	}
 	// apply resource
-	if err := infra.applyUserResource(); err !=nil {
+	if err := infra.applyUserResource(); err != nil {
 		return err
 	}
 	// 初始化value

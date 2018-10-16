@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"github.com/choerodon/c7n/pkg/config"
 )
 
 type Slaver struct {
@@ -37,6 +38,17 @@ type Dir struct {
 	Mode string
 	Path string
 }
+
+/**
+Type: httpGet or socket
+ */
+type Checker struct {
+	Type   string
+	Host   string
+	Schema string
+	Port   int
+}
+
 
 func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
 	ds, err := s.Client.ExtensionsV1beta1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
@@ -182,9 +194,14 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	return nil
 }
 
-func (s *Slaver) ExecuteSql(sql string) error {
+func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
 	log.Infof("executed sql %s", sql)
 	return nil
+}
+
+func (s *Slaver) CheckHealth(checker Checker) bool{
+	log.Info("check health")
+	return true
 }
 
 func (s *Slaver) Uninstall() error {

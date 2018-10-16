@@ -44,6 +44,26 @@ type InfraResource struct {
 	PreInstall   []PreInstall
 	PreValues    PreValueList
 	Requirements []string
+	Health       Health
+}
+
+type Health struct {
+	HttpGet []HttpGetCheck `yaml:"httpGet"`
+	Socket  []SocketCheck
+}
+
+type SocketCheck struct {
+	Name string
+	Host string
+	Port int
+	Path string
+}
+
+type HttpGetCheck struct {
+	Name string
+	Host string
+	Port int
+	Path string
 }
 
 type Spec struct {
@@ -140,6 +160,10 @@ type Input struct {
 func (i *Install) InstallInfra() error {
 	// 安装基础组件
 	for _, infra := range i.Spec.Infra {
+		if r := i.UserConfig.GetResource(infra.Name);r !=nil && r.External{
+			log.Infof("using external %s",infra.Name)
+			continue
+		}
 		// 准备pv和pvc
 		if err := infra.preparePersistence(i.Client, i.UserConfig); err != nil {
 			return err
