@@ -1,5 +1,6 @@
 package: github.com/choerodon/c7n
 import:
-
 - package: k8s.io/helm
   version: 2.8.2
+- package: github.com/vinkdong/gox
+  version: 5c28339a1dee33652048875ba566cb96cf7645ff

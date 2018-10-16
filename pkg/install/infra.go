@@ -282,7 +282,7 @@ func (infra *InfraResource) CheckInstall() error {
 		return err
 	}
 	if news != nil {
-		log.Infof("using exist release %s", news.RefName)
+		log.Successf("using exist release %s", news.RefName)
 		return nil
 	}
 	// 执行安装前命令
