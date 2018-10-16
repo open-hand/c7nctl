@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
+	"fmt"
 )
 
 type Install struct {
@@ -253,6 +254,15 @@ func (i *Install) Run() error {
 	if _, err := s.CheckInstall(); err != nil {
 		return err
 	}
+
+	stopCh := make(chan struct{})
+
+	port := s.ForwardPort(stopCh)
+
+	Ctx.SlaverAddress = fmt.Sprintf("http://127.0.0.1:%d", port)
+	defer func() {
+		stopCh <- struct{}{}
+	}()
 
 	// install 基础组件
 	if err := i.InstallInfra(); err != nil {

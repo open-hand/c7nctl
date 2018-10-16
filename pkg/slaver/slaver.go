@@ -30,6 +30,7 @@ type Slaver struct {
 	Env          []core_v1.EnvVar
 	volumeMounts []core_v1.VolumeMount
 	PodList      *core_v1.PodList
+	Address      string
 }
 
 type Dir struct {
@@ -171,6 +172,8 @@ getFreePort:
 	}
 	go fw.ForwardPorts()
 	<-readyCh
+
+	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
 	return port
 }
 
