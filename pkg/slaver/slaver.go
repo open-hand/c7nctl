@@ -17,7 +17,11 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"bytes"
+	"io/ioutil"
+	"encoding/json"
 	"github.com/choerodon/c7n/pkg/config"
+	"strings"
 )
 
 type Slaver struct {
@@ -191,11 +195,55 @@ getFreePort:
 
 func (s *Slaver) MakeDir(dir Dir) error {
 	log.Infof("create dir %s with mode %s", dir.Path, dir.Mode)
+	url := fmt.Sprint(s.Address, "/cmd")
+
+	jsonContext := fmt.Sprintf(`{"commond":"mkdir -p %s -m %s"}`,dir.Path,dir.Mode)
+	var jsonStr = []byte(jsonContext)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	type result struct {
+		Success bool `json:"success"`
+	}
+	body,_ := ioutil.ReadAll(resp.Body)
+	Request := &result{}
+	json.Unmarshal(body, Request)
+	if Request.Success == false {
+		return fmt.Errorf("can't create dir %s with mode %s",dir.Path,dir.Mode)
+	}
 	return nil
 }
 
 func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
 	log.Infof("executed sql %s", sql)
+	sql = strings.Replace(sql,"\"","\\\"",-1)
+	url := fmt.Sprint(s.Address, "/mysql")
+
+	jsonContext := fmt.Sprintf(`{"scop": "database","mysql_info": {"mysql_host": "%s","mysql_port": "%d","mysql_name": "%s","mysql_pwd": "%s"},"sql": "%s"}`,r.Host,r.Port,r.Username,r.Password,sql)
+	var jsonStr = []byte(jsonContext)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	type result struct {
+		Success bool `json:"success"`
+	}
+	body, _ := ioutil.ReadAll(resp.Body)
+	Request := &result{}
+	json.Unmarshal(body, Request)
+	if Request.Success == false {
+		return fmt.Errorf("can't execute sql %s ", sql)
+	}
 	return nil
 }
 
