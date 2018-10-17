@@ -126,12 +126,17 @@ func (p *PreValue) renderValue() error {
 		return err
 	}
 	log.Infof("check %s %s", p.Check, data.String())
+
+	val := data.String()
 	switch p.Check {
-	case "domain":
+	case "clusterdomain":
 		//todo: add check domain
+		if err := Ctx.Slaver.CheckClusterDomain(val); err != nil {
+			return err
+		}
 	}
 
-	p.Value = data.String()
+	p.Value = val
 	return nil
 }
 

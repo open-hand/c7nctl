@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"github.com/choerodon/c7n/pkg/config"
 	"strings"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type Slaver struct {
@@ -38,6 +39,8 @@ type Slaver struct {
 	Address      string
 }
 
+const IngressCheckPath = "/c7n/acme-challenge"
+
 type Dir struct {
 	Mode string
 	Path string
@@ -52,7 +55,6 @@ type Checker struct {
 	Schema string
 	Port   int
 }
-
 
 func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
 	ds, err := s.Client.ExtensionsV1beta1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
@@ -88,6 +90,7 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 	selector := &meta_v1.LabelSelector{
 		MatchLabels: s.CommonLabels,
 	}
+	s.CommonLabels["app"] = s.Name
 	ds := &v1beta1.DaemonSet{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "DaemonSet",
@@ -247,9 +250,142 @@ func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
 	return nil
 }
 
-func (s *Slaver) CheckHealth(checker Checker) bool{
+func (s *Slaver) CheckHealth(checker Checker) bool {
 	log.Info("check health")
 	return true
+}
+
+func (s *Slaver) InstallService() (*core_v1.Service, error) {
+	svcInterface := s.Client.CoreV1().Services(s.Namespace)
+
+	svc, err := svcInterface.Get(s.Name, meta_v1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	if svc != nil && err == nil {
+		return svc, err
+	}
+	port := intstr.IntOrString{
+		Type:   1,
+		StrVal: "http",
+	}
+	servicePort := core_v1.ServicePort{
+		Port:       80,
+		Protocol:   "TCP",
+		TargetPort: port,
+	}
+
+	service := &core_v1.Service{
+		TypeMeta: meta_v1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:   s.Name,
+			Labels: s.CommonLabels,
+		},
+		Spec: core_v1.ServiceSpec{
+			Ports:    []core_v1.ServicePort{servicePort},
+			Selector: s.CommonLabels,
+		},
+	}
+
+	return svcInterface.Create(service)
+}
+
+func (s *Slaver) UpdateIngress(ingress *v1beta1.Ingress, domain string) error {
+	for _, r := range ingress.Spec.Rules {
+		if r.Host == domain {
+			return nil
+		}
+	}
+	ruleList := ingress.Spec.Rules
+	ingressRule, err := s.getIngressRule(domain)
+	if err != nil {
+		return err
+	}
+	ingress.Spec.Rules = append(ruleList, ingressRule)
+
+	ingressInterface := s.Client.ExtensionsV1beta1().Ingresses(s.Namespace)
+
+	_, err = ingressInterface.Update(ingress)
+	return err
+}
+
+func (s *Slaver) getIngressRule(domain string) (v1beta1.IngressRule, error) {
+	port := intstr.IntOrString{
+		Type:   1,
+		StrVal: "http",
+	}
+	svc, err := s.InstallService()
+
+	if err != nil {
+		return v1beta1.IngressRule{}, err
+	}
+
+	backend := v1beta1.IngressBackend{
+		ServiceName: svc.Name,
+		ServicePort: port,
+	}
+
+	ingressPath := v1beta1.HTTPIngressPath{
+		Path:    IngressCheckPath,
+		Backend: backend,
+	}
+	ingressRuleValue := v1beta1.IngressRuleValue{
+		HTTP: &v1beta1.HTTPIngressRuleValue{
+			Paths: []v1beta1.HTTPIngressPath{ingressPath},
+		},
+	}
+	ingressRule := v1beta1.IngressRule{
+		Host:             domain,
+		IngressRuleValue: ingressRuleValue,
+	}
+
+	return ingressRule, nil
+}
+
+func (s *Slaver) InstallIngress(domain string) error {
+
+	ingressInterface := s.Client.ExtensionsV1beta1().Ingresses(s.Namespace)
+
+	ing, err := ingressInterface.Get(s.Name+"checker", meta_v1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	if err == nil {
+		return s.UpdateIngress(ing, domain)
+	}
+
+	ingressRule, err := s.getIngressRule(domain)
+
+	if err != nil {
+		return err
+	}
+	ingress := &v1beta1.Ingress{
+		TypeMeta: meta_v1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:   s.Name + "checker",
+			Labels: s.CommonLabels,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{ingressRule},
+		},
+	}
+	_, err = ingressInterface.Create(ingress)
+	return err
+}
+
+func (s *Slaver) CheckClusterDomain(domain string) error {
+	err := s.InstallIngress(domain)
+	if err != nil {
+		return err
+	}
+	log.Infof("send msg to check domain %s", domain)
+	return nil
 }
 
 func (s *Slaver) Uninstall() error {
