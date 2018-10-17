@@ -2,6 +2,7 @@ package install
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
 	"github.com/choerodon/c7n/pkg/kube"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
-	"fmt"
 )
 
 type Install struct {
@@ -165,8 +165,8 @@ type Input struct {
 func (i *Install) InstallInfra() error {
 	// 安装基础组件
 	for _, infra := range i.Spec.Infra {
-		if r := i.UserConfig.GetResource(infra.Name);r !=nil && r.External{
-			log.Infof("using external %s",infra.Name)
+		if r := i.UserConfig.GetResource(infra.Name); r != nil && r.External {
+			log.Infof("using external %s", infra.Name)
 			continue
 		}
 		// 准备pv和pvc

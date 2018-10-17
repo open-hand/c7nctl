@@ -1,10 +1,10 @@
 package install
 
 import (
-	"testing"
-	"github.com/vinkdong/gox/log"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/vinkdong/gox/log"
+	"testing"
 )
 
 func TestInfraResource_GetRequirement(t *testing.T) {
@@ -34,7 +34,7 @@ func TestInfraResource_GetRequirement(t *testing.T) {
 	result := infra.GetRequireResource("mysql")
 	log.Info(result.Password)
 
-	client :=  kube.GetClient()
+	client := kube.GetClient()
 	Ctx.Client = client
 	Ctx.Namespace = "install"
 	result2 := infra.GetRequireResource("mysql4")

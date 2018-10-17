@@ -11,14 +11,14 @@ type Config struct {
 	Spec     Spec
 }
 
-func (c *Config) GetResource( key string) *Resource {
-	if c == nil  {
+func (c *Config) GetResource(key string) *Resource {
+	if c == nil {
 		return nil
 	}
 	if c.Spec.Resources == nil {
 		return nil
 	}
-	if val,ok := c.Spec.Resources[key];ok {
+	if val, ok := c.Spec.Resources[key]; ok {
 		return val
 	}
 	return nil

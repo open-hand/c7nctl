@@ -6,11 +6,11 @@ import (
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
 	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
-	"github.com/pkg/errors"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -18,7 +18,7 @@ func (infra *InfraResource) executePreCommands() error {
 	for _, pi := range infra.PreInstall {
 		r := infra.GetResource(pi.InfraRef)
 		for _, c := range pi.Commands {
-			if err := s.ExecuteSql(c,r); err != nil {
+			if err := s.ExecuteSql(c, r); err != nil {
 				return err
 			}
 		}
@@ -58,21 +58,20 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 func (infra *InfraResource) applyUserResource() error {
 	r := Ctx.UserConfig.GetResource(infra.Name)
 	if r == nil {
-		log.Infof("no use config resource for %s",infra.Name)
+		log.Infof("no use config resource for %s", infra.Name)
 		return nil
 	}
 	if r.External {
 		infra.Resource = r
 		return nil
 	}
-// just override domain
+	// just override domain
 	if r.Domain != "" {
 		infra.Resource.Domain = r.Domain
 	}
 
 	return nil
 }
-
 
 func (infra *InfraResource) executePreValues() error {
 	return infra.PreValues.prepareValues()
@@ -137,12 +136,12 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 }
 
 func (infra *InfraResource) GetValue(key string) string {
-	for _,v := range infra.Values{
-		if v.Name  == key{
+	for _, v := range infra.Values {
+		if v.Name == key {
 			return v.Value
 		}
 	}
-	log.Infof("can't get value '%s' of %s",key,infra.Name)
+	log.Infof("can't get value '%s' of %s", key, infra.Name)
 	return ""
 }
 
@@ -150,13 +149,13 @@ func (infra *InfraResource) GetValue(key string) string {
 func (infra *InfraResource) renderResource() config.Resource {
 	//todo: just render password now, add more
 	r := infra.Resource
-	tpl,err  := template.New(fmt.Sprintf("r-%s-%s",infra.Name,"password")).Parse(r.Password)
+	tpl, err := template.New(fmt.Sprintf("r-%s-%s", infra.Name, "password")).Parse(r.Password)
 	if err != nil {
 		log.Info(err)
 		os.Exit(125)
 	}
 	var data bytes.Buffer
-	if err := tpl.Execute(&data,infra) ; err !=nil{
+	if err := tpl.Execute(&data, infra); err != nil {
 		log.Error(err)
 		os.Exit(125)
 	}
@@ -215,7 +214,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 	i := infra.GetInfra(key)
 
 	// check http
-	for _, h := range i.Health.HttpGet{
+	for _, h := range i.Health.HttpGet {
 		if !Ctx.Slaver.CheckHealth(
 			slaver.Checker{
 				Type:   "httpGet",
@@ -223,13 +222,13 @@ func (infra *InfraResource) CheckRunning(key string) error {
 				Port:   h.Port,
 				Schema: "http",
 			},
-		){
+		) {
 			err = errors.Errorf("Waiting %s running timeout", key)
 		}
 	}
 
 	// check socket
-	for _, s := range i.Health.Socket{
+	for _, s := range i.Health.Socket {
 		if !Ctx.Slaver.CheckHealth(
 			slaver.Checker{
 				Type:   "socket",
@@ -237,7 +236,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 				Port:   s.Port,
 				Schema: "",
 			},
-		){
+		) {
 			err = errors.Errorf("Waiting %s running timeout", key)
 		}
 	}
@@ -248,7 +247,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 // 获取基础组件信息
 /**
 读取安装成功或者用户配置的信息
- */
+*/
 func (infra *InfraResource) GetResource(key string) *config.Resource {
 	news := Ctx.GetSucceed(key, ReleaseTYPE)
 	// get info from succeed

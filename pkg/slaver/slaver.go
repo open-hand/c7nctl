@@ -1,14 +1,19 @@
 package slaver
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/kube"
 	"github.com/vinkdong/gox/log"
+	"io/ioutil"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
@@ -16,13 +21,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
-	"bytes"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/choerodon/c7n/pkg/config"
 	"strings"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"time"
 )
 
 type Slaver struct {
@@ -48,7 +48,7 @@ type Dir struct {
 
 /**
 Type: httpGet or socket
- */
+*/
 type Checker struct {
 	Type   string
 	Host   string
@@ -200,7 +200,7 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	log.Infof("create dir %s with mode %s", dir.Path, dir.Mode)
 	url := fmt.Sprint(s.Address, "/cmd")
 
-	jsonContext := fmt.Sprintf(`{"commond":"mkdir -p %s -m %s"}`,dir.Path,dir.Mode)
+	jsonContext := fmt.Sprintf(`{"commond":"mkdir -p %s -m %s"}`, dir.Path, dir.Mode)
 	var jsonStr = []byte(jsonContext)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 
@@ -214,21 +214,21 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	type result struct {
 		Success bool `json:"success"`
 	}
-	body,_ := ioutil.ReadAll(resp.Body)
+	body, _ := ioutil.ReadAll(resp.Body)
 	Request := &result{}
 	json.Unmarshal(body, Request)
 	if Request.Success == false {
-		return fmt.Errorf("can't create dir %s with mode %s",dir.Path,dir.Mode)
+		return fmt.Errorf("can't create dir %s with mode %s", dir.Path, dir.Mode)
 	}
 	return nil
 }
 
 func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
 	log.Infof("executed sql %s", sql)
-	sql = strings.Replace(sql,"\"","\\\"",-1)
+	sql = strings.Replace(sql, "\"", "\\\"", -1)
 	url := fmt.Sprint(s.Address, "/mysql")
 
-	jsonContext := fmt.Sprintf(`{"scop": "database","mysql_info": {"mysql_host": "%s","mysql_port": "%d","mysql_name": "%s","mysql_pwd": "%s"},"sql": "%s"}`,r.Host,r.Port,r.Username,r.Password,sql)
+	jsonContext := fmt.Sprintf(`{"scop": "database","mysql_info": {"mysql_host": "%s","mysql_port": "%d","mysql_name": "%s","mysql_pwd": "%s"},"sql": "%s"}`, r.Host, r.Port, r.Username, r.Password, sql)
 	var jsonStr = []byte(jsonContext)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	client := &http.Client{}
