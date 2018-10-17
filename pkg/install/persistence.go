@@ -131,6 +131,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 		news.Reason = err.Error()
 		return err
 	}
+	log.Successf("created pv [ %s ]",p.RefPvName)
 	return nil
 }
 
@@ -175,6 +176,6 @@ func (p *Persistence) CreatePvc() error {
 		news.Reason = err.Error()
 		return err
 	}
-
+	log.Successf("created pvc [ %s ]",p.RefPvcName)
 	return nil
 }

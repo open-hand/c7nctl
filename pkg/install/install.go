@@ -243,6 +243,30 @@ func getClusterResource(client kubernetes.Interface) (int64, int64) {
 	return sumMemory, sumCpu
 }
 
+func (i *Install) PrepareSlaverPvc() (string, error) {
+	pvs := i.UserConfig.Spec.Persistence.GetPersistentVolumeSource("")
+	persistence := Persistence{
+		Client:       i.Client,
+		CommonLabels: i.CommonLabels,
+		AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteOnce"},
+		Size:         "1Gi",
+		Mode:         "755",
+		PvcEnabled:   true,
+		Name:         "slaver",
+	}
+	err := persistence.CheckOrCreatePv(pvs)
+	if err != nil {
+		return "", err
+	}
+
+	persistence.Namespace = i.UserConfig.Metadata.Namespace
+
+	if err := persistence.CheckOrCreatePvc(); err != nil {
+		return "", err
+	}
+	return persistence.RefPvcName, nil
+}
+
 func (i *Install) Run() error {
 
 	if i.Client == nil {
@@ -279,6 +303,12 @@ func (i *Install) Run() error {
 	s.Namespace = i.UserConfig.Metadata.Namespace
 
 	Ctx.Slaver = s
+
+	if pvcName, err := i.PrepareSlaverPvc(); err != nil {
+		return err
+	} else {
+		s.PvcName = pvcName
+	}
 
 	if _, err := s.CheckInstall(); err != nil {
 		return err

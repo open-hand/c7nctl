@@ -34,9 +34,10 @@ type Slaver struct {
 	Image        string
 	Ports        []core_v1.ContainerPort
 	Env          []core_v1.EnvVar
-	volumeMounts []core_v1.VolumeMount
+	VolumeMounts []core_v1.VolumeMount
 	PodList      *core_v1.PodList
 	Address      string
+	PvcName      string
 }
 
 const IngressCheckPath = "/c7n/acme-challenge"
@@ -75,7 +76,16 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		Image:        s.Image,
 		Ports:        s.Ports,
 		Env:          s.Env,
-		VolumeMounts: s.volumeMounts,
+		VolumeMounts: s.VolumeMounts,
+	}
+
+	volume := core_v1.Volume{
+		Name: "data",
+		VolumeSource: core_v1.VolumeSource{
+			PersistentVolumeClaim: &core_v1.PersistentVolumeClaimVolumeSource{
+				ClaimName: s.PvcName,
+			},
+		},
 	}
 
 	tmp := core_v1.PodTemplateSpec{
@@ -84,6 +94,7 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		},
 		Spec: core_v1.PodSpec{
 			Containers: []core_v1.Container{dsContainer},
+			Volumes: []core_v1.Volume{volume},
 		},
 	}
 
@@ -115,7 +126,6 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 
 func (s *Slaver) GetPods() (*core_v1.PodList, error) {
 	set := labels.Set(s.CommonLabels)
-	fmt.Println(set.AsSelector().String())
 	opts := meta_v1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
 	}
@@ -123,9 +133,9 @@ func (s *Slaver) GetPods() (*core_v1.PodList, error) {
 }
 
 func (s *Slaver) CheckRunning() bool {
+	log.Info("check slaver is running...")
 	poList, err := s.GetPods()
-	if err != nil || poList.Size() < 1 {
-		log.Error(err)
+	if err != nil || len(poList.Items) < 1 {
 		return false
 	}
 	for _, po := range poList.Items {
@@ -154,9 +164,16 @@ func (s *Slaver) ForwardPort(stopCh <-chan struct{}) int {
 
 	var pod core_v1.Pod
 
-	if !s.CheckRunning() {
-		return 0
+loop:
+	for {
+		select {
+		case <-time.Tick(time.Second):
+			if s.CheckRunning() {
+				break loop
+			}
+		}
 	}
+
 	pod = s.PodList.Items[0]
 
 	req := rest.Post().Resource("pods").

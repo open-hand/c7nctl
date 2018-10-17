@@ -5,7 +5,7 @@ metadata:
 spec:
   persistence:
     nfs:
-      server: 192.168.12.175
+      server: 192.168.12.214
       rootPath: /u01/install
   resources:
     mysql:
