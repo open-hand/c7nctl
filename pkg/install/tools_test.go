@@ -25,7 +25,7 @@ func TestSaveNewsData(t *testing.T) {
 		Name:      "testnews2",
 		Namespace: "test",
 		Type:      PvcType,
-		Status:    FailedStatues,
+		Status:    FailedStatus,
 		Reason:    "reason1 ",
 	}
 	ctx.SaveNews(news)

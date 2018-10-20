@@ -127,11 +127,11 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 
 	_, err := client.CoreV1().PersistentVolumes().Create(pv)
 	if err != nil {
-		news.Status = FailedStatues
+		news.Status = FailedStatus
 		news.Reason = err.Error()
 		return err
 	}
-	log.Successf("created pv [ %s ]",p.RefPvName)
+	log.Successf("created pv [%s]", p.RefPvName)
 	return nil
 }
 
@@ -172,10 +172,10 @@ func (p *Persistence) CreatePvc() error {
 	_, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Create(pvc)
 	if err != nil {
 		log.Error(err)
-		news.Status = FailedStatues
+		news.Status = FailedStatus
 		news.Reason = err.Error()
 		return err
 	}
-	log.Successf("created pvc [ %s ]",p.RefPvcName)
+	log.Successf("created pvc [%s]", p.RefPvcName)
 	return nil
 }

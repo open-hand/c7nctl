@@ -2,11 +2,15 @@ package slaver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	sys_errors "errors"
 	"fmt"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/kube"
+	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -37,7 +41,9 @@ type Slaver struct {
 	VolumeMounts []core_v1.VolumeMount
 	PodList      *core_v1.PodList
 	Address      string
+	GRpcAddress  string
 	PvcName      string
+	DataPath     string
 }
 
 const IngressCheckPath = "/c7n/acme-challenge"
@@ -50,12 +56,6 @@ type Dir struct {
 /**
 Type: httpGet or socket
 */
-type Checker struct {
-	Type   string
-	Host   string
-	Schema string
-	Port   int
-}
 
 func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
 	ds, err := s.Client.ExtensionsV1beta1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
@@ -72,11 +72,12 @@ func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
 func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 
 	dsContainer := core_v1.Container{
-		Name:         s.Name,
-		Image:        s.Image,
-		Ports:        s.Ports,
-		Env:          s.Env,
-		VolumeMounts: s.VolumeMounts,
+		Name:            s.Name,
+		Image:           s.Image,
+		Ports:           s.Ports,
+		Env:             s.Env,
+		VolumeMounts:    s.VolumeMounts,
+		ImagePullPolicy: "Always",
 	}
 
 	volume := core_v1.Volume{
@@ -94,7 +95,7 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		},
 		Spec: core_v1.PodSpec{
 			Containers: []core_v1.Container{dsContainer},
-			Volumes: []core_v1.Volume{volume},
+			Volumes:    []core_v1.Volume{volume},
 		},
 	}
 
@@ -147,18 +148,18 @@ func (s *Slaver) CheckRunning() bool {
 	return true
 }
 
-func (s *Slaver) getForwardPorts(localPort int) string {
+func (s *Slaver) getForwardPorts(portName string, localPort int) string {
 	for _, port := range s.Ports {
-		if port.Name == "http" {
+		if port.Name == portName {
 			return fmt.Sprintf("%d:%d", localPort, port.ContainerPort)
 		}
 	}
-	log.Error("no slave http port found")
+	log.Errorf("no slave %s port found", portName)
 	os.Exit(129)
 	return ""
 }
 
-func (s *Slaver) ForwardPort(stopCh <-chan struct{}) int {
+func (s *Slaver) ForwardPort(portName string, stopCh <-chan struct{}) int {
 
 	rest := s.Client.CoreV1().RESTClient()
 
@@ -201,7 +202,7 @@ getFreePort:
 	}
 	log.Info(port)
 
-	fw, err := portforward.New(dialer, []string{s.getForwardPorts(port)}, stopCh, readyCh, os.Stdout, os.Stderr)
+	fw, err := portforward.New(dialer, []string{s.getForwardPorts(portName, port)}, stopCh, readyCh, os.Stdout, os.Stderr)
 
 	if err != nil {
 		log.Error(err)
@@ -209,7 +210,6 @@ getFreePort:
 	go fw.ForwardPorts()
 	<-readyCh
 
-	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
 	return port
 }
 
@@ -217,7 +217,14 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	log.Infof("create dir %s with mode %s", dir.Path, dir.Mode)
 	url := fmt.Sprint(s.Address, "/cmd")
 
-	jsonContext := fmt.Sprintf(`{"commond":"mkdir -p %s -m %s"}`, dir.Path, dir.Mode)
+	if len(s.VolumeMounts) < 1 {
+		err := sys_errors.New("slaver have not mount any volumes")
+		return err
+	}
+	rootPath := s.VolumeMounts[0].MountPath
+
+	jsonContext := fmt.Sprintf(`{"command":"mkdir -p %s/%s -m %s"}`, rootPath, dir.Path, dir.Mode)
+	log.Info(jsonContext)
 	var jsonStr = []byte(jsonContext)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 
@@ -267,8 +274,33 @@ func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
 	return nil
 }
 
-func (s *Slaver) CheckHealth(checker Checker) bool {
-	log.Info("check health")
+func (s *Slaver) connectGRpc() (*grpc.ClientConn, error) {
+
+	return grpc.Dial(s.GRpcAddress, grpc.WithInsecure())
+}
+
+func (s *Slaver) CheckHealth(check *pb.Check) bool {
+	conn, err := s.connectGRpc()
+	if err != nil {
+		log.Errorf("connect %s grpc path  failed", s.Address)
+		return false
+	}
+	c := pb.NewRouteCallClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+remoteCheck:
+	r, err := c.CheckHealth(ctx, check)
+	if err != nil {
+		log.Infof("check %s health failed with msg: '%s' retry ..", err.Error())
+		time.Sleep(time.Second * 10)
+		goto remoteCheck
+	}
+	defer cancel()
+
+	if r.Success == false {
+		log.Infof("check health failed with msg: %s retry..", r.Message)
+		time.Sleep(time.Second * 10)
+		goto remoteCheck
+	}
 	return true
 }
 

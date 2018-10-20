@@ -2,6 +2,7 @@ package slaver
 
 import (
 	"github.com/choerodon/c7n/pkg/kube"
+	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"testing"
@@ -34,7 +35,6 @@ func TestInstall(t *testing.T) {
 		t.Error(err)
 		t.Error("install daemonset failed")
 	} else {
-
 		log.Info(ds.Spec)
 	}
 }
@@ -55,7 +55,27 @@ func TestPortForward(t *testing.T) {
 		}},
 	}
 	stopCh := make(chan struct{})
-	port := slaver.ForwardPort(stopCh)
+	port := slaver.ForwardPort("http", stopCh)
 	log.Infof("success get listening port on %d", port)
 	time.Sleep(time.Second * 60)
+}
+
+func TestCheckHealth(t *testing.T) {
+	slaver := Slaver{
+		Address: "127.0.0.1:9001",
+	}
+	check := &pb.Check{
+		Type:   "httpGet",
+		Host:   "baidu.com",
+		Port:   443,
+		Schema: "https",
+		Path:   "/",
+	}
+	log.Info(slaver.CheckHealth(check))
+	check = &pb.Check{
+		Type: "socket",
+		Host: "baidu.com",
+		Port: 445,
+	}
+	log.Info(slaver.CheckHealth(check))
 }

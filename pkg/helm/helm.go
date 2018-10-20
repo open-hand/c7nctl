@@ -155,7 +155,7 @@ func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error
 	if rel == nil {
 		log.Errorf("can't get release name of chart %s")
 	}
-	log.Infof("installed %s", rel.Name)
+	log.Successf("installed %s", rel.Name)
 	return nil
 }
 

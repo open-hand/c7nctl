@@ -21,12 +21,14 @@ import (
 var Ctx Context
 
 const (
-	PvType             = "pv"
-	PvcType            = "pvc"
-	CRDType            = "crd"
-	ReleaseTYPE        = "helm"
-	SucceedStatus      = "succeed"
-	FailedStatues      = "failed"
+	PvType        = "pv"
+	PvcType       = "pvc"
+	CRDType       = "crd"
+	ReleaseTYPE   = "helm"
+	SucceedStatus = "succeed"
+	FailedStatus  = "failed"
+	// if have after process while wait
+	CreatedStatus      = "created"
 	staticLogName      = "c7n-logs"
 	staticLogKey       = "logs"
 	staticInstalledKey = "installed"

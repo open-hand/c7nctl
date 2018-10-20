@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
+	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/choerodon/c7n/pkg/slaver"
 	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
@@ -22,6 +23,14 @@ func (infra *InfraResource) executePreCommands() error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
+	for _, pi := range c {
+		r := infra.GetResource(pi.InfraRef)
+		pi.ExecuteCommands(r)
 	}
 	return nil
 }
@@ -58,7 +67,7 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 func (infra *InfraResource) applyUserResource() error {
 	r := Ctx.UserConfig.GetResource(infra.Name)
 	if r == nil {
-		log.Infof("no use config resource for %s", infra.Name)
+		log.Infof("no user config resource for %s", infra.Name)
 		return nil
 	}
 	if r.External {
@@ -181,7 +190,7 @@ func (infra *InfraResource) Install() error {
 		Name:      infra.Name,
 		Namespace: infra.Namespace,
 		RefName:   infra.Name,
-		Status:    FailedStatues,
+		Status:    FailedStatus,
 		Type:      ReleaseTYPE,
 		Resource:  infra.renderResource(),
 		Values:    cvList,
@@ -192,7 +201,22 @@ func (infra *InfraResource) Install() error {
 		news.Reason = err.Error()
 		return err
 	}
-	news.Status = SucceedStatus
+
+	if len(infra.AfterInstall) > 0 {
+		news.Status = CreatedStatus
+		go infra.executeAfterTasks()
+	} else {
+		news.Status = SucceedStatus
+	}
+	return nil
+}
+
+func (infra *InfraResource) executeAfterTasks() error {
+	err := infra.CheckRunning(infra.Name)
+	if err != nil {
+		log.Error(err)
+	}
+	infra.executeExternalFunc(infra.AfterInstall)
 	return nil
 }
 
@@ -216,7 +240,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 	// check http
 	for _, h := range i.Health.HttpGet {
 		if !Ctx.Slaver.CheckHealth(
-			slaver.Checker{
+			&pb.Check{
 				Type:   "httpGet",
 				Host:   h.Host,
 				Port:   h.Port,
@@ -230,7 +254,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 	// check socket
 	for _, s := range i.Health.Socket {
 		if !Ctx.Slaver.CheckHealth(
-			slaver.Checker{
+			&pb.Check{
 				Type:   "socket",
 				Host:   s.Host,
 				Port:   s.Port,

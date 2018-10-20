@@ -42,6 +42,7 @@ type InfraResource struct {
 	Home         *Install
 	Resource     *config.Resource
 	PreInstall   []PreInstall
+	AfterInstall []PreInstall
 	PreValues    PreValueList
 	Requirements []string
 	Health       Health
@@ -55,14 +56,14 @@ type Health struct {
 type SocketCheck struct {
 	Name string
 	Host string
-	Port int
+	Port int32
 	Path string
 }
 
 type HttpGetCheck struct {
 	Name string
 	Host string
-	Port int
+	Port int32
 	Path string
 }
 
@@ -81,6 +82,17 @@ type PreInstall struct {
 	Name     string
 	Commands []string
 	InfraRef string `yaml:"infraRef"`
+	Opens    []string
+}
+
+func (pi *PreInstall) ExecuteCommands(r *config.Resource) error {
+	s := Ctx.Slaver
+	for _, c := range pi.Commands {
+		if err := s.ExecuteSql(c, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type PreValueList []*PreValue
@@ -147,6 +159,7 @@ func (p *PreValue) GetResource(key string) *config.Resource {
 	if news != nil {
 		return &news.Resource
 	} else {
+		// 从用户配置文件中读取
 		if r, ok := Ctx.UserConfig.Spec.Resources[key]; ok {
 			return r
 		}
@@ -316,7 +329,10 @@ func (i *Install) Run() error {
 
 	stopCh := make(chan struct{})
 
-	port := s.ForwardPort(stopCh)
+	port := s.ForwardPort("http", stopCh)
+	grpcPort := s.ForwardPort("grpc", stopCh)
+	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
+	s.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
 
 	Ctx.SlaverAddress = fmt.Sprintf("http://127.0.0.1:%d", port)
 	defer func() {
