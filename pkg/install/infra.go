@@ -15,22 +15,21 @@ import (
 )
 
 func (infra *InfraResource) executePreCommands() error {
-	s := Ctx.Slaver
-	for _, pi := range infra.PreInstall {
-		r := infra.GetResource(pi.InfraRef)
-		for _, c := range pi.Commands {
-			if err := s.ExecuteSql(c, r); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	err := infra.executeExternalFunc(infra.PreInstall)
+	return err
 }
 
 func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	for _, pi := range c {
-		r := infra.GetResource(pi.InfraRef)
-		pi.ExecuteCommands(r)
+		if len(pi.Commands) > 0 {
+			pi.ExecuteCommands(infra)
+		}
+		if pi.Request != nil {
+			err := pi.ExecuteRequests(infra)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -204,19 +203,30 @@ func (infra *InfraResource) Install() error {
 
 	if len(infra.AfterInstall) > 0 {
 		news.Status = CreatedStatus
-		go infra.executeAfterTasks()
+		task := &BackendTask{
+			Success: false,
+			Name:    infra.Name,
+		}
+		Ctx.AddBackendTask(task)
+		go infra.executeAfterTasks(task)
 	} else {
 		news.Status = SucceedStatus
 	}
 	return nil
 }
 
-func (infra *InfraResource) executeAfterTasks() error {
+func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
 	err := infra.CheckRunning(infra.Name)
 	if err != nil {
 		log.Error(err)
 	}
-	infra.executeExternalFunc(infra.AfterInstall)
+	log.Successf("%s: started, will execute required commands", infra.Name)
+	err = infra.executeExternalFunc(infra.AfterInstall)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	task.Success = true
 	return nil
 }
 

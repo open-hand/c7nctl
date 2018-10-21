@@ -515,8 +515,11 @@
 [[projects]]
   branch = "master"
   name = "github.com/vinkdong/gox"
-  packages = ["log"]
-  revision = "5c28339a1dee33652048875ba566cb96cf7645ff"
+  packages = [
+    "log",
+    "random"
+  ]
+  revision = "dcbd6f72d9c2f0f3c35ee3612143cd3e10e55104"
 
 [[projects]]
   name = "golang.org/x/crypto"
@@ -1148,6 +1151,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dc6fc1706254b220433302e5907ae96b843a34b967743d4f8dcd5a8412fa13d1"
+  inputs-digest = "c9a87f27704dde80a1e3674fdb61c1f176e31c88496fd25483fe99bc70cf5d11"
   solver-name = "gps-cdcl"
   solver-version = 1

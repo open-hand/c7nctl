@@ -37,3 +37,7 @@ func TestRandomString(t *testing.T) {
 		t.Error("Func RandowString not work")
 	}
 }
+
+func TestRandomToken(t *testing.T) {
+	fmt.Println(RandomToken(17), RandomToken(12))
+}

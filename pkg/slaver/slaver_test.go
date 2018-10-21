@@ -1,6 +1,7 @@
 package slaver
 
 import (
+	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/kube"
 	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
@@ -62,7 +63,7 @@ func TestPortForward(t *testing.T) {
 
 func TestCheckHealth(t *testing.T) {
 	slaver := Slaver{
-		Address: "127.0.0.1:9001",
+		GRpcAddress: "127.0.0.1:9001",
 	}
 	check := &pb.Check{
 		Type:   "httpGet",
@@ -78,4 +79,21 @@ func TestCheckHealth(t *testing.T) {
 		Port: 445,
 	}
 	log.Info(slaver.CheckHealth(check))
+}
+
+func TestExecuteRemoteSql(t *testing.T) {
+	slaver := Slaver{
+		GRpcAddress: "127.0.0.1:9001",
+	}
+	sqlList := []string{
+		"CREATE DATABASE abc",
+		"DROP DATABASE abc",
+	}
+	r := &config.Resource{
+		Host:     "192.168.99.100",
+		Port:     3306,
+		Username: "root",
+		Password: "abc123",
+	}
+	log.Info(slaver.ExecuteRemoteSql(sqlList, r))
 }

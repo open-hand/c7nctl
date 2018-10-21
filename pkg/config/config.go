@@ -45,7 +45,7 @@ type Nfs struct {
 
 type Resource struct {
 	Host     string
-	Port     int
+	Port     int32
 	Username string
 	Password string
 	Schema   string

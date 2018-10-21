@@ -5,6 +5,7 @@ import (
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/slaver"
 	"github.com/vinkdong/gox/log"
+	"github.com/vinkdong/gox/random"
 	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
@@ -42,6 +43,12 @@ type Context struct {
 	SlaverAddress string
 	Slaver        *slaver.Slaver
 	UserConfig    *config.Config
+	BackendTasks  []*BackendTask
+}
+
+type BackendTask struct {
+	Name    string
+	Success bool
 }
 
 // i want use log but it make ...
@@ -60,6 +67,25 @@ type News struct {
 
 type NewsResourceList struct {
 	News []News `yaml:"logs"`
+}
+
+func (ctx *Context) AddBackendTask(task *BackendTask) bool {
+	for _, v := range ctx.BackendTasks {
+		if v.Name == task.Name {
+			return false
+		}
+	}
+	ctx.BackendTasks = append(ctx.BackendTasks, task)
+	return true
+}
+
+func (ctx *Context) HasBackendTask() bool {
+	for _, v := range ctx.BackendTasks {
+		if v.Success == false {
+			return true
+		}
+	}
+	return false
 }
 
 func (ctx *Context) SaveNews(news *News) error {
@@ -175,11 +201,41 @@ func IsNotFound(err error) bool {
 	return false
 }
 
-func RandomString() string {
-	len := randomLength
-	bytes := make([]byte, len)
+type Exclude struct {
+	Start int
+	End   int
+}
+
+func RandomInt(min, max int, exclude ...Exclude) {
+	randInt := min + rand.Intn(max)
+	for _, e := range exclude {
+		if randInt >= e.Start && randInt <= e.End {
+			randInt += 1
+		}
+	}
+}
+
+func RandomToken(length int) string {
+	bytes := make([]byte, length)
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
+		random.Seed(time.Now().UnixNano())
+		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
+			random.Slice{Start: 65, End: 90}, random.Slice{Start: 97, End: 122})
+		bytes[i] = byte(op) //A=65 and Z = 65+25
+	}
+	return string(bytes)
+}
+
+func RandomString(length ...int) string {
+
+	randomLength := randomLength
+	if len(length) > 0 {
+		randomLength = length[0]
+	}
+	bytes := make([]byte, randomLength)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < randomLength; i++ {
 		bytes[i] = byte(97 + rand.Intn(25)) //A=65 and Z = 65+25
 	}
 	return string(bytes)

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
+	"time"
 )
 
 type Install struct {
@@ -81,18 +82,57 @@ type Basic struct {
 type PreInstall struct {
 	Name     string
 	Commands []string
+	Request  *Request
 	InfraRef string `yaml:"infraRef"`
 	Opens    []string
 }
 
-func (pi *PreInstall) ExecuteCommands(r *config.Resource) error {
-	s := Ctx.Slaver
-	for _, c := range pi.Commands {
-		if err := s.ExecuteSql(c, r); err != nil {
-			return err
-		}
+type Request struct {
+	Header []ChartValue
+	Url    string
+	Body   string
+	Method string
+}
+
+func (r *Request) Render(infra *InfraResource) error {
+	r.Url = infra.renderValue(r.Url)
+	r.Body = infra.renderValue(r.Body)
+	for k, v := range r.Header {
+		v.Value = infra.renderValue(v.Value)
+		r.Header[k] = v
 	}
 	return nil
+}
+
+func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
+	for k, v := range pi.Commands {
+		pi.Commands[k] = infra.renderValue(v)
+	}
+	r := infra.GetResource(pi.InfraRef)
+	s := Ctx.Slaver
+	s.ExecuteRemoteSql(pi.Commands, r)
+	return nil
+}
+
+func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
+	if pi.Request == nil {
+		return nil
+	}
+	pi.Request.Render(infra)
+	req := pi.Request
+	s := Ctx.Slaver
+	header := make(map[string][]string)
+	for _, h := range req.Header {
+		header[h.Name] = []string{h.Value}
+	}
+	f := slaver.Forward{
+		Url:    req.Url,
+		Body:   req.Body,
+		Header: header,
+		Method: req.Method,
+	}
+	err := s.ExecuteRemoteRequest(f)
+	return err
 }
 
 type PreValueList []*PreValue
@@ -125,6 +165,10 @@ type PreValue struct {
 	Name  string
 	Value string
 	Check string
+}
+
+func (p *PreValue) RandomToken(length int) string {
+	return RandomToken(length)
 }
 
 func (p *PreValue) renderValue() error {
@@ -194,6 +238,15 @@ func (i *Install) InstallInfra() error {
 		}
 		if err := infra.CheckInstall(); err != nil {
 			return err
+		}
+	}
+loop:
+	for {
+		select {
+		case <-time.Tick(time.Second * 5):
+			if !Ctx.HasBackendTask() {
+				break loop
+			}
 		}
 	}
 	return nil

@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -247,33 +246,6 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	return nil
 }
 
-func (s *Slaver) ExecuteSql(sql string, r *config.Resource) error {
-	log.Infof("executed sql %s", sql)
-	sql = strings.Replace(sql, "\"", "\\\"", -1)
-	url := fmt.Sprint(s.Address, "/mysql")
-
-	jsonContext := fmt.Sprintf(`{"scop": "database","mysql_info": {"mysql_host": "%s","mysql_port": "%d","mysql_name": "%s","mysql_pwd": "%s"},"sql": "%s"}`, r.Host, r.Port, r.Username, r.Password, sql)
-	var jsonStr = []byte(jsonContext)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	type result struct {
-		Success bool `json:"success"`
-	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	Request := &result{}
-	json.Unmarshal(body, Request)
-	if Request.Success == false {
-		return fmt.Errorf("can't execute sql %s ", sql)
-	}
-	return nil
-}
-
 func (s *Slaver) connectGRpc() (*grpc.ClientConn, error) {
 
 	return grpc.Dial(s.GRpcAddress, grpc.WithInsecure())
@@ -282,7 +254,7 @@ func (s *Slaver) connectGRpc() (*grpc.ClientConn, error) {
 func (s *Slaver) CheckHealth(check *pb.Check) bool {
 	conn, err := s.connectGRpc()
 	if err != nil {
-		log.Errorf("connect %s grpc path  failed", s.Address)
+		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
 		return false
 	}
 	c := pb.NewRouteCallClient(conn)
@@ -301,6 +273,92 @@ remoteCheck:
 		time.Sleep(time.Second * 10)
 		goto remoteCheck
 	}
+	return true
+}
+
+type Request struct {
+	Url    string
+	Method string
+	Body   string
+}
+
+type Forward struct {
+	Url    string              `json:"url"`
+	Body   string              `json:"body"`
+	Method string              `json:"method"`
+	Header map[string][]string `json:"header"`
+}
+
+func (s *Slaver) ExecuteRemoteRequest(f Forward) error {
+	url := fmt.Sprint(s.Address, "/forward")
+
+	data, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header = f.Header
+	client := http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 400 || resp.StatusCode < 200 {
+		log.Errorf("request %s \nheader: %v \n with body \n %s\nfailed", f.Url, f.Header, f.Body)
+		return sys_errors.New(fmt.Sprintf("resp code %d not is 2xx or 3xx", resp.StatusCode))
+	}
+	return nil
+}
+
+func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) bool {
+	conn, err := s.connectGRpc()
+	if err != nil {
+		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
+		return false
+	}
+	c := pb.NewRouteCallClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	defer cancel()
+	stream, err := c.ExecuteSql(ctx)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	m := &pb.Mysql{
+		Host:     resource.Host,
+		Port:     resource.Port,
+		Username: resource.Username,
+		Password: resource.Password,
+	}
+	r := &pb.RouteSql{
+		Mysql: m,
+	}
+	err = stream.Send(r)
+	if err != nil {
+		log.Error(err)
+	}
+
+	for _, sql := range sqlList {
+		r := &pb.RouteSql{
+			Sql: sql,
+		}
+		log.Debugf("executing: %s", sql)
+		stream.Send(r)
+		resp, err := stream.Recv()
+		if err != nil {
+			log.Error(err)
+			return false
+		}
+		if !resp.Success {
+			log.Error(resp.Message)
+			return false
+		}
+	}
+
 	return true
 }
 
