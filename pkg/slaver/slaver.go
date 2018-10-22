@@ -223,7 +223,7 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	rootPath := s.VolumeMounts[0].MountPath
 
 	jsonContext := fmt.Sprintf(`{"command":"mkdir -p %s/%s -m %s"}`, rootPath, dir.Path, dir.Mode)
-	log.Info(jsonContext)
+	log.Debugf("execute command %s", jsonContext)
 	var jsonStr = []byte(jsonContext)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 
@@ -251,7 +251,7 @@ func (s *Slaver) connectGRpc() (*grpc.ClientConn, error) {
 	return grpc.Dial(s.GRpcAddress, grpc.WithInsecure())
 }
 
-func (s *Slaver) CheckHealth(check *pb.Check) bool {
+func (s *Slaver) CheckHealth(name string, check *pb.Check) bool {
 	conn, err := s.connectGRpc()
 	if err != nil {
 		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
@@ -262,14 +262,14 @@ func (s *Slaver) CheckHealth(check *pb.Check) bool {
 remoteCheck:
 	r, err := c.CheckHealth(ctx, check)
 	if err != nil {
-		log.Infof("check %s health failed with msg: '%s' retry ..", err.Error())
+		log.Debugf("check %s health failed with msg: '%s' retry ..", name, err.Error())
 		time.Sleep(time.Second * 10)
 		goto remoteCheck
 	}
 	defer cancel()
 
 	if r.Success == false {
-		log.Infof("check health failed with msg: %s retry..", r.Message)
+		log.Debugf("check health failed with msg: %s retry..", r.Message)
 		time.Sleep(time.Second * 10)
 		goto remoteCheck
 	}

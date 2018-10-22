@@ -34,11 +34,15 @@ func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	return nil
 }
 
-func (infra *InfraResource) preparePersistence(client kubernetes.Interface, config *config.Config) error {
+func (infra *InfraResource) preparePersistence(client kubernetes.Interface, config *config.Config, commonLabel map[string]string) error {
 	getPvs := config.Spec.Persistence.GetPersistentVolumeSource
 	namespace := config.Metadata.Namespace
+	commonLabel["app"] = infra.Name
 	for _, persistence := range infra.Persistence {
 		persistence.Client = client
+
+		persistence.CommonLabels = commonLabel
+		persistence.CommonLabels["pv"] = persistence.Name
 
 		// check or create dir
 		dir := slaver.Dir{
@@ -105,6 +109,19 @@ func (infra *InfraResource) GetPreValue(key string) string {
 }
 
 func (infra *InfraResource) GetRequireResource(app string) config.Resource {
+	res := Ctx.UserConfig.Spec.Resources
+	if r, ok := res[app]; ok {
+		return *r
+	}
+	new := Ctx.GetSucceed(app, ReleaseTYPE)
+	if new == nil {
+		log.Errorf("require [%s] not right installed or defined", app)
+		os.Exit(121)
+	}
+	return new.Resource
+}
+
+func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
 	res := Ctx.UserConfig.Spec.Resources
 	if r, ok := res[app]; ok {
 		return *r
@@ -193,6 +210,7 @@ func (infra *InfraResource) Install() error {
 		Type:      ReleaseTYPE,
 		Resource:  infra.renderResource(),
 		Values:    cvList,
+		PreValue:  infra.PreValues,
 	}
 	defer Ctx.SaveNews(news)
 
@@ -220,13 +238,14 @@ func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
 	if err != nil {
 		log.Error(err)
 	}
-	log.Successf("%s: started, will execute required commands", infra.Name)
+	log.Successf("%s: started, will execute required commands and requests", infra.Name)
 	err = infra.executeExternalFunc(infra.AfterInstall)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 	task.Success = true
+	Ctx.UpdateCreated(infra.Name, infra.Namespace)
 	return nil
 }
 
@@ -250,6 +269,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 	// check http
 	for _, h := range i.Health.HttpGet {
 		if !Ctx.Slaver.CheckHealth(
+			infra.Name,
 			&pb.Check{
 				Type:   "httpGet",
 				Host:   h.Host,
@@ -264,6 +284,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 	// check socket
 	for _, s := range i.Health.Socket {
 		if !Ctx.Slaver.CheckHealth(
+			infra.Name,
 			&pb.Check{
 				Type:   "socket",
 				Host:   s.Host,

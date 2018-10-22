@@ -20,3 +20,6 @@ spec:
       external: false
       username: root
       schema: http
+    minio4:
+      domain: minio.local.vk.vu
+      scheam: http

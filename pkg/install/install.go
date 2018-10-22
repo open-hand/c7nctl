@@ -181,9 +181,9 @@ func (p *PreValue) renderValue() error {
 	if err != nil {
 		return err
 	}
-	log.Infof("check %s %s", p.Check, data.String())
-
 	val := data.String()
+	log.Debugf("PreValue %s: %s, checking: %s", p.Name, val, p.Check)
+
 	switch p.Check {
 	case "clusterdomain":
 		//todo: add check domain
@@ -227,7 +227,7 @@ func (i *Install) InstallInfra() error {
 			continue
 		}
 		// 准备pv和pvc
-		if err := infra.preparePersistence(i.Client, i.UserConfig); err != nil {
+		if err := infra.preparePersistence(i.Client, i.UserConfig, i.CommonLabels); err != nil {
 			return err
 		}
 		infra.Client = i.HelmClient

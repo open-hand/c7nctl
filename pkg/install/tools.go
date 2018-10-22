@@ -62,7 +62,7 @@ type News struct {
 	Date      time.Time
 	Resource  config.Resource
 	Values    []ChartValue
-	PreValue  []PreValue
+	PreValue  PreValueList
 }
 
 type NewsResourceList struct {
@@ -104,9 +104,32 @@ func (ctx *Context) SaveNews(news *News) error {
 	}
 	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticLogKey)
 
-	if news.Status == SucceedStatus {
+	if news.Status == SucceedStatus || news.Status == CreatedStatus {
 		ctx.SaveSucceed(news)
 	}
+	return nil
+}
+
+func (ctx *Context) UpdateCreated(name, namespace string) error {
+
+	nr := ctx.getSucceedData()
+	isUpdate := false
+	for k, v := range nr.News {
+		if v.Name == name && v.Namespace == namespace && v.Status == CreatedStatus {
+			v.Status = SucceedStatus
+			nr.News[k] = v
+			isUpdate = true
+		}
+	}
+	if !isUpdate {
+		log.Infof("nothing update with app %s in ns: %s", name, namespace)
+	}
+	newData, err := yaml.Marshal(nr)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticInstalledKey)
 	return nil
 }
 
@@ -133,6 +156,30 @@ func (ctx *Context) GetSucceed(name string, resourceType string) *News {
 			return &p
 		}
 	}
+	return nil
+}
+
+func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
+	nr := ctx.getSucceedData()
+	index := -1
+	for k, v := range nr.News {
+		if v.Name == name && v.Namespace == namespace && v.Type == resourceType {
+			index = k
+		}
+	}
+
+	if index == -1 {
+		log.Infof("nothing delete with app %s in ns: %s", name, namespace)
+		return nil
+	}
+	nr.News = append(nr.News[:index], nr.News[index+1:]...)
+	newData, err := yaml.Marshal(nr)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticInstalledKey)
+	// todo save delete to log
 	return nil
 }
 

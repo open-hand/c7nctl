@@ -72,13 +72,13 @@ func TestCheckHealth(t *testing.T) {
 		Schema: "https",
 		Path:   "/",
 	}
-	log.Info(slaver.CheckHealth(check))
+	log.Info(slaver.CheckHealth("test-service", check))
 	check = &pb.Check{
 		Type: "socket",
 		Host: "baidu.com",
 		Port: 445,
 	}
-	log.Info(slaver.CheckHealth(check))
+	log.Info(slaver.CheckHealth("test-service", check))
 }
 
 func TestExecuteRemoteSql(t *testing.T) {

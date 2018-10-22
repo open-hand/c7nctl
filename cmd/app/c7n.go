@@ -173,3 +173,39 @@ func Install(cmd *cobra.Command) error {
 	// do install
 	return installConfig.Run()
 }
+
+func Delete(cmd *cobra.Command, args []string) error {
+	var err error
+
+	defer TearDown()
+	//tunnel.Close()
+
+	// prepare environment
+	tillerTunnel = kube2.GetTunnel()
+	helmClient := &helm.Client{
+		Tunnel: tillerTunnel,
+	}
+	helmClient.InitClient()
+
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
+	ctx := install.Context{
+		Client:    kube2.GetClient(),
+		Namespace: ns,
+	}
+
+	for _, a := range args {
+		if err := ctx.DeleteSucceed(a, ns, install.ReleaseTYPE); err == nil {
+			log.Successf("deleted %s", a)
+		} else {
+			log.Error(err)
+			log.Errorf("delete %s failed", a)
+		}
+	}
+
+	// do delete
+	return err
+}
