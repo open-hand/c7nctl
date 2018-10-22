@@ -23,6 +23,7 @@ type Persistence struct {
 	RefPvName    string
 	RefPvcName   string
 	Mode         string
+	Own          string
 }
 
 func (p *Persistence) PrepareNews() *News {

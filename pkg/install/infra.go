@@ -48,6 +48,7 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 		dir := slaver.Dir{
 			Mode: persistence.Mode,
 			Path: persistence.Path,
+			Own:  persistence.Own,
 		}
 		if err := Ctx.Slaver.MakeDir(dir); err != nil {
 			return err

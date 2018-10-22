@@ -22,4 +22,10 @@ spec:
       schema: http
     minio4:
       domain: minio.local.vk.vu
-      scheam: http
+      schema: http
+    harbor4:
+      domain: harbor.local.vk.vu
+      schema: https
+    chartmuseum4:
+      domain: chart.local.vk.vu
+      schema: http

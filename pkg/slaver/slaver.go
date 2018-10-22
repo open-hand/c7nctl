@@ -49,6 +49,7 @@ const IngressCheckPath = "/c7n/acme-challenge"
 
 type Dir struct {
 	Mode string
+	Own  string
 	Path string
 }
 
