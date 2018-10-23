@@ -97,3 +97,17 @@ func TestExecuteRemoteSql(t *testing.T) {
 	}
 	log.Info(slaver.ExecuteRemoteSql(sqlList, r))
 }
+
+func TestExecuteRemoteCommand(t *testing.T) {
+	slaver := Slaver{
+		GRpcAddress: "127.0.0.1:9001",
+	}
+	cmdList := []string{
+		"ls",
+		"`mkdir -p abc/123`",
+		"pwd",
+		"`chown -R 1001:1001 abc`",
+	}
+	log.EnableDebug()
+	log.Info(slaver.ExecuteRemoteCommand(cmdList))
+}

@@ -11,7 +11,6 @@ import (
 	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
 	"google.golang.org/grpc"
-	"io/ioutil"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"strings"
 )
 
 type Slaver struct {
@@ -134,13 +134,14 @@ func (s *Slaver) GetPods() (*core_v1.PodList, error) {
 }
 
 func (s *Slaver) CheckRunning() bool {
-	log.Info("check slaver is running...")
+	log.Info("waiting slaver running...")
 	poList, err := s.GetPods()
 	if err != nil || len(poList.Items) < 1 {
 		return false
 	}
 	for _, po := range poList.Items {
 		if po.Status.Phase != core_v1.PodRunning {
+			time.Sleep(time.Second * 5)
 			return false
 		}
 	}
@@ -214,8 +215,7 @@ getFreePort:
 }
 
 func (s *Slaver) MakeDir(dir Dir) error {
-	log.Infof("create dir %s with mode %s", dir.Path, dir.Mode)
-	url := fmt.Sprint(s.Address, "/cmd")
+	log.Infof("create dir %s with mode %s own %s ", dir.Path, dir.Mode, dir.Own)
 
 	if len(s.VolumeMounts) < 1 {
 		err := sys_errors.New("slaver have not mount any volumes")
@@ -223,28 +223,18 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	}
 	rootPath := s.VolumeMounts[0].MountPath
 
-	jsonContext := fmt.Sprintf(`{"command":"mkdir -p %s/%s -m %s"}`, rootPath, dir.Path, dir.Mode)
-	log.Debugf("execute command %s", jsonContext)
-	var jsonStr = []byte(jsonContext)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	cmdList := []string{
+		fmt.Sprintf("`mkdir -p %s/%s -m %s`", rootPath,dir.Path,dir.Mode),
+	}
+	if dir.Own != "" {
+		cmdList = append(cmdList, fmt.Sprintf("`chown -R %s %s/%s`", dir.Own, rootPath, dir.Path))
+	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
+	if created := s.ExecuteRemoteCommand(cmdList); created != false {
+		return nil
 	}
-	defer resp.Body.Close()
 
-	type result struct {
-		Success bool `json:"success"`
-	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	Request := &result{}
-	json.Unmarshal(body, Request)
-	if Request.Success == false {
-		return fmt.Errorf("can't create dir %s with mode %s", dir.Path, dir.Mode)
-	}
-	return nil
+	return sys_errors.New(fmt.Sprintf("can't create dir %s with mode %s", dir.Path, dir.Mode))
 }
 
 func (s *Slaver) connectGRpc() (*grpc.ClientConn, error) {
@@ -360,6 +350,41 @@ func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) b
 		}
 	}
 
+	return true
+}
+
+func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {
+	conn, err := s.connectGRpc()
+	if err != nil {
+		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
+		return false
+	}
+	c := pb.NewRouteCallClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	defer cancel()
+	stream, err := c.ExecuteCommand(ctx)
+
+	for _,c := range commands{
+		routeCommand := &pb.RouteCommand{
+			Name: "sh",
+			Args: []string{"-c", c},
+		}
+		log.Debugf("executed %s %s",routeCommand.Name,strings.Join(routeCommand.Args, " "))
+		if err := stream.Send(routeCommand);err !=nil{
+			log.Error(err)
+			return false
+		}
+		result,err := stream.Recv()
+		if err!=nil {
+			log.Error(err)
+			return false
+		}
+		if !result.Success {
+			log.Error(result.Message)
+			return false
+		}
+		log.Debugf(result.Message)
+	}
 	return true
 }
 
