@@ -69,10 +69,13 @@ type HttpGetCheck struct {
 }
 
 type Spec struct {
-	Basic     Basic
-	Resources v1.ResourceRequirements
-	Infra     []*InfraResource
-	Framework []*InfraResource
+	Basic       Basic
+	Resources   v1.ResourceRequirements
+	Infra       []*InfraResource
+	Framework   []*InfraResource
+	DevOps      []*InfraResource `json:"devOps"`
+	Agile       []*InfraResource `json:"agile"`
+	TestManager []*InfraResource `json:"testManager"`
 }
 
 type Basic struct {
@@ -390,8 +393,26 @@ func (i *Install) Run() error {
 	}
 
 	// install 框架微服务
-	log.Info("start install choerodon-framework")
+	log.Info("start install choerodon:framework")
 	if err := i.Install(i.Spec.Framework); err != nil {
+		return err
+	}
+
+	// install 框架持续交付
+	log.Info("start install choerodon:devops")
+	if err := i.Install(i.Spec.DevOps); err != nil {
+		return err
+	}
+
+	// install 敏捷服务
+	log.Info("start install choerodon:agile")
+	if err := i.Install(i.Spec.Agile); err != nil {
+		return err
+	}
+
+	// install 测试管理服务
+	log.Info("start install choerodon:test manager")
+	if err := i.Install(i.Spec.TestManager); err != nil {
 		return err
 	}
 

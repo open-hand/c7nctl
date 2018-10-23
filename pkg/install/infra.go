@@ -265,9 +265,28 @@ func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
 
 // get server definition
 func (infra *InfraResource) GetInfra(key string) *InfraResource {
-	infraList := infra.Home.Spec.Infra
-	for _, v := range infraList {
-		if v.Name == key {
+	spec := infra.Home.Spec
+	if app  := infra.getAppFromList(key,spec.Infra); app!=nil{
+		return app
+	}
+	if app  := infra.getAppFromList(key,spec.Framework); app!=nil{
+		return app
+	}
+	if app  := infra.getAppFromList(key,spec.DevOps); app!=nil{
+		return app
+	}
+	if app  := infra.getAppFromList(key,spec.Agile); app!=nil{
+		return app
+	}
+	if app  := infra.getAppFromList(key,spec.TestManager); app!=nil{
+		return app
+	}
+	return nil
+}
+
+func (infra *InfraResource) getAppFromList(appName string, resourceList []*InfraResource) *InfraResource {
+	for _, v := range resourceList {
+		if v.Name == appName {
 			return v
 		}
 	}
