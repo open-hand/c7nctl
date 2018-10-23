@@ -308,6 +308,7 @@ func (infra *InfraResource) CheckRunning(key string) error {
 				Host:   h.Host,
 				Port:   h.Port,
 				Schema: "http",
+				Path:   h.Path,
 			},
 		) {
 			err = errors.Errorf("Waiting %s running timeout", key)
