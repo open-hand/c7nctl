@@ -109,6 +109,19 @@ func (infra *InfraResource) GetPreValue(key string) string {
 	return infra.PreValues.getValues(key)
 }
 
+func (infra *InfraResource) GetRequire(app string) *InfraResource {
+	new := Ctx.GetSucceed(app, ReleaseTYPE)
+	i := &InfraResource{
+		Name:      app,
+		Namespace: infra.Namespace,
+		Client:    infra.Client,
+		Home:      infra.Home,
+		PreValues: new.PreValue,
+		Values:    new.Values,
+	}
+	return i
+}
+
 func (infra *InfraResource) GetRequireResource(app string) config.Resource {
 	res := Ctx.UserConfig.Spec.Resources
 	if r, ok := res[app]; ok {
@@ -255,7 +268,7 @@ func (infra *InfraResource) GetInfra(key string) *InfraResource {
 	infraList := infra.Home.Spec.Infra
 	for _, v := range infraList {
 		if v.Name == key {
-			return &v
+			return v
 		}
 	}
 	return nil

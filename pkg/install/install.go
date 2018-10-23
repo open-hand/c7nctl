@@ -69,10 +69,10 @@ type HttpGetCheck struct {
 }
 
 type Spec struct {
-	Basic        Basic
-	Resources    v1.ResourceRequirements
-	Infra        []InfraResource
-	Framework []InfraResource
+	Basic     Basic
+	Resources v1.ResourceRequirements
+	Infra     []*InfraResource
+	Framework []*InfraResource
 }
 
 type Basic struct {
@@ -220,7 +220,7 @@ type Input struct {
 	Tip     string
 }
 
-func (i *Install) Install(apps []InfraResource) error {
+func (i *Install) Install(apps []*InfraResource) error {
 	// 安装基础组件
 	for _, infra := range apps {
 		if r := i.UserConfig.GetResource(infra.Name); r != nil && r.External {
@@ -391,7 +391,7 @@ func (i *Install) Run() error {
 
 	// install 框架微服务
 	log.Info("start install choerodon-framework")
-	if err := i.Install(i.Spec.Framework) ; err != nil{
+	if err := i.Install(i.Spec.Framework); err != nil {
 		return err
 	}
 

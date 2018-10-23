@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 )
 
 type Slaver struct {
@@ -224,7 +224,7 @@ func (s *Slaver) MakeDir(dir Dir) error {
 	rootPath := s.VolumeMounts[0].MountPath
 
 	cmdList := []string{
-		fmt.Sprintf("`mkdir -p %s/%s -m %s`", rootPath,dir.Path,dir.Mode),
+		fmt.Sprintf("`mkdir -p %s/%s -m %s`", rootPath, dir.Path, dir.Mode),
 	}
 	if dir.Own != "" {
 		cmdList = append(cmdList, fmt.Sprintf("`chown -R %s %s/%s`", dir.Own, rootPath, dir.Path))
@@ -364,18 +364,18 @@ func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {
 	defer cancel()
 	stream, err := c.ExecuteCommand(ctx)
 
-	for _,c := range commands{
+	for _, c := range commands {
 		routeCommand := &pb.RouteCommand{
 			Name: "sh",
 			Args: []string{"-c", c},
 		}
-		log.Debugf("executed %s %s",routeCommand.Name,strings.Join(routeCommand.Args, " "))
-		if err := stream.Send(routeCommand);err !=nil{
+		log.Debugf("executed %s %s", routeCommand.Name, strings.Join(routeCommand.Args, " "))
+		if err := stream.Send(routeCommand); err != nil {
 			log.Error(err)
 			return false
 		}
-		result,err := stream.Recv()
-		if err!=nil {
+		result, err := stream.Recv()
+		if err != nil {
 			log.Error(err)
 			return false
 		}
