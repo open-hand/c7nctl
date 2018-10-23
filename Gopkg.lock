@@ -519,7 +519,7 @@
     "log",
     "random"
   ]
-  revision = "dcbd6f72d9c2f0f3c35ee3612143cd3e10e55104"
+  revision = "62910f780fa363d5be1ac21740ae5780685b1580"
 
 [[projects]]
   name = "golang.org/x/crypto"

@@ -12,6 +12,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	core_v1 "k8s.io/api/core/v1"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -22,11 +25,12 @@ func (infra *InfraResource) executePreCommands() error {
 func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	for _, pi := range c {
 		if len(pi.Commands) > 0 {
-			pi.ExecuteCommands(infra)
+			if err := pi.ExecuteCommands(infra); err != nil {
+				return err
+			}
 		}
 		if pi.Request != nil {
-			err := pi.ExecuteRequests(infra)
-			if err != nil {
+			if err := pi.ExecuteRequests(infra); err != nil {
 				return err
 			}
 		}
@@ -105,19 +109,45 @@ func (infra *InfraResource) renderValue(tplString string) string {
 	return data.String()
 }
 
+func (infra *InfraResource) GetPods() (*core_v1.PodList, error)  {
+	selectLabel := make(map[string]string)
+	selectLabel["choerodon.io/release"] = infra.Name
+	set := labels.Set(selectLabel)
+	opts := v1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	}
+	return Ctx.Client.CoreV1().Pods(infra.Namespace).List(opts)
+}
+
+func (infra *InfraResource) GetPodIp() string  {
+reget:
+	poList, err := infra.GetPods()
+	if err != nil || len(poList.Items) < 1 {
+		log.Errorf("can't get a pod from %s, retry...",infra.Name)
+		goto reget
+	}
+	for _, po := range poList.Items {
+		if po.Status.Phase == core_v1.PodRunning {
+			return po.Status.PodIP
+		}
+	}
+	log.Errorf("can't get a running pod from %s, retry...",infra.Name)
+	goto reget
+}
+
 func (infra *InfraResource) GetPreValue(key string) string {
 	return infra.PreValues.getValues(key)
 }
 
 func (infra *InfraResource) GetRequire(app string) *InfraResource {
-	new := Ctx.GetSucceed(app, ReleaseTYPE)
+	news := Ctx.GetSucceed(app, ReleaseTYPE)
 	i := &InfraResource{
 		Name:      app,
 		Namespace: infra.Namespace,
 		Client:    infra.Client,
 		Home:      infra.Home,
-		PreValues: new.PreValue,
-		Values:    new.Values,
+		PreValues: news.PreValue,
+		Values:    news.Values,
 	}
 	return i
 }
@@ -127,12 +157,12 @@ func (infra *InfraResource) GetRequireResource(app string) config.Resource {
 	if r, ok := res[app]; ok {
 		return *r
 	}
-	new := Ctx.GetSucceed(app, ReleaseTYPE)
-	if new == nil {
+	news := Ctx.GetSucceed(app, ReleaseTYPE)
+	if news == nil {
 		log.Errorf("require [%s] not right installed or defined", app)
 		os.Exit(121)
 	}
-	return new.Resource
+	return news.Resource
 }
 
 func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
@@ -140,12 +170,12 @@ func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
 	if r, ok := res[app]; ok {
 		return *r
 	}
-	new := Ctx.GetSucceed(app, ReleaseTYPE)
-	if new == nil {
+	news := Ctx.GetSucceed(app, ReleaseTYPE)
+	if news == nil {
 		log.Errorf("require [%s] not right installed or defined", app)
 		os.Exit(121)
 	}
-	return new.Resource
+	return news.Resource
 }
 
 // convert yml values to values list as xxx=yyy
@@ -199,6 +229,9 @@ func (infra *InfraResource) renderResource() config.Resource {
 		os.Exit(125)
 	}
 	r.Password = data.String()
+	log.Debugf("%s: resource password is %s",infra.Name,r.Password)
+	r.Url = infra.renderValue(r.Url)
+	log.Debugf("%s: resource url is %s",infra.Name,r.Url)
 	return *r
 }
 
@@ -235,20 +268,25 @@ func (infra *InfraResource) Install() error {
 
 	if len(infra.AfterInstall) > 0 {
 		news.Status = CreatedStatus
-		task := &BackendTask{
-			Success: false,
-			Name:    infra.Name,
-		}
-		Ctx.AddBackendTask(task)
-		go infra.executeAfterTasks(task)
+		infra.CheckExecuteAfterTasks()
 	} else {
 		news.Status = SucceedStatus
 	}
 	return nil
 }
 
+func (infra *InfraResource) CheckExecuteAfterTasks() error {
+	task := &BackendTask{
+		Success: false,
+		Name:    infra.Name,
+	}
+	Ctx.AddBackendTask(task)
+	go infra.executeAfterTasks(task)
+	return nil
+}
+
 func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
-	err := infra.CheckRunning(infra.Name)
+	err := infra.CheckRunning()
 	if err != nil {
 		log.Error(err)
 	}
@@ -258,27 +296,29 @@ func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
 		log.Error(err)
 		return err
 	}
-	task.Success = true
-	Ctx.UpdateCreated(infra.Name, infra.Namespace)
+
+	if err := Ctx.UpdateCreated(infra.Name, infra.Namespace); err == nil {
+		task.Success = true
+	}
 	return nil
 }
 
 // get server definition
 func (infra *InfraResource) GetInfra(key string) *InfraResource {
 	spec := infra.Home.Spec
-	if app  := infra.getAppFromList(key,spec.Infra); app!=nil{
+	if app := infra.getAppFromList(key, spec.Infra); app != nil {
 		return app
 	}
-	if app  := infra.getAppFromList(key,spec.Framework); app!=nil{
+	if app := infra.getAppFromList(key, spec.Framework); app != nil {
 		return app
 	}
-	if app  := infra.getAppFromList(key,spec.DevOps); app!=nil{
+	if app := infra.getAppFromList(key, spec.DevOps); app != nil {
 		return app
 	}
-	if app  := infra.getAppFromList(key,spec.Agile); app!=nil{
+	if app := infra.getAppFromList(key, spec.Agile); app != nil {
 		return app
 	}
-	if app  := infra.getAppFromList(key,spec.TestManager); app!=nil{
+	if app := infra.getAppFromList(key, spec.TestManager); app != nil {
 		return app
 	}
 	return nil
@@ -294,39 +334,38 @@ func (infra *InfraResource) getAppFromList(appName string, resourceList []*Infra
 }
 
 // just search the key
-func (infra *InfraResource) CheckRunning(key string) error {
-	log.Infof("Waiting %s being running", key)
+func (infra *InfraResource) CheckRunning() error {
+	log.Infof("Checking %s is running", infra.Name)
 	var err error
-	i := infra.GetInfra(key)
 
 	// check http
-	for _, h := range i.Health.HttpGet {
+	for _, h := range infra.Health.HttpGet {
 		if !Ctx.Slaver.CheckHealth(
 			infra.Name,
 			&pb.Check{
 				Type:   "httpGet",
-				Host:   h.Host,
+				Host:   infra.renderValue(h.Host),
 				Port:   h.Port,
 				Schema: "http",
 				Path:   h.Path,
 			},
 		) {
-			err = errors.Errorf("Waiting %s running timeout", key)
+			err = errors.Errorf("Waiting %s running timeout", infra.Name)
 		}
 	}
 
 	// check socket
-	for _, s := range i.Health.Socket {
+	for _, s := range infra.Health.Socket {
 		if !Ctx.Slaver.CheckHealth(
 			infra.Name,
 			&pb.Check{
 				Type:   "socket",
-				Host:   s.Host,
+				Host:   infra.renderValue(s.Host),
 				Port:   s.Port,
 				Schema: "",
 			},
 		) {
-			err = errors.Errorf("Waiting %s running timeout", key)
+			err = errors.Errorf("Waiting %s running timeout", infra.Name)
 		}
 	}
 
@@ -357,7 +396,8 @@ func (infra *InfraResource) CheckInstall() error {
 
 	// check requirement started
 	for _, r := range infra.Requirements {
-		if err := infra.CheckRunning(r); err != nil {
+		i := infra.GetInfra(r)
+		if err := i.CheckRunning(); err != nil {
 			return err
 		}
 	}
@@ -371,6 +411,9 @@ func (infra *InfraResource) CheckInstall() error {
 	}
 	if news != nil {
 		log.Successf("using exist release %s", news.RefName)
+		if news.Status == CreatedStatus {
+			infra.CheckExecuteAfterTasks()
+		}
 		return nil
 	}
 	// 执行安装前命令

@@ -26,14 +26,19 @@ const (
 	PvcType       = "pvc"
 	CRDType       = "crd"
 	ReleaseTYPE   = "helm"
+	TaskType      = "task"
 	SucceedStatus = "succeed"
 	FailedStatus  = "failed"
 	// if have after process while wait
 	CreatedStatus      = "created"
 	staticLogName      = "c7n-logs"
 	staticLogKey       = "logs"
+	staticTaskKey      = "tasks"
 	staticInstalledKey = "installed"
+	staticExecutedKey  = "execute"
 	randomLength       = 4
+	SqlTask            = "sql"
+	HttpGetTask           = "httpGet"
 )
 
 type Context struct {
@@ -63,6 +68,7 @@ type News struct {
 	Resource  config.Resource
 	Values    []ChartValue
 	PreValue  PreValueList
+	TaskType  string
 }
 
 type NewsResourceList struct {
@@ -89,7 +95,14 @@ func (ctx *Context) HasBackendTask() bool {
 }
 
 func (ctx *Context) SaveNews(news *News) error {
-	data := ctx.GetOrCreateConfigMapData(staticLogName, staticLogKey)
+
+	var key string
+	if news.Type == TaskType {
+		key = staticTaskKey
+	} else {
+		key = staticLogKey
+	}
+	data := ctx.GetOrCreateConfigMapData(staticLogName, key)
 	nr := &NewsResourceList{}
 	yaml.Unmarshal([]byte(data), nr)
 	news.Date = time.Now()
@@ -102,7 +115,8 @@ func (ctx *Context) SaveNews(news *News) error {
 		log.Error(err)
 		return err
 	}
-	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticLogKey)
+
+	ctx.saveConfigMapData(string(newData[:]), staticLogName, key)
 
 	if news.Status == SucceedStatus || news.Status == CreatedStatus {
 		ctx.SaveSucceed(news)
@@ -134,7 +148,6 @@ func (ctx *Context) UpdateCreated(name, namespace string) error {
 }
 
 func (ctx *Context) SaveSucceed(news *News) error {
-
 	news.Date = time.Now()
 	nr := ctx.getSucceedData()
 	nr.News = append(nr.News, *news)
@@ -143,7 +156,12 @@ func (ctx *Context) SaveSucceed(news *News) error {
 		log.Error(err)
 		return err
 	}
-	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticInstalledKey)
+
+	key := staticInstalledKey
+	if news.Type == TaskType {
+		key = staticExecutedKey
+	}
+	ctx.saveConfigMapData(string(newData[:]), staticLogName, key)
 	return nil
 }
 
@@ -151,6 +169,18 @@ func (ctx *Context) GetSucceed(name string, resourceType string) *News {
 	nr := ctx.getSucceedData()
 	for _, v := range nr.News {
 		if v.Name == name && v.Type == resourceType {
+			// todo: make sure gc effort
+			p := v
+			return &p
+		}
+	}
+	return nil
+}
+
+func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *News {
+	nr := ctx.getSucceedData(staticExecutedKey)
+	for _, v := range nr.News {
+		if v.Name == taskName && v.RefName == appName && v.TaskType == taskType {
 			// todo: make sure gc effort
 			p := v
 			return &p
@@ -183,8 +213,12 @@ func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
 	return nil
 }
 
-func (ctx *Context) getSucceedData() *NewsResourceList {
-	data := ctx.GetOrCreateConfigMapData(staticLogName, staticInstalledKey)
+func (ctx *Context) getSucceedData(key ...string) *NewsResourceList {
+	cmKey := staticInstalledKey
+	if len(key) > 0 {
+		cmKey = key[0]
+	}
+	data := ctx.GetOrCreateConfigMapData(staticLogName, cmKey)
 	nr := &NewsResourceList{}
 	yaml.Unmarshal([]byte(data), nr)
 	return nr

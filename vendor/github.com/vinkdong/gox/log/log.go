@@ -172,7 +172,7 @@ func Debug(l interface{}) {
 func Debugf(format string, a ...interface{}) {
 	if debug {
 		tmp := fmt.Sprintf(format, a...)
-		debug := fmt.Sprintf("[%s] %s", "Error", tmp)
+		debug := fmt.Sprintf("[%s] %s", "DEBUG", tmp)
 		std.Output(2, debug, ClrDEBUG)
 	}
 }

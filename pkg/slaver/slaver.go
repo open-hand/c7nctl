@@ -250,6 +250,7 @@ func (s *Slaver) CheckHealth(name string, check *pb.Check) bool {
 	}
 	c := pb.NewRouteCallClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	log.Debugf("checking %s://%s:%d%s",check.Schema,check.Host,check.Port,check.Path)
 remoteCheck:
 	r, err := c.CheckHealth(ctx, check)
 	if err != nil {
@@ -305,19 +306,18 @@ func (s *Slaver) ExecuteRemoteRequest(f Forward) error {
 	return nil
 }
 
-func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) bool {
+func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) error {
 	conn, err := s.connectGRpc()
 	if err != nil {
-		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
-		return false
+		r := fmt.Sprintf("connect %s grpc path  failed", s.GRpcAddress)
+		return sys_errors.New(r)
 	}
 	c := pb.NewRouteCallClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 	defer cancel()
 	stream, err := c.ExecuteSql(ctx)
 	if err != nil {
-		log.Error(err)
-		return false
+		return err
 	}
 	m := &pb.Mysql{
 		Host:     resource.Host,
@@ -341,16 +341,13 @@ func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) b
 		stream.Send(r)
 		resp, err := stream.Recv()
 		if err != nil {
-			log.Error(err)
-			return false
+			return err
 		}
 		if !resp.Success {
-			log.Error(resp.Message)
-			return false
+			return sys_errors.New(resp.Message)
 		}
 	}
-
-	return true
+	return nil
 }
 
 func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {

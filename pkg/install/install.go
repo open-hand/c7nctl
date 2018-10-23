@@ -109,12 +109,33 @@ func (r *Request) Render(infra *InfraResource) error {
 }
 
 func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
+
+	news := Ctx.GetSucceedTask(pi.Name, infra.Name, SqlTask)
+	if news != nil {
+		log.Successf("task %s had executed", pi.Name)
+		return nil
+	}
+
+	news = &News{
+		Name:     pi.Name,
+		RefName:  infra.Name,
+		Type:     TaskType,
+		Status:   SucceedStatus,
+		TaskType: SqlTask,
+	}
+
+	defer Ctx.SaveNews(news)
+
 	for k, v := range pi.Commands {
 		pi.Commands[k] = infra.renderValue(v)
 	}
 	r := infra.GetResource(pi.InfraRef)
 	s := Ctx.Slaver
-	s.ExecuteRemoteSql(pi.Commands, r)
+	if err := s.ExecuteRemoteSql(pi.Commands, r); err != nil {
+		news.Status = FailedStatus
+		news.Reason = err.Error()
+		return nil
+	}
 	return nil
 }
 
@@ -122,6 +143,22 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 	if pi.Request == nil {
 		return nil
 	}
+	news := Ctx.GetSucceedTask(pi.Name, infra.Name, HttpGetTask)
+	if news != nil {
+		log.Successf("task %s had executed", pi.Name)
+		return nil
+	}
+
+	news = &News{
+		Name:     pi.Name,
+		RefName:  infra.Name,
+		Type:     TaskType,
+		Status:   SucceedStatus,
+		TaskType: HttpGetTask,
+	}
+
+	defer Ctx.SaveNews(news)
+
 	pi.Request.Render(infra)
 	req := pi.Request
 	s := Ctx.Slaver
@@ -136,6 +173,10 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 		Method: req.Method,
 	}
 	err := s.ExecuteRemoteRequest(f)
+	if err !=nil {
+		news.Status = FailedStatus
+		news.Reason = err.Error()
+	}
 	return err
 }
 

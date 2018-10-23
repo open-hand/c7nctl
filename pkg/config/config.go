@@ -51,6 +51,7 @@ type Resource struct {
 	Schema   string
 	Domain   string
 	External bool
+	Url      string
 }
 
 func (p *Persistence) GetPersistentVolumeSource(subPath string) v1.PersistentVolumeSource {

@@ -29,3 +29,5 @@ spec:
     chartmuseum4:
       domain: chart.local.vk.vu
       schema: http
+    api-gateway4:
+      domain: api.local.vk.vu
