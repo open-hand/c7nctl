@@ -522,6 +522,7 @@
   revision = "62910f780fa363d5be1ac21740ae5780685b1580"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -534,7 +535,7 @@
     "openpgp/s2k",
     "ssh/terminal"
   ]
-  revision = "81e90905daefcd6fd217b62423c0908922eadb30"
+  revision = "0c41d7ab0a0ee717d4590a44bcb987dfd9e183eb"
 
 [[projects]]
   name = "golang.org/x/net"
@@ -562,12 +563,13 @@
   revision = "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows"
   ]
-  revision = "43eea11bc92608addb41b8a406b0407495c106f6"
+  revision = "44b849a8bc13eb42e95e6c6c5e360481b73ec710"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -648,8 +650,8 @@
     "status",
     "tap"
   ]
-  revision = "8dea3dc473e90c8179e519d91302d0597c0ca1d1"
-  version = "v1.15.0"
+  revision = "2e463a05d100327ca47ac218281906921038fd95"
+  version = "v1.16.0"
 
 [[projects]]
   name = "gopkg.in/gcfg.v1"
@@ -1151,6 +1153,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c9a87f27704dde80a1e3674fdb61c1f176e31c88496fd25483fe99bc70cf5d11"
+  inputs-digest = "6c5996c25032278c753f0225be0906703634f63bdb69a49e651ac51c3eab2e30"
   solver-name = "gps-cdcl"
   solver-version = 1

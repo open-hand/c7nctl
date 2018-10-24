@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	core_v1 "k8s.io/api/core/v1"
+	"time"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -229,14 +230,18 @@ func (infra *InfraResource) renderResource() config.Resource {
 		os.Exit(125)
 	}
 	r.Password = data.String()
-	log.Debugf("%s: resource password is %s",infra.Name,r.Password)
+	if r.Password != "" {
+		log.Debugf("%s: resource password is %s",infra.Name,r.Password)
+	}
 	r.Url = infra.renderValue(r.Url)
-	log.Debugf("%s: resource url is %s",infra.Name,r.Url)
+	if r.Url != "" {
+		log.Debugf("%s: resource url is %s",infra.Name,r.Url)
+	}
 	return *r
 }
 
 // install infra
-func (infra *InfraResource) Install() error {
+func (infra *InfraResource) Install(ch chan error) error {
 	values, cvList := infra.HelmValues()
 	chartArgs := helm.ChartArgs{
 		ReleaseName: infra.Name,
@@ -263,6 +268,7 @@ func (infra *InfraResource) Install() error {
 
 	if err != nil {
 		news.Reason = err.Error()
+		ch <- err
 		return err
 	}
 
@@ -272,6 +278,7 @@ func (infra *InfraResource) Install() error {
 	} else {
 		news.Status = SucceedStatus
 	}
+	ch <- nil
 	return nil
 }
 
@@ -420,5 +427,19 @@ func (infra *InfraResource) CheckInstall() error {
 	if err := infra.executePreCommands(); err != nil {
 		return err
 	}
-	return infra.Install()
+
+	statusCh := make(chan error)
+
+	go infra.Install(statusCh)
+
+	for {
+		select {
+		case err:=<-statusCh:
+			return err
+		case <-time.Tick(time.Second * 10):
+			log.Infof("still install %s", infra.Name)
+		}
+
+	}
+	return nil
 }
