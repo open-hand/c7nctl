@@ -111,3 +111,51 @@ func TestExecuteRemoteCommand(t *testing.T) {
 	log.EnableDebug()
 	log.Info(slaver.ExecuteRemoteCommand(cmdList))
 }
+
+func TestSendAll(t *testing.T) {
+	log.EnableDebug()
+	slaver := Slaver{
+		GRpcAddress: "127.0.0.1:9001",
+		Client:      kube.GetClient(),
+		Namespace:   "install",
+	}
+	request := &pb.RouteRequest{
+		Method: "GET",
+		Schema: "http",
+		Host:   "vinkdong.com",
+		Port:   9000,
+		Path:   "/x.sh",
+		Body:   "xyz",
+	}
+	labels := make(map[string]string)
+	labels["app"] = "c7n-slaver"
+	slaver.CommonLabels = labels
+	err := slaver.SendAll(request, false)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestCheckClusterDomain(t *testing.T) {
+	log.EnableDebug()
+	labels := make(map[string]string)
+	labels["app"] = "c7n-slaver"
+	slaver := Slaver{
+		GRpcAddress: "127.0.0.1:9001",
+		Client:      kube.GetClient(),
+		Namespace:   "install",
+		Name:        "c7n-slaver",
+		Ports: []v1.ContainerPort{
+			v1.ContainerPort{
+				Name:          "http",
+				ContainerPort: 9000,
+			},
+		},
+		Address:      "http://127.0.0.1:9000",
+		CommonLabels: labels,
+	}
+	err := slaver.CheckClusterDomain("api.local2.vk.vu")
+	if err != nil {
+		t.Error(err)
+	}
+}

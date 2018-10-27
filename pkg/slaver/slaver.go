@@ -10,7 +10,9 @@ import (
 	"github.com/choerodon/c7n/pkg/kube"
 	pb "github.com/choerodon/c7n/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
+	"github.com/vinkdong/gox/random"
 	"google.golang.org/grpc"
+	"io/ioutil"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -250,12 +253,17 @@ func (s *Slaver) CheckHealth(name string, check *pb.Check) bool {
 	}
 	c := pb.NewRouteCallClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
-	log.Debugf("checking %s://%s:%d%s",check.Schema,check.Host,check.Port,check.Path)
+	if check.Type == "socket" {
+		log.Debugf("checking %s:%d", check.Host, check.Port)
+	} else {
+		log.Debugf("checking %s://%s:%d%s", check.Schema, check.Host, check.Port, check.Path)
+	}
+
 remoteCheck:
 	r, err := c.CheckHealth(ctx, check)
 	if err != nil {
 		log.Debugf("check %s health failed with msg: '%s' retry ..", name, err.Error())
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 20)
 		goto remoteCheck
 	}
 	defer cancel()
@@ -281,29 +289,31 @@ type Forward struct {
 	Header map[string][]string `json:"header"`
 }
 
-func (s *Slaver) ExecuteRemoteRequest(f Forward) error {
+func (s *Slaver) ExecuteRemoteRequest(f Forward) (string, error) {
 	url := fmt.Sprint(s.Address, "/forward")
 
 	data, err := json.Marshal(f)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header = f.Header
 	client := http.Client{}
 	resp, err := client.Do(req)
-
 	if err != nil {
-		return err
+		return "", err
 	}
+	data, err = ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode >= 400 || resp.StatusCode < 200 {
-		log.Errorf("request %s \nheader: %v \n with body \n %s\nfailed", f.Url, f.Header, f.Body)
-		return sys_errors.New(fmt.Sprintf("resp code %d not is 2xx or 3xx", resp.StatusCode))
+		log.Infof("request %s ", f.Url)
+		return string(data), sys_errors.New(fmt.Sprintf("resp code %d not is 2xx or 3xx", resp.StatusCode))
 	}
-	return nil
+
+	return string(data), nil
 }
 
 func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) error {
@@ -350,16 +360,27 @@ func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) e
 	return nil
 }
 
-func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {
+func (s *Slaver) getClient() (pb.RouteCallClient, context.CancelFunc, context.Context, error) {
 	conn, err := s.connectGRpc()
 	if err != nil {
 		log.Errorf("connect %s grpc path  failed", s.GRpcAddress)
-		return false
+		return nil, nil, nil, err
 	}
 	c := pb.NewRouteCallClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	return c, cancel, ctx, nil
+}
+
+func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {
+	c, cancel, ctx, err := s.getClient()
+	if err != nil {
+		return false
+	}
 	defer cancel()
 	stream, err := c.ExecuteCommand(ctx)
+	if err != nil {
+		return false
+	}
 
 	for _, c := range commands {
 		routeCommand := &pb.RouteCommand{
@@ -492,14 +513,19 @@ func (s *Slaver) InstallIngress(domain string) error {
 	if err != nil {
 		return err
 	}
+
+	annotations := make(map[string]string)
+	annotations["ingress.kubernetes.io/ssl-redirect"] = "false"
+	annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "false"
 	ingress := &v1beta1.Ingress{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name:   s.Name + "checker",
-			Labels: s.CommonLabels,
+			Name:        s.Name + "checker",
+			Labels:      s.CommonLabels,
+			Annotations: annotations,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{ingressRule},
@@ -509,12 +535,130 @@ func (s *Slaver) InstallIngress(domain string) error {
 	return err
 }
 
+func (s *Slaver) SendAll(request *pb.RouteRequest, retry bool) error {
+
+	c, cancel, ctx, err := s.getClient()
+	if c == nil {
+		log.Info("client is nil")
+		return nil
+	}
+	defer cancel()
+	stream, err := c.ExecuteRequest(ctx)
+	if err != nil {
+		return err
+	}
+
+	if s.PodList == nil {
+		if s.PodList, err = s.GetPods(); err != nil {
+			return err
+		}
+	}
+	for k, po := range s.PodList.Items {
+		log.Debugf("send request to slaver %d ", k)
+	retry:
+		ip := po.Status.PodIP
+		request.Host = ip
+		stream.Send(request)
+		if rec, err := stream.Recv(); err != nil {
+			log.Error(err)
+			if retry {
+				goto retry
+			}
+		} else {
+			log.Debugf("Get status code: %d of %s", rec.StatusCode, request.Host)
+			if retry && (rec.StatusCode >= 400 || rec.StatusCode < 200) {
+				goto retry
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Slaver) getHttpPort() int32 {
+	for _, port := range s.Ports {
+		if port.Name == "http" {
+			return port.ContainerPort
+		}
+	}
+	return 0
+}
+
+func RandomToken(length int) string {
+	bytes := make([]byte, length)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < length; i++ {
+		random.Seed(time.Now().UnixNano())
+		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
+			random.Slice{Start: 65, End: 90}, random.Slice{Start: 97, End: 122})
+		bytes[i] = byte(op) //A=65 and Z = 65+25
+	}
+	return string(bytes)
+}
+
 func (s *Slaver) CheckClusterDomain(domain string) error {
 	err := s.InstallIngress(domain)
 	if err != nil {
 		return err
 	}
-	log.Infof("send msg to check domain %s", domain)
+	httpPort := s.getHttpPort()
+	if httpPort == 0 {
+		return sys_errors.New("can't get slaver http port")
+	}
+
+	token := RandomToken(26)
+
+	type Request struct {
+		Domain string `json:"domain"`
+		Value  string `json:"value"`
+	}
+
+	r := Request{
+		Domain: domain,
+		Value:  token,
+	}
+
+	reqBody, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	req := &pb.RouteRequest{
+		Method: "POST",
+		Schema: "http",
+		Port:   httpPort,
+		Path:   "/c7n/acme-challenge",
+		Body:   string(reqBody),
+	}
+
+	err = s.SendAll(req, true)
+	if err != nil {
+		return sys_errors.New("ask slaver listen domain failed")
+	}
+
+	url := fmt.Sprintf("http://%s%s", domain, IngressCheckPath)
+	f := Forward{
+		Url:    url,
+		Method: "GET",
+	}
+	times := 0
+retry:
+	body, err := s.ExecuteRemoteRequest(f)
+	if err != nil {
+		if body != "" && times < 10 {
+			time.Sleep(time.Second * 2)
+			times += 1
+			goto retry
+		}
+		return err
+	}
+	if body != token {
+		if times < 15 {
+			log.Info(fmt.Sprintf("Wait domain %s point to cluster, check acme want %s got %s, retry", domain, token, body))
+			times += 1
+			time.Sleep(time.Second * 2)
+			goto retry
+		}
+		return sys_errors.New(fmt.Sprintf("Check domain failed want %s got %s", token, body))
+	}
 	return nil
 }
 

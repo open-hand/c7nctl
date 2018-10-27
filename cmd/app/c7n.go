@@ -130,7 +130,7 @@ func TearDown() {
 	tillerTunnel.Close()
 }
 
-func Install(cmd *cobra.Command) error {
+func Install(cmd *cobra.Command, args []string) error {
 	var err error
 	// get current version to
 	currentVersion = getVersion(cmd.Flags())
@@ -171,7 +171,7 @@ func Install(cmd *cobra.Command) error {
 	installConfig.HelmClient = helmClient
 
 	// do install
-	return installConfig.Run()
+	return installConfig.Run(args...)
 }
 
 func Delete(cmd *cobra.Command, args []string) error {

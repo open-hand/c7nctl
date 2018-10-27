@@ -66,3 +66,15 @@ func TestGetInfra(t *testing.T) {
 	log.Info(r.Host)
 
 }
+
+func TestCleanJobs(t *testing.T) {
+	i := Install{
+		Client: kube.GetClient(),
+		UserConfig: &config.Config{
+			Metadata: config.Metadata{
+				Namespace: "test",
+			},
+		},
+	}
+	i.CleanJobs()
+}

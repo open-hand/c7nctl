@@ -123,8 +123,7 @@ func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error
 
 	cp, err := client.locateChartPath(chartArgs)
 	if err != nil {
-		log.Error(err)
-		os.Exit(127)
+		return err
 	}
 
 	rawVals, err := prepareValues(values)

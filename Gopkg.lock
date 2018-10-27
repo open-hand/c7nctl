@@ -519,7 +519,7 @@
     "log",
     "random"
   ]
-  revision = "62910f780fa363d5be1ac21740ae5780685b1580"
+  revision = "16e1d3493b4255931fa13e262c0dbc963c63cb2e"
 
 [[projects]]
   branch = "master"
@@ -1117,6 +1117,7 @@
     "pkg/util/interrupt",
     "pkg/util/io",
     "pkg/util/labels",
+    "pkg/util/maps",
     "pkg/util/metrics",
     "pkg/util/mount",
     "pkg/util/net/sets",
@@ -1153,6 +1154,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6c5996c25032278c753f0225be0906703634f63bdb69a49e651ac51c3eab2e30"
+  inputs-digest = "9ffe05c61e1088e6f8f1a085b2101b5b0c4869fd2279912830aa413c96e4ff65"
   solver-name = "gps-cdcl"
   solver-version = 1

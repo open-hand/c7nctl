@@ -177,6 +177,14 @@ func Debugf(format string, a ...interface{}) {
 	}
 }
 
+func Lock()  {
+	std.mu.Lock()
+}
+
+func Unlock()  {
+	std.mu.Unlock()
+}
+
 func Success(l interface{}) {
 	success := fmt.Sprintf("[INFO] %v", l)
 	std.Output(2, success, ClrSuccess)

@@ -7,6 +7,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
+	"os"
 )
 
 func getConfig() (*rest.Config, error) {
@@ -37,7 +38,8 @@ func GetTunnel() *kube.Tunnel {
 	config, _ := getConfig()
 	tunnel, _, err := getClientset(config)
 	if err != nil {
-		panic(err)
+		log.Error(err)
+		os.Exit(129)
 	}
 	return tunnel
 }

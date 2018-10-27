@@ -29,7 +29,7 @@ var installCmd = &cobra.Command{
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.EnableDebug()
 		}
-		err := app.Install(cmd)
+		err := app.Install(cmd, args)
 		if err != nil {
 			log.Error(err)
 			log.Error("install failed")

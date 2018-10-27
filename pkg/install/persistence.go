@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"github.com/choerodon/c7n/pkg/slaver"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -24,6 +25,7 @@ type Persistence struct {
 	RefPvcName   string
 	Mode         string
 	Own          string
+	MountOptions []string
 }
 
 func (p *Persistence) PrepareNews() *News {
@@ -70,6 +72,17 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		p.RefPvName = news.RefName
 		return nil
 	}
+
+	// create dir
+	dir := slaver.Dir{
+		Mode: p.Mode,
+		Path: p.Path,
+		Own:  p.Own,
+	}
+	if err := Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
+		return err
+	}
+
 checkpv:
 	if got, _ := p.getPv(); got {
 		p.RefPvName = fmt.Sprintf("%s-%s", p.Name, RandomString())
@@ -107,6 +120,8 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 		p.Capacity["storage"] = q
 	}
 
+	mountOptions := p.MountOptions
+
 	pv := &v1.PersistentVolume{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "PersistentVolume",
@@ -120,6 +135,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 			AccessModes:            p.AccessModes,
 			Capacity:               p.Capacity,
 			PersistentVolumeSource: pvs,
+			MountOptions:           mountOptions,
 		},
 	}
 

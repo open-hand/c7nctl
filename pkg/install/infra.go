@@ -6,15 +6,14 @@ import (
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
 	pb "github.com/choerodon/c7n/pkg/protobuf"
-	"github.com/choerodon/c7n/pkg/slaver"
 	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
+	core_v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"os"
 	"text/template"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	core_v1 "k8s.io/api/core/v1"
 	"time"
 )
 
@@ -49,16 +48,6 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 		persistence.CommonLabels = commonLabel
 		persistence.CommonLabels["pv"] = persistence.Name
 
-		// check or create dir
-		dir := slaver.Dir{
-			Mode: persistence.Mode,
-			Path: persistence.Path,
-			Own:  persistence.Own,
-		}
-		if err := Ctx.Slaver.MakeDir(dir); err != nil {
-			return err
-		}
-
 		if err := persistence.CheckOrCreatePv(getPvs(persistence.Path)); err != nil {
 			return err
 		}
@@ -83,9 +72,13 @@ func (infra *InfraResource) applyUserResource() error {
 		infra.Resource = r
 		return nil
 	}
-	// just override domain
+	// just override domain && schema
 	if r.Domain != "" {
 		infra.Resource.Domain = r.Domain
+	}
+
+	if r.Schema != "" && infra.Resource.Schema == "" {
+		infra.Resource.Schema = r.Schema
 	}
 
 	return nil
@@ -110,7 +103,7 @@ func (infra *InfraResource) renderValue(tplString string) string {
 	return data.String()
 }
 
-func (infra *InfraResource) GetPods() (*core_v1.PodList, error)  {
+func (infra *InfraResource) GetPods() (*core_v1.PodList, error) {
 	selectLabel := make(map[string]string)
 	selectLabel["choerodon.io/release"] = infra.Name
 	set := labels.Set(selectLabel)
@@ -120,11 +113,11 @@ func (infra *InfraResource) GetPods() (*core_v1.PodList, error)  {
 	return Ctx.Client.CoreV1().Pods(infra.Namespace).List(opts)
 }
 
-func (infra *InfraResource) GetPodIp() string  {
+func (infra *InfraResource) GetPodIp() string {
 reget:
 	poList, err := infra.GetPods()
 	if err != nil || len(poList.Items) < 1 {
-		log.Errorf("can't get a pod from %s, retry...",infra.Name)
+		log.Errorf("can't get a pod from %s, retry...", infra.Name)
 		goto reget
 	}
 	for _, po := range poList.Items {
@@ -132,7 +125,8 @@ reget:
 			return po.Status.PodIP
 		}
 	}
-	log.Errorf("can't get a running pod from %s, retry...",infra.Name)
+	log.Debugf("can't get a running pod from %s, retry...", infra.Name)
+	time.Sleep(time.Second * 3)
 	goto reget
 }
 
@@ -187,7 +181,9 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 	for k, v := range infra.Values {
 		value := ""
 		if v.Input.Enabled {
+			log.Lock()
 			password, err := AcceptUserPassword(v.Input)
+			log.Unlock()
 			if err != nil {
 				log.Error(err)
 				os.Exit(128)
@@ -231,17 +227,17 @@ func (infra *InfraResource) renderResource() config.Resource {
 	}
 	r.Password = data.String()
 	if r.Password != "" {
-		log.Debugf("%s: resource password is %s",infra.Name,r.Password)
+		log.Debugf("%s: resource password is %s", infra.Name, r.Password)
 	}
 	r.Url = infra.renderValue(r.Url)
 	if r.Url != "" {
-		log.Debugf("%s: resource url is %s",infra.Name,r.Url)
+		log.Debugf("%s: resource url is %s", infra.Name, r.Url)
 	}
 	return *r
 }
 
 // install infra
-func (infra *InfraResource) Install(ch chan error) error {
+func (infra *InfraResource) Install() error {
 	values, cvList := infra.HelmValues()
 	chartArgs := helm.ChartArgs{
 		ReleaseName: infra.Name,
@@ -252,7 +248,14 @@ func (infra *InfraResource) Install(ch chan error) error {
 		ChartName:   infra.Chart,
 	}
 	log.Infof("installing %s", infra.Name)
+	for _, k := range values {
+		log.Debugf(k)
+	}
 	err := infra.Client.InstallRelease(values, chartArgs)
+
+	if err != nil {
+		return err
+	}
 
 	news := &News{
 		Name:      infra.Name,
@@ -268,7 +271,6 @@ func (infra *InfraResource) Install(ch chan error) error {
 
 	if err != nil {
 		news.Reason = err.Error()
-		ch <- err
 		return err
 	}
 
@@ -278,7 +280,6 @@ func (infra *InfraResource) Install(ch chan error) error {
 	} else {
 		news.Status = SucceedStatus
 	}
-	ch <- nil
 	return nil
 }
 
@@ -331,9 +332,19 @@ func (infra *InfraResource) GetInfra(key string) *InfraResource {
 	return nil
 }
 
+func (infra *InfraResource) convertInstalledValue() error {
+	news := Ctx.GetSucceed(infra.Name, ReleaseTYPE)
+	if news != nil {
+		infra.Values = news.Values
+		infra.PreValues = news.PreValue
+	}
+	return nil
+}
+
 func (infra *InfraResource) getAppFromList(appName string, resourceList []*InfraResource) *InfraResource {
 	for _, v := range resourceList {
 		if v.Name == appName {
+			v.convertInstalledValue()
 			return v
 		}
 	}
@@ -394,7 +405,7 @@ func (infra *InfraResource) GetResource(key string) *config.Resource {
 		}
 	}
 	log.Errorf("can't get required resource [%s]", key)
-	os.Exit(188)
+	Ctx.CheckExist(188)
 	return nil
 }
 
@@ -430,11 +441,14 @@ func (infra *InfraResource) CheckInstall() error {
 
 	statusCh := make(chan error)
 
-	go infra.Install(statusCh)
+	go func() {
+		err := infra.Install()
+		statusCh <- err
+	}()
 
 	for {
 		select {
-		case err:=<-statusCh:
+		case err := <-statusCh:
 			return err
 		case <-time.Tick(time.Second * 10):
 			log.Infof("still install %s", infra.Name)

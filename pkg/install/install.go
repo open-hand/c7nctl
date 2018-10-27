@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/util/maps"
 	"os"
 	"text/template"
-	"time"
 )
 
 type Install struct {
@@ -76,6 +76,7 @@ type Spec struct {
 	DevOps      []*InfraResource `json:"devOps"`
 	Agile       []*InfraResource `json:"agile"`
 	TestManager []*InfraResource `json:"testManager"`
+	Front       []*InfraResource `json:"front"`
 }
 
 type Basic struct {
@@ -134,7 +135,7 @@ func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
 	if err := s.ExecuteRemoteSql(pi.Commands, r); err != nil {
 		news.Status = FailedStatus
 		news.Reason = err.Error()
-		return nil
+		return err
 	}
 	return nil
 }
@@ -172,8 +173,8 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 		Header: header,
 		Method: req.Method,
 	}
-	err := s.ExecuteRemoteRequest(f)
-	if err !=nil {
+	_, err := s.ExecuteRemoteRequest(f)
+	if err != nil {
 		news.Status = FailedStatus
 		news.Reason = err.Error()
 	}
@@ -233,6 +234,7 @@ func (p *PreValue) renderValue() error {
 	case "clusterdomain":
 		//todo: add check domain
 		if err := Ctx.Slaver.CheckClusterDomain(val); err != nil {
+			log.Errorf("请检查您的域名: %s 已正确解析到集群", val)
 			return err
 		}
 	}
@@ -254,7 +256,7 @@ func (p *PreValue) GetResource(key string) *config.Resource {
 		}
 	}
 	log.Errorf("can't get required resource [%s]", key)
-	os.Exit(188)
+	Ctx.CheckExist(188)
 	return nil
 }
 
@@ -262,6 +264,28 @@ type Input struct {
 	Enabled bool
 	Regex   string
 	Tip     string
+}
+
+func (i *Install) CleanJobs() error {
+	jobInterface := i.Client.BatchV1().Jobs(i.UserConfig.Metadata.Namespace)
+	jobList, err := jobInterface.List(meta_v1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	log.Info("clean history jobs...")
+	delOpts := &meta_v1.DeleteOptions{}
+	for _, job := range jobList.Items {
+		if job.Status.Active > 0 {
+			log.Infof("job %s still active ignored..", job.Name)
+		} else {
+			if err := jobInterface.Delete(job.Name, delOpts); err != nil {
+				return err
+			}
+			log.Successf("deleted job %s", job.Name)
+		}
+		log.Info(job.Name)
+	}
+	return nil
 }
 
 func (i *Install) Install(apps []*InfraResource) error {
@@ -369,7 +393,7 @@ func (i *Install) PrepareSlaverPvc() (string, error) {
 	return persistence.RefPvcName, nil
 }
 
-func (i *Install) Run() error {
+func (i *Install) Run(args ...string) error {
 
 	if i.Client == nil {
 		i.Client = kube.GetClient()
@@ -401,7 +425,9 @@ func (i *Install) Run() error {
 
 	s := &i.Spec.Basic.Slaver
 	s.Client = i.Client
-	s.CommonLabels = i.CommonLabels
+	// be care of use point
+	s.CommonLabels = maps.CopySS(i.CommonLabels)
+
 	s.Namespace = i.UserConfig.Metadata.Namespace
 
 	Ctx.Slaver = s
@@ -428,6 +454,10 @@ func (i *Install) Run() error {
 		stopCh <- struct{}{}
 	}()
 
+	// 清理历史的job
+	if err := i.CleanJobs(); err != nil {
+		return err
+	}
 	// install 基础组件
 	if err := i.Install(i.Spec.Infra); err != nil {
 		return err
@@ -457,15 +487,13 @@ func (i *Install) Run() error {
 		return err
 	}
 
-loop:
-	for {
-		select {
-		case <-time.Tick(time.Second * 3):
-			if !Ctx.HasBackendTask() {
-				break loop
-			}
-		}
+	// install 测试管理服务
+	log.Info("start install choerodon:front ")
+	if err := i.Install(i.Spec.Front); err != nil {
+		return err
 	}
+
+	Ctx.CheckExist(0)
 
 	return nil
 }

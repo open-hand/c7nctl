@@ -15,6 +15,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -38,7 +39,7 @@ const (
 	staticExecutedKey  = "execute"
 	randomLength       = 4
 	SqlTask            = "sql"
-	HttpGetTask           = "httpGet"
+	HttpGetTask        = "httpGet"
 )
 
 type Context struct {
@@ -49,6 +50,7 @@ type Context struct {
 	Slaver        *slaver.Slaver
 	UserConfig    *config.Config
 	BackendTasks  []*BackendTask
+	Mux           sync.Mutex
 }
 
 type BackendTask struct {
@@ -85,6 +87,21 @@ func (ctx *Context) AddBackendTask(task *BackendTask) bool {
 	return true
 }
 
+func (ctx *Context) CheckExist(code int) {
+	if !ctx.HasBackendTask() {
+		os.Exit(code)
+	}
+	log.Info("some backend task not finished with it to be finished")
+	for {
+		select {
+		case <-time.Tick(time.Second * 1):
+			if !ctx.HasBackendTask() {
+				os.Exit(code)
+			}
+		}
+	}
+}
+
 func (ctx *Context) HasBackendTask() bool {
 	for _, v := range ctx.BackendTasks {
 		if v.Success == false {
@@ -95,7 +112,8 @@ func (ctx *Context) HasBackendTask() bool {
 }
 
 func (ctx *Context) SaveNews(news *News) error {
-
+	ctx.Mux.Lock()
+	defer ctx.Mux.Unlock()
 	var key string
 	if news.Type == TaskType {
 		key = staticTaskKey
@@ -354,7 +372,7 @@ start:
 		}
 	}
 
-	log.Info("waiting...")
+	fmt.Println("waiting...")
 
 	return string(bytePassword[:]), nil
 }
