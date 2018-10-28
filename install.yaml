@@ -5,8 +5,8 @@ metadata:
 spec:
   persistence:
     nfs:
-      server: 192.168.12.214
-      rootPath: /u01/install
+      server: 98dbe4b804-ntg59.cn-zhangjiakou.nas.aliyuncs.com
+      rootPath: /install
   resources:
     mysql:
       host: 192.168.12.88
@@ -15,19 +15,32 @@ spec:
       password: xxxxx
       external: false
     gitlab4:
-      host: gitlab.local.vk.vu
-      domain: gitlab.local.vk.vu
+      host: gitlab.ali.vk.vu
+      domain: gitlab.ali.vk.vu
       external: false
       username: root
       schema: http
     minio4:
-      domain: minio.local.vk.vu
+      domain: minio.ali.vk.vu
       schema: http
     harbor4:
-      domain: harbor.local.vk.vu
+      domain: harbor.ali.vk.vu
       schema: https
     chartmuseum4:
-      domain: chart.local.vk.vu
+      domain: chart.ali.vk.vu
       schema: http
     api-gateway4:
-      domain: api.local.vk.vu
+      domain: api.ali.vk.vu
+      schema: http
+    notify-service4:
+      domain: notify.ali.vk.vu
+      schema: http
+    choerodon-front4:
+      domain: front.ali.vk.vu
+      schema: http
+    devops-service4:
+      domain: devops.ali.vk.vu
+      schema: ws
+    choerodon-front4:
+      domain: c7n.ali.vk.vu
+      schema: http

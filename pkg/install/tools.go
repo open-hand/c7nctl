@@ -18,6 +18,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"bufio"
 )
 
 var Ctx Context
@@ -375,4 +376,20 @@ start:
 	fmt.Println("waiting...")
 
 	return string(bytePassword[:]), nil
+}
+
+func AcceptUserInput(input Input) (string, error) {
+start:
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(input.Tip)
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		Ctx.CheckExist(128)
+	}
+	r := regexp.MustCompile(input.Regex)
+	if !r.MatchString(text) {
+		log.Error("input format not correct,try again")
+		goto start
+	}
+	return text, nil
 }

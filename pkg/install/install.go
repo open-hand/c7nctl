@@ -77,6 +77,7 @@ type Spec struct {
 	Agile       []*InfraResource `json:"agile"`
 	TestManager []*InfraResource `json:"testManager"`
 	Front       []*InfraResource `json:"front"`
+	Wiki        []*InfraResource `json:"wiki"`
 }
 
 type Basic struct {
@@ -261,9 +262,10 @@ func (p *PreValue) GetResource(key string) *config.Resource {
 }
 
 type Input struct {
-	Enabled bool
-	Regex   string
-	Tip     string
+	Enabled  bool
+	Regex    string
+	Tip      string
+	Password bool
 }
 
 func (i *Install) CleanJobs() error {
@@ -475,6 +477,12 @@ func (i *Install) Run(args ...string) error {
 		return err
 	}
 
+	// install 前端服务
+	log.Info("start install choerodon:front ")
+	if err := i.Install(i.Spec.Front); err != nil {
+		return err
+	}
+
 	// install 敏捷服务
 	log.Info("start install choerodon:agile")
 	if err := i.Install(i.Spec.Agile); err != nil {
@@ -487,9 +495,9 @@ func (i *Install) Run(args ...string) error {
 		return err
 	}
 
-	// install 测试管理服务
-	log.Info("start install choerodon:front ")
-	if err := i.Install(i.Spec.Front); err != nil {
+	// install 知识管理服务
+	log.Info("start install choerodon:wiki manager")
+	if err := i.Install(i.Spec.Wiki); err != nil {
 		return err
 	}
 

@@ -182,13 +182,17 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 		value := ""
 		if v.Input.Enabled {
 			log.Lock()
-			password, err := AcceptUserPassword(v.Input)
+			var err error
+			if v.Input.Password {
+				value, err = AcceptUserPassword(v.Input)
+			} else {
+				value, err = AcceptUserInput(v.Input)
+			}
 			log.Unlock()
 			if err != nil {
 				log.Error(err)
 				os.Exit(128)
 			}
-			value = password
 		} else {
 			value = infra.renderValue(v.Value)
 		}
@@ -423,17 +427,20 @@ func (infra *InfraResource) CheckInstall() error {
 	if err := infra.applyUserResource(); err != nil {
 		return err
 	}
-	// 初始化value
-	if err := infra.executePreValues(); err != nil {
-		return err
-	}
+
 	if news != nil {
 		log.Successf("using exist release %s", news.RefName)
 		if news.Status == CreatedStatus {
+			infra.PreValues = news.PreValue
 			infra.CheckExecuteAfterTasks()
 		}
 		return nil
 	}
+	// 初始化value
+	if err := infra.executePreValues(); err != nil {
+		return err
+	}
+
 	// 执行安装前命令
 	if err := infra.executePreCommands(); err != nil {
 		return err
