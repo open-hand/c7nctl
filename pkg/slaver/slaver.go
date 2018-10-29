@@ -204,9 +204,10 @@ getFreePort:
 		goto getFreePort
 		conn.Close()
 	}
-	log.Info(port)
 
-	fw, err := portforward.New(dialer, []string{s.getForwardPorts(portName, port)}, stopCh, readyCh, os.Stdout, os.Stderr)
+	out := &bytes.Buffer{}
+
+	fw, err := portforward.New(dialer, []string{s.getForwardPorts(portName, port)}, stopCh, readyCh, out, os.Stderr)
 
 	if err != nil {
 		log.Error(err)
