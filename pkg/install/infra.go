@@ -210,7 +210,8 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 		} else {
 			value = infra.renderValue(v.Value)
 		}
-		values[k] = fmt.Sprintf("%s=%s", v.Name, value)
+		name := infra.renderValue(v.Name)
+		values[k] = fmt.Sprintf("%s=%s", name, value)
 		v.Value = value
 		cvList = append(cvList,v)
 	}
@@ -287,6 +288,7 @@ func (infra *InfraResource) Install() error {
 		Resource:  infra.renderResource(),
 		Values:    cvList,
 		PreValue:  infra.PreValues,
+		Version:   infra.Version,
 	}
 	defer Ctx.SaveNews(news)
 
@@ -492,7 +494,7 @@ func (infra *InfraResource) catchInitJobs() error {
 	}
 	for _, job := range jobList.Items{
 		if job.Status.Active > 0 {
-			log.Infof("job %s haven't finished yet", job.Name)
+			log.Infof("job %s haven't finished yet. please wait patiently", job.Name)
 			jobLabelSelector := fmt.Sprintf("job-name=%s",job.Name)
 			infra.catchPodLogs(jobLabelSelector)
 		}

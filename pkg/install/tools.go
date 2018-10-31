@@ -72,6 +72,7 @@ type News struct {
 	Values    []ChartValue
 	PreValue  PreValueList
 	TaskType  string
+	Version   string
 }
 
 type NewsResourceList struct {
@@ -205,6 +206,26 @@ func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *N
 			return &p
 		}
 	}
+	return nil
+}
+
+func (ctx *Context) DeleteSucceedTask(appName string) error {
+	nr := ctx.getSucceedData(staticExecutedKey)
+	leftNews := make([]News,0)
+	for _, v := range nr.News {
+		if v.RefName == appName  {
+			// todo: make sure gc effort
+		}else {
+			leftNews = append(leftNews,v)
+		}
+	}
+
+	newData, err := yaml.Marshal(leftNews)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	ctx.saveConfigMapData(string(newData[:]), staticLogName, staticExecutedKey)
 	return nil
 }
 

@@ -34,6 +34,7 @@ var installCmd = &cobra.Command{
 			log.Error(err)
 			log.Error("install failed")
 		}
+		log.Success("Install succeed")
 		return nil
 	},
 }

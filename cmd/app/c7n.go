@@ -1,22 +1,19 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
 	"github.com/choerodon/c7n/pkg/install"
 	kube2 "github.com/choerodon/c7n/pkg/kube"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
-	"net/http"
 	"os"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"encoding/json"
 )
 
 var (
@@ -34,84 +31,22 @@ var (
 	tillerTunnel     *kube.Tunnel
 	settings         helm_env.EnvSettings
 	ResourceFile     string
-	currentVersion   Version
 	client           *helm.Client
 	defaultNamespace = "choerodon"
 	UserConfig       *config.Config
 )
 
 const (
-	remoteConfigUrlPrefix = "http://share.hd.wenqi.us/install"
-	versionPath           = "/version.yml"
-	installConfigPath     = "/%s/install.yml"
-	repoUrl               = "https://openchart.choerodon.com.cn/choerodon/c7n/"
-	C7nLabelKey           = "c7n-usage"
-	C7nLabelValue         = "c7n-installer"
+	repoUrl       = "https://openchart.choerodon.com.cn/choerodon/c7n/"
+	C7nLabelKey   = "c7n-usage"
+	C7nLabelValue = "c7n-installer"
 )
 
-func getVersions() Versions {
-	data := requireRemoteResource(versionPath)
-	versions := Versions{}
-	yaml_v2.Unmarshal(data, &versions)
-	return versions
-}
-
-func getVersion(set *pflag.FlagSet) Version {
-	versions := getVersions()
-	//todo: select version
-	return versions.GetLastStable()
-}
-
-func requireRemoteResource(resourcePath string) []byte {
-	log.Infof("getting resource %s", resourcePath)
-	var (
-		data []byte
-		err  error
-	)
-	resp, err := http.Get(fmt.Sprintf("%s%s", remoteConfigUrlPrefix, resourcePath))
-	if err != nil {
-		log.Error(err)
-		os.Exit(127)
+func getUserConfig(filePath string) *config.Config {
+	if filePath == "" {
+		log.Debugf("no user config defined by `-c`")
+		return nil
 	}
-	defer resp.Body.Close()
-
-	data, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Get resource %s failed", resourcePath)
-		log.Error(err)
-		os.Exit(127)
-	}
-	return data
-}
-
-func getInstallConfig() *install.Install {
-	var (
-		data []byte
-		err  error
-	)
-	var install = &install.Install{}
-
-	// request network resource
-	if ResourceFile == "" {
-		data = requireRemoteResource(fmt.Sprintf(installConfigPath, currentVersion.Version))
-
-	}
-	if ResourceFile != "" {
-		data, err = ioutil.ReadFile(ResourceFile)
-		if err != nil {
-			log.Error("read install file error")
-			os.Exit(127)
-		}
-	}
-	data2, err := yaml.ToJSON(data)
-	if err != nil {
-		panic(err)
-	}
-	json.Unmarshal(data2, install)
-	return install
-}
-
-func getUserConfig(filePath string) {
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Error(err)
@@ -123,58 +58,78 @@ func getUserConfig(filePath string) {
 		log.Error(err)
 		os.Exit(124)
 	}
-	UserConfig = userConfig
+	return userConfig
 
 }
 func TearDown() {
 	tillerTunnel.Close()
 }
 
-func Install(cmd *cobra.Command, args []string) error {
+func GetInstall(cmd *cobra.Command, args []string) *install.Install {
+	var ResourceFile string
 	var err error
-	// get current version to
-	currentVersion = getVersion(cmd.Flags())
-
 	// get install configFile
 	ResourceFile, err = cmd.Flags().GetString("resource-file")
 	if err != nil {
 		log.Error(err)
 		os.Exit(123)
 	}
-
 	configFile, err := cmd.Flags().GetString("config-file")
-	getUserConfig(configFile)
+	UserConfig = getUserConfig(configFile)
 
-	// get install config
-	installConfig := getInstallConfig()
+	r := config.ResourceDefinition{}
+	r.LocalFile = ResourceFile
+	var installDef = &install.Install{}
 
-	if installConfig.Version == "" {
+	data, err := r.GetResourceDate()
+	if err != nil {
+		log.Error(err)
+
+	}
+	data2, err := yaml.ToJSON(data)
+	if err != nil {
+		panic(err)
+	}
+	json.Unmarshal(data2, installDef)
+
+	if installDef.Version == "" {
 		log.Error("get install config error")
 		os.Exit(127)
 	}
 
-	defer TearDown()
-	//tunnel.Close()
-
-	installConfig.UserConfig = UserConfig
+	installDef.UserConfig = UserConfig
 
 	commonLabels := make(map[string]string)
 	commonLabels[C7nLabelKey] = C7nLabelValue
-	installConfig.CommonLabels = commonLabels
-
+	installDef.CommonLabels = commonLabels
 	// prepare environment
 	tillerTunnel = kube2.GetTunnel()
 	helmClient := &helm.Client{
 		Tunnel: tillerTunnel,
 	}
 	helmClient.InitClient()
-	installConfig.HelmClient = helmClient
+	installDef.HelmClient = helmClient
 
 	if disable, _ := cmd.Flags().GetBool("no-timeout"); disable {
-		installConfig.Timeout = 60 * 60 * 24
+		installDef.Timeout = 60 * 60 * 24
 	}
+
+	if UserConfig == nil {
+		installDef.Namespace = "c7n-system"
+	}else {
+		installDef.Namespace = UserConfig.Metadata.Namespace
+	}
+	return installDef
+}
+
+func Install(cmd *cobra.Command, args []string) error {
+
+	InstallDef := GetInstall(cmd, args)
+
+	defer TearDown()
+	//tunnel.Close()
 	// do install
-	return installConfig.Run(args...)
+	return InstallDef.Run(args...)
 }
 
 func Delete(cmd *cobra.Command, args []string) error {
@@ -207,6 +162,7 @@ func Delete(cmd *cobra.Command, args []string) error {
 			log.Error(err)
 			log.Errorf("delete %s failed", a)
 		}
+		ctx.DeleteSucceedTask(a)
 	}
 
 	// do delete

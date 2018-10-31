@@ -83,13 +83,20 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		ImagePullPolicy: "Always",
 	}
 
+	volumeSource := core_v1.VolumeSource{
+		PersistentVolumeClaim: &core_v1.PersistentVolumeClaimVolumeSource{
+			ClaimName: s.PvcName,
+		},
+	}
+	if s.PvcName == "" {
+		volumeSource = core_v1.VolumeSource{
+			EmptyDir: &core_v1.EmptyDirVolumeSource{},
+		}
+	}
+
 	volume := core_v1.Volume{
 		Name: "data",
-		VolumeSource: core_v1.VolumeSource{
-			PersistentVolumeClaim: &core_v1.PersistentVolumeClaimVolumeSource{
-				ClaimName: s.PvcName,
-			},
-		},
+		VolumeSource: volumeSource,
 	}
 
 	tmp := core_v1.PodTemplateSpec{

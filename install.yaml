@@ -1,12 +1,12 @@
 version: 0.5
 metadata:
   name: install-all
-  namespace: install
+  namespace: c7n-system
 spec:
   persistence:
     nfs:
 #      server: 98dbe4b804-yxc75.cn-zhangjiakou.nas.aliyuncs.com
-      rootPath: /u01
+#      rootPath: /u01
     storageClassName: nfs-provisioner
   resources:
     mysql:
@@ -15,34 +15,34 @@ spec:
       username: root
       password: xxxxx
       external: false
-    gitlab4:
+    gitlab:
       host: gitlab.ali.vk.vu
       domain: gitlab.ali.vk.vu
       external: false
       username: root
       schema: http
-    minio4:
+    minio:
       domain: minio.ali.vk.vu
       schema: http
-    harbor4:
+    harbor:
       domain: harbor.ali.vk.vu
       schema: https
-    chartmuseum4:
+    chartmuseum:
       domain: chart.ali.vk.vu
       schema: http
-    api-gateway4:
+    api-gateway:
       domain: api.ali.vk.vu
       schema: http
-    notify-service4:
+    notify-service:
       domain: notify.ali.vk.vu
-      schema: http
-    choerodon-front4:
+      schema: ws
+    choerodon-front:
       domain: front.ali.vk.vu
       schema: http
-    devops-service4:
+    devops-service:
       domain: devops.ali.vk.vu
       schema: ws
-    choerodon-front4:
+    choerodon-front:
       domain: c7n.ali.vk.vu
       schema: http
     xwiki:

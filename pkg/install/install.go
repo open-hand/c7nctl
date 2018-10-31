@@ -25,6 +25,7 @@ type Install struct {
 	UserConfig   *config.Config
 	HelmClient   *helm.Client
 	CommonLabels map[string]string
+	Namespace    string
 	Timeout      int
 }
 
@@ -80,6 +81,7 @@ type Spec struct {
 	TestManager []*InfraResource `json:"testManager"`
 	Front       []*InfraResource `json:"front"`
 	Wiki        []*InfraResource `json:"wiki"`
+	Runner      *InfraResource   `json:"runner"`
 }
 
 type Basic struct {
@@ -126,6 +128,7 @@ func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
 		Type:     TaskType,
 		Status:   SucceedStatus,
 		TaskType: SqlTask,
+		Version:  infra.Version,
 	}
 
 	defer Ctx.SaveNews(news)
@@ -159,6 +162,7 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 		Type:     TaskType,
 		Status:   SucceedStatus,
 		TaskType: HttpGetTask,
+		Version:  infra.Version,
 	}
 
 	defer Ctx.SaveNews(news)
@@ -376,6 +380,9 @@ func getClusterResource(client kubernetes.Interface) (int64, int64) {
 }
 
 func (i *Install) PrepareSlaverPvc() (string, error) {
+	if i.UserConfig == nil {
+		return "",nil
+	}
 	pvs := i.UserConfig.Spec.Persistence.GetPersistentVolumeSource("")
 	persistence := Persistence{
 		Client:       i.Client,
@@ -397,6 +404,31 @@ func (i *Install) PrepareSlaverPvc() (string, error) {
 		return "", err
 	}
 	return persistence.RefPvcName, nil
+}
+
+func (i *Install) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error) {
+	// prepare slaver to execute sql or make directory ..
+
+	s := &i.Spec.Basic.Slaver
+	s.Client = i.Client
+	// be care of use point
+	s.CommonLabels = maps.CopySS(i.CommonLabels)
+	s.Namespace = i.Namespace
+
+	if pvcName, err := i.PrepareSlaverPvc(); err != nil {
+		return s,err
+	} else {
+		s.PvcName = pvcName
+	}
+
+	if _, err := s.CheckInstall(); err != nil {
+		return s,err
+	}
+	port := s.ForwardPort("http", stopCh)
+	grpcPort := s.ForwardPort("grpc", stopCh)
+	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
+	s.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
+	return s,nil
 }
 
 func (i *Install) Run(args ...string) error {
@@ -427,35 +459,13 @@ func (i *Install) Run(args ...string) error {
 		UserConfig:   i.UserConfig,
 	}
 
-	// prepare slaver to execute sql or make directory ..
-
-	s := &i.Spec.Basic.Slaver
-	s.Client = i.Client
-	// be care of use point
-	s.CommonLabels = maps.CopySS(i.CommonLabels)
-
-	s.Namespace = i.UserConfig.Metadata.Namespace
-
-	Ctx.Slaver = s
-
-	if pvcName, err := i.PrepareSlaverPvc(); err != nil {
-		return err
-	} else {
-		s.PvcName = pvcName
-	}
-
-	if _, err := s.CheckInstall(); err != nil {
-		return err
-	}
-
 	stopCh := make(chan struct{})
 
-	port := s.ForwardPort("http", stopCh)
-	grpcPort := s.ForwardPort("grpc", stopCh)
-	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
-	s.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
-
-	Ctx.SlaverAddress = fmt.Sprintf("http://127.0.0.1:%d", port)
+	s,err := i.PrepareSlaver(stopCh)
+	if err != nil {
+		return err
+	}
+	Ctx.Slaver = s
 	defer func() {
 		stopCh <- struct{}{}
 	}()

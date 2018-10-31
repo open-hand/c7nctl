@@ -5,24 +5,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-type Versions struct {
-	Versions []Version
-}
-
-func (v *Versions) GetLastStable() Version {
-	for _, version := range v.Versions {
-		if version.Status == "stable" {
-			return version
-		}
-	}
-	return Version{}
-}
-
-type Version struct {
-	Version string
-	Status  string
-}
-
 type Persistence struct {
 	Name string
 	Path string
