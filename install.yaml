@@ -5,8 +5,9 @@ metadata:
 spec:
   persistence:
     nfs:
-      server: 98dbe4b804-ntg59.cn-zhangjiakou.nas.aliyuncs.com
-      rootPath: /install
+#      server: 98dbe4b804-yxc75.cn-zhangjiakou.nas.aliyuncs.com
+      rootPath: /u01
+    storageClassName: nfs-provisioner
   resources:
     mysql:
       host: 192.168.12.88
@@ -44,3 +45,5 @@ spec:
     choerodon-front4:
       domain: c7n.ali.vk.vu
       schema: http
+    xwiki:
+      domain: wiki.ali.vk.vu

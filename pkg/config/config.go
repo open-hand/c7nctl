@@ -11,6 +11,21 @@ type Config struct {
 	Spec     Spec
 }
 
+func (c *Config) GetStorageClassName() string {
+	return c.Spec.Persistence.StorageClassName
+}
+
+func (c *Config) IgnorePv() bool {
+	if c.GetStorageClassName() == "" {
+		return false
+	}
+	// from now just support nfs
+	if c.Spec.Persistence.Nfs.Server == "" {
+		return true
+	}
+	return false
+}
+
 func (c *Config) GetResource(key string) *Resource {
 	if c == nil {
 		return nil
@@ -36,6 +51,7 @@ type Spec struct {
 
 type Persistence struct {
 	Nfs
+	StorageClassName string `yaml:"storageClassName"`
 }
 
 type Nfs struct {

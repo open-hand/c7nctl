@@ -170,6 +170,9 @@ func Install(cmd *cobra.Command, args []string) error {
 	helmClient.InitClient()
 	installConfig.HelmClient = helmClient
 
+	if disable, _ := cmd.Flags().GetBool("no-timeout"); disable {
+		installConfig.Timeout = 60 * 60 * 24
+	}
 	// do install
 	return installConfig.Run(args...)
 }

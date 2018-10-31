@@ -73,6 +73,12 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		return nil
 	}
 
+	if Ctx.UserConfig.IgnorePv() {
+		p.RefPvName = ""
+		log.Debug("ignore create pv because specify storage class and no other persistence config")
+		return nil
+	}
+
 	// create dir
 	dir := slaver.Dir{
 		Mode: p.Mode,
@@ -122,6 +128,8 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 
 	mountOptions := p.MountOptions
 
+	storageClassName := Ctx.UserConfig.GetStorageClassName()
+
 	pv := &v1.PersistentVolume{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "PersistentVolume",
@@ -136,6 +144,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 			Capacity:               p.Capacity,
 			PersistentVolumeSource: pvs,
 			MountOptions:           mountOptions,
+			StorageClassName:       storageClassName,
 		},
 	}
 
@@ -164,6 +173,8 @@ func (p *Persistence) CreatePvc() error {
 		Requests: resList,
 	}
 
+	storageClassName := Ctx.UserConfig.GetStorageClassName()
+
 	pvc := &v1.PersistentVolumeClaim{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -174,9 +185,10 @@ func (p *Persistence) CreatePvc() error {
 			Labels: p.CommonLabels,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes: p.AccessModes,
-			Resources:   res,
-			VolumeName:  p.RefPvName,
+			AccessModes:      p.AccessModes,
+			Resources:        res,
+			VolumeName:       p.RefPvName,
+			StorageClassName: &storageClassName,
 		},
 	}
 

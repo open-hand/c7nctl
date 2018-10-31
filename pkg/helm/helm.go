@@ -108,7 +108,7 @@ func (client *Client) InitClient() {
 	settings := &client.Settings
 	if settings.TillerHost == "" && client.Tunnel != nil {
 		settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", client.Tunnel.Local)
-		settings.TillerConnectionTimeout = 300
+		settings.TillerConnectionTimeout = 86400
 	}
 
 	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
@@ -144,7 +144,7 @@ func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error
 		helm.InstallDryRun(false),
 		helm.InstallReuseName(false),
 		helm.InstallDisableHooks(false),
-		helm.InstallTimeout(300),
+		helm.InstallTimeout(86400),
 		helm.InstallWait(false))
 	if err != nil {
 		return err

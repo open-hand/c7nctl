@@ -25,6 +25,7 @@ type Install struct {
 	UserConfig   *config.Config
 	HelmClient   *helm.Client
 	CommonLabels map[string]string
+	Timeout      int
 }
 
 type Metadata struct {
@@ -47,6 +48,7 @@ type InfraResource struct {
 	PreValues    PreValueList
 	Requirements []string
 	Health       Health
+	Timeout      int
 }
 
 type Health struct {
@@ -206,6 +208,7 @@ type ChartValue struct {
 	Name  string
 	Value string
 	Input Input
+	Case  string
 }
 
 type PreValue struct {
@@ -304,6 +307,7 @@ func (i *Install) Install(apps []*InfraResource) error {
 		infra.Client = i.HelmClient
 		infra.Namespace = i.UserConfig.Metadata.Namespace
 		infra.Home = i
+		infra.Timeout = i.Timeout
 		if infra.RepoURL == "" {
 			infra.RepoURL = i.Spec.Basic.RepoURL
 		}

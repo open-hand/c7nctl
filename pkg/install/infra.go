@@ -38,6 +38,14 @@ func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	return nil
 }
 
+func (infra *InfraResource) GetUserStorageClassName()string {
+	return Ctx.UserConfig.GetStorageClassName()
+}
+
+func (infra *InfraResource) IgnorePv() bool {
+	return Ctx.UserConfig.IgnorePv()
+}
+
 func (infra *InfraResource) preparePersistence(client kubernetes.Interface, config *config.Config, commonLabel map[string]string) error {
 	getPvs := config.Spec.Persistence.GetPersistentVolumeSource
 	namespace := config.Metadata.Namespace
@@ -177,9 +185,15 @@ func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
 func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 	values := make([]string, len(infra.Values))
 	// store values for feature use
-	cvList := make([]ChartValue, len(infra.Values))
+	cvList := make([]ChartValue,0)
 	for k, v := range infra.Values {
 		value := ""
+		//case
+		statement :=  infra.renderValue(v.Case)
+		if statement == "false" {
+			log.Debugf("evict %s because case not true", v.Name)
+			continue
+		}
 		if v.Input.Enabled {
 			log.Lock()
 			var err error
@@ -198,7 +212,7 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 		}
 		values[k] = fmt.Sprintf("%s=%s", v.Name, value)
 		v.Value = value
-		cvList[k] = v
+		cvList = append(cvList,v)
 	}
 	// todo: no return cvList ?
 	infra.Values = cvList
@@ -254,6 +268,9 @@ func (infra *InfraResource) Install() error {
 	log.Infof("installing %s", infra.Name)
 	for _, k := range values {
 		log.Debugf(k)
+	}
+	if infra.Timeout > 0 {
+		values = append(values, fmt.Sprintf("preJob.timeout=%d", infra.Timeout))
 	}
 	err := infra.Client.InstallRelease(values, chartArgs)
 
@@ -455,12 +472,50 @@ func (infra *InfraResource) CheckInstall() error {
 
 	for {
 		select {
+		case <-time.Tick(time.Second * 10):
+			infra.catchInitJobs()
 		case err := <-statusCh:
 			return err
-		case <-time.Tick(time.Second * 10):
-			log.Infof("still install %s", infra.Name)
 		}
+	}
+	return nil
+}
 
+func (infra *InfraResource) catchInitJobs() error {
+	client := infra.Home.Client
+	jobInterface := client.BatchV1().Jobs(Ctx.UserConfig.Metadata.Namespace)
+	jobList, err := jobInterface.List(v1.ListOptions{
+		LabelSelector: fmt.Sprintf("choerodon.io/release=%s",infra.Name),
+	})
+	if err != nil {
+		return err
+	}
+	for _, job := range jobList.Items{
+		if job.Status.Active > 0 {
+			log.Infof("job %s haven't finished yet", job.Name)
+			jobLabelSelector := fmt.Sprintf("job-name=%s",job.Name)
+			infra.catchPodLogs(jobLabelSelector)
+		}
+	}
+	log.Debugf("still install %s", infra.Name)
+	return nil
+}
+
+func (infra *InfraResource) catchPodLogs(labelSelector string) error {
+	client := infra.Home.Client
+	podList, err := client.CoreV1().Pods(infra.Namespace).List(v1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return err
+	}
+
+
+	for _, po := range podList.Items {
+		if po.Status.Phase == core_v1.PodRunning{
+			log.Debugf("you can watch logs by execute follow command:\nkubectl logs -f %s -n %s",
+				po.Name,po.Namespace)
+		}
 	}
 	return nil
 }

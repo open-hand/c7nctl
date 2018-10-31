@@ -32,8 +32,22 @@ func TestHelmValues(t *testing.T) {
 				Value: "",
 				Input: Input{},
 			},
+			ChartValue{
+				Name: "cde",
+				Value: "cde",
+				Case: "{{ not .IgnorePv }}",
+			},
 		},
 		Name: "test-name-1",
+	}
+	Ctx = Context{
+		UserConfig: &config.Config{
+			Spec: config.Spec{
+				Persistence: config.Persistence{
+					StorageClassName: "",
+				},
+			},
+		},
 	}
 	infra.HelmValues()
 }
