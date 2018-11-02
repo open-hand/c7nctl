@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	remoteConfigUrlPrefix = "http://share.hd.wenqi.us/install"
+	remoteConfigUrlPrefix = "https://file.choerodon.com.cn/choerodon-install"
 	versionPath           = "/version.yml"
 	installConfigPath     = "/%s/install.yml"
 )

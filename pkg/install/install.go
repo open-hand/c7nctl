@@ -300,6 +300,7 @@ func (i *Install) CleanJobs() error {
 func (i *Install) Install(apps []*InfraResource) error {
 	// 安装基础组件
 	for _, infra := range apps {
+		log.Infof("start install %s",infra.Name)
 		if r := i.UserConfig.GetResource(infra.Name); r != nil && r.External {
 			log.Infof("using external %s", infra.Name)
 			continue
