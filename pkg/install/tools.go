@@ -349,6 +349,18 @@ func RandomToken(length int) string {
 	return string(bytes)
 }
 
+func GenerateRunnerToken(length int) string {
+	bytes := make([]byte, length)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < length; i++ {
+		random.Seed(time.Now().UnixNano())
+		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
+			random.Slice{Start: 97, End: 122})
+		bytes[i] = byte(op) //A=65 and Z = 65+25
+	}
+	return string(bytes)
+}
+
 func RandomString(length ...int) string {
 
 	randomLength := randomLength

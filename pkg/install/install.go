@@ -225,6 +225,10 @@ func (p *PreValue) RandomToken(length int) string {
 	return RandomToken(length)
 }
 
+func (p *PreValue) RandomLowCaseToken(length int) string {
+	return GenerateRunnerToken(length)
+}
+
 func (p *PreValue) renderValue() error {
 	tpl, err := template.New(p.Name).Parse(p.Value)
 	if err != nil {

@@ -1,9 +1,6 @@
 package gitlab
 
 import (
-	"time"
-	"github.com/vinkdong/gox/random"
-	"math/rand"
 	"github.com/choerodon/c7n/pkg/install"
 	"github.com/choerodon/c7n/pkg/kube"
 )
@@ -15,17 +12,6 @@ type Runner struct {
 	InstallDef *install.Install
 }
 
-func (runner *Runner) GenerateRunnerToken() string {
-	bytes := make([]byte, RunnerTokenLength)
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < RunnerTokenLength; i++ {
-		random.Seed(time.Now().UnixNano())
-		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
-			random.Slice{Start: 97, End: 122})
-		bytes[i] = byte(op) //A=65 and Z = 65+25
-	}
-	return string(bytes)
-}
 
 func (runner *Runner) InstallRunner() error {
 
