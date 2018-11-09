@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 	"bufio"
+	"strings"
 )
 
 var Ctx Context
@@ -407,6 +408,7 @@ start:
 	if err != nil {
 		Ctx.CheckExist(128)
 	}
+	text = strings.Trim(text,"\n")
 	r := regexp.MustCompile(input.Regex)
 	if !r.MatchString(text) {
 		log.Error("input format not correct,try again")
