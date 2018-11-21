@@ -18,11 +18,9 @@ func (runner *Runner) InstallRunner() error {
 	runner.InstallDef.Client = kube.GetClient()
 	i := runner.InstallDef
 
-
-
 	ctx := install.Context{
 		Client:       i.Client,
-		Namespace:    runner.Namespace,
+		Namespace:    i.Namespace,
 		CommonLabels: i.CommonLabels,
 		UserConfig:   i.UserConfig,
 	}

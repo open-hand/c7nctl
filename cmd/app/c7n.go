@@ -77,9 +77,13 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 	configFile, err := cmd.Flags().GetString("config-file")
 	UserConfig = getUserConfig(configFile)
 
+	prefix, _ := cmd.Flags().GetString("prefix")
+
 	r := config.ResourceDefinition{}
 	r.LocalFile = ResourceFile
 	var installDef = &install.Install{}
+
+	installDef.Prefix = prefix
 
 	data, err := r.GetResourceDate()
 	if err != nil {

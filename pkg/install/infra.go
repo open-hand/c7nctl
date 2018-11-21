@@ -38,7 +38,7 @@ func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	return nil
 }
 
-func (infra *InfraResource) GetUserStorageClassName()string {
+func (infra *InfraResource) GetUserStorageClassName() string {
 	return Ctx.UserConfig.GetStorageClassName()
 }
 
@@ -113,7 +113,7 @@ func (infra *InfraResource) renderValue(tplString string) string {
 
 func (infra *InfraResource) GetPods() (*core_v1.PodList, error) {
 	selectLabel := make(map[string]string)
-	selectLabel["choerodon.io/release"] = infra.Name
+	selectLabel["choerodon.io/release"] = infra.WithPrefix() + infra.Name
 	set := labels.Set(selectLabel)
 	opts := v1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
@@ -185,11 +185,11 @@ func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
 func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 	values := make([]string, len(infra.Values))
 	// store values for feature use
-	cvList := make([]ChartValue,0)
+	cvList := make([]ChartValue, 0)
 	for k, v := range infra.Values {
 		value := ""
 		//case
-		statement :=  infra.renderValue(v.Case)
+		statement := infra.renderValue(v.Case)
 		if statement == "false" {
 			log.Debugf("evict %s because case not true", v.Name)
 			continue
@@ -213,7 +213,7 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 		name := infra.renderValue(v.Name)
 		values[k] = fmt.Sprintf("%s=%s", name, value)
 		v.Value = value
-		cvList = append(cvList,v)
+		cvList = append(cvList, v)
 	}
 	// todo: no return cvList ?
 	infra.Values = cvList
@@ -249,6 +249,7 @@ func (infra *InfraResource) renderResource() config.Resource {
 		log.Debugf("%s: resource password is %s", infra.Name, r.Password)
 	}
 	r.Url = infra.renderValue(r.Url)
+	r.Host = infra.renderValue(r.Host)
 	if r.Url != "" {
 		log.Debugf("%s: resource url is %s", infra.Name, r.Url)
 	}
@@ -258,8 +259,13 @@ func (infra *InfraResource) renderResource() config.Resource {
 // install infra
 func (infra *InfraResource) Install() error {
 	values, cvList := infra.HelmValues()
+
+	releaseName := infra.Name
+	if infra.Prefix != "" {
+		releaseName = fmt.Sprintf("%s-%s", infra.Prefix, infra.Name)
+	}
 	chartArgs := helm.ChartArgs{
-		ReleaseName: infra.Name,
+		ReleaseName: releaseName,
 		Namespace:   infra.Namespace,
 		RepoUrl:     infra.RepoURL,
 		Verify:      false,
@@ -289,6 +295,7 @@ func (infra *InfraResource) Install() error {
 		Values:    cvList,
 		PreValue:  infra.PreValues,
 		Version:   infra.Version,
+		Prefix:    infra.Prefix,
 	}
 	defer Ctx.SaveNews(news)
 
@@ -314,6 +321,13 @@ func (infra *InfraResource) CheckExecuteAfterTasks() error {
 	Ctx.AddBackendTask(task)
 	go infra.executeAfterTasks(task)
 	return nil
+}
+
+func (infra *InfraResource) WithPrefix() string {
+	if infra.Prefix == "" {
+		return ""
+	}
+	return infra.Prefix + "-"
 }
 
 func (infra *InfraResource) executeAfterTasks(task *BackendTask) error {
@@ -438,6 +452,9 @@ func (infra *InfraResource) CheckInstall() error {
 	// check requirement started
 	for _, r := range infra.Requirements {
 		i := infra.GetInfra(r)
+		if i.Prefix == "" {
+			i.Prefix = infra.Prefix
+		}
 		if err := i.CheckRunning(); err != nil {
 			return err
 		}
@@ -487,15 +504,15 @@ func (infra *InfraResource) catchInitJobs() error {
 	client := infra.Home.Client
 	jobInterface := client.BatchV1().Jobs(Ctx.UserConfig.Metadata.Namespace)
 	jobList, err := jobInterface.List(v1.ListOptions{
-		LabelSelector: fmt.Sprintf("choerodon.io/release=%s",infra.Name),
+		LabelSelector: fmt.Sprintf("choerodon.io/release=%s", infra.Name),
 	})
 	if err != nil {
 		return err
 	}
-	for _, job := range jobList.Items{
+	for _, job := range jobList.Items {
 		if job.Status.Active > 0 {
 			log.Infof("job %s haven't finished yet. please wait patiently", job.Name)
-			jobLabelSelector := fmt.Sprintf("job-name=%s",job.Name)
+			jobLabelSelector := fmt.Sprintf("job-name=%s", job.Name)
 			infra.catchPodLogs(jobLabelSelector)
 		}
 	}
@@ -512,11 +529,10 @@ func (infra *InfraResource) catchPodLogs(labelSelector string) error {
 		return err
 	}
 
-
 	for _, po := range podList.Items {
-		if po.Status.Phase == core_v1.PodRunning{
+		if po.Status.Phase == core_v1.PodRunning {
 			log.Debugf("you can watch logs by execute follow command:\nkubectl logs -f %s -n %s",
-				po.Name,po.Namespace)
+				po.Name, po.Namespace)
 		}
 	}
 	return nil

@@ -74,6 +74,7 @@ type News struct {
 	PreValue  PreValueList
 	TaskType  string
 	Version   string
+	Prefix    string
 }
 
 type NewsResourceList struct {
@@ -94,7 +95,7 @@ func (ctx *Context) CheckExist(code int) {
 	if !ctx.HasBackendTask() {
 		os.Exit(code)
 	}
-	log.Info("some backend task not finished with it to be finished")
+	log.Info("some backend task not finished yet wait it to be finished")
 	for {
 		select {
 		case <-time.Tick(time.Second * 1):
@@ -146,7 +147,8 @@ func (ctx *Context) SaveNews(news *News) error {
 }
 
 func (ctx *Context) UpdateCreated(name, namespace string) error {
-
+	ctx.Mux.Lock()
+	defer ctx.Mux.Unlock()
 	nr := ctx.getSucceedData()
 	isUpdate := false
 	for k, v := range nr.News {
@@ -211,6 +213,8 @@ func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *N
 }
 
 func (ctx *Context) DeleteSucceedTask(appName string) error {
+	ctx.Mux.Lock()
+	defer ctx.Mux.Unlock()
 	nr := ctx.getSucceedData(staticExecutedKey)
 	leftNews := make([]News,0)
 	for _, v := range nr.News {
@@ -231,6 +235,8 @@ func (ctx *Context) DeleteSucceedTask(appName string) error {
 }
 
 func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
+	ctx.Mux.Lock()
+	defer ctx.Mux.Unlock()
 	nr := ctx.getSucceedData()
 	index := -1
 	for k, v := range nr.News {
@@ -281,7 +287,8 @@ func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
 }
 
 func (ctx *Context) createNewsData() *v1.ConfigMap {
-
+	ctx.Mux.Lock()
+	defer ctx.Mux.Unlock()
 	data := make(map[string]string)
 	data[staticLogKey] = ""
 	cm := &v1.ConfigMap{
@@ -375,6 +382,33 @@ func RandomString(length ...int) string {
 	return string(bytes)
 }
 
+func CheckMatch(value string, input Input) bool {
+
+	r := regexp.MustCompile(input.Regex)
+	if !r.MatchString(value) {
+		log.Errorf("输入不满足需求")
+		return false
+	}
+
+	for _, include := range input.Include {
+		r := regexp.MustCompile(include.Value)
+		if !r.MatchString(value) {
+			log.Errorf(include.Name)
+			return false
+		}
+	}
+
+	for _,exclude := range input.Exclude {
+		r := regexp.MustCompile(exclude.Value)
+		if r.MatchString(value) {
+			log.Errorf(exclude.Name)
+			return false
+		}
+	}
+
+	return true
+}
+
 func AcceptUserPassword(input Input) (string, error) {
 start:
 	fmt.Print(input.Tip)
@@ -384,25 +418,23 @@ start:
 		return "", err
 	}
 
-	r := regexp.MustCompile(input.Regex)
-	if !r.MatchString(string(bytePassword[:])) {
-		log.Error("password format not correct,try again")
+	if !CheckMatch(string(bytePassword[:]),input) {
 		goto start
 	}
 
-	fmt.Print("enter again:")
+	fmt.Print("请再输入一次:")
 	bytePassword2, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	if err != nil {
 		return "", err
 	}
 	if len(bytePassword2) != len(bytePassword) {
-		log.Error("password length not match, please try again")
+		log.Error("两次输入长度不符")
 		goto start
 	}
 	for k, v := range bytePassword {
 		if bytePassword2[k] != v {
-			log.Error("password not match, please try again")
+			log.Error("两次输入不同")
 			goto start
 		}
 	}
@@ -421,9 +453,8 @@ start:
 		Ctx.CheckExist(128)
 	}
 	text = strings.Trim(text,"\n")
-	r := regexp.MustCompile(input.Regex)
-	if !r.MatchString(text) {
-		log.Error("input format not correct,try again")
+
+	if !CheckMatch(text,input) {
 		goto start
 	}
 	return text, nil

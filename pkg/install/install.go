@@ -27,6 +27,7 @@ type Install struct {
 	CommonLabels map[string]string
 	Namespace    string
 	Timeout      int
+	Prefix       string
 }
 
 type Metadata struct {
@@ -50,6 +51,7 @@ type InfraResource struct {
 	Requirements []string
 	Health       Health
 	Timeout      int
+	Prefix       string
 }
 
 type Health struct {
@@ -277,6 +279,13 @@ type Input struct {
 	Regex    string
 	Tip      string
 	Password bool
+	Include []KV
+	Exclude []KV
+}
+
+type KV struct {
+	Name  string
+	Value string
 }
 
 func (i *Install) CleanJobs() error {
@@ -317,6 +326,7 @@ func (i *Install) Install(apps []*InfraResource) error {
 		infra.Namespace = i.UserConfig.Metadata.Namespace
 		infra.Home = i
 		infra.Timeout = i.Timeout
+		infra.Prefix = i.Prefix
 		if infra.RepoURL == "" {
 			infra.RepoURL = i.Spec.Basic.RepoURL
 		}

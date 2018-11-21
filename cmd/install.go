@@ -49,6 +49,7 @@ func init() {
 	installCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
 	installCmd.Flags().Bool("debug", false, "enable debug output")
 	installCmd.Flags().Bool("no-timeout",false,"disable install job timeout")
+	installCmd.Flags().String("prefix","","add prefix to all helm release")
 	rootCmd.AddCommand(installCmd)
 
 	// Here you will define your flags and configuration settings.
