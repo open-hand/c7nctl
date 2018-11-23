@@ -14,7 +14,7 @@ set -ex \
 
 WORKDIR /etc/c7n
 
-mv install.yml /etc/c7n/install.yml
+ADD install.yml /etc/c7n/install.yml
 
 ENTRYPOINT c7n
 CMD ["install","-c","/etc/c7n/install.yml","--no-timeout"]
