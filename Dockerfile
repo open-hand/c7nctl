@@ -16,5 +16,5 @@ WORKDIR /etc/c7n
 
 ADD install.yml /etc/c7n/install.yml
 
-ENTRYPOINT c7n
+ENTRYPOINT ["/usr/local/bin/c7n"]
 CMD ["install","-c","/etc/c7n/install.yml","--no-timeout"]
