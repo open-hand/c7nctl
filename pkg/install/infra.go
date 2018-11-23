@@ -424,6 +424,21 @@ func (infra *InfraResource) CheckRunning() error {
 		}
 	}
 
+	// check podRunning
+	for _, p := range infra.Health.PodStatus {
+		p.Client = infra.Home.Client
+		p.Namespace = infra.Namespace
+		p.Name = infra.renderValue(p.Name)
+		log.Infof("check %s running",p.Name)
+check:
+		err := p.MustRunning()
+		if err != nil {
+			log.Debug(err)
+			time.Sleep(time.Second * 2)
+			goto check
+		}
+	}
+
 	return err
 }
 

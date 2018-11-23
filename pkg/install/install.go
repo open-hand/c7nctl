@@ -15,6 +15,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/maps"
 	"os"
 	"text/template"
+	syserr "errors"
 )
 
 type Install struct {
@@ -55,9 +56,31 @@ type InfraResource struct {
 }
 
 type Health struct {
-	HttpGet []HttpGetCheck `yaml:"httpGet"`
-	Socket  []SocketCheck
+	HttpGet   []HttpGetCheck `yaml:"httpGet"`
+	Socket    []SocketCheck
+	PodStatus []PodCheck     `yaml:"podStatus"`
 }
+
+type PodCheck struct {
+	Name      string
+	Status    v1.PodPhase
+	Namespace string
+	Client    kubernetes.Interface
+}
+
+func (p *PodCheck) MustRunning() error {
+	po, err := p.Client.CoreV1().Pods(p.Namespace).Get(p.Name, meta_v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	
+	if status := po.Status.Phase; status != p.Status {
+		return syserr.New(fmt.Sprintf("[ %s ] pod status is %s, need %s", p.Name, status, p.Status))
+	}
+
+	return nil
+}
+
 
 type SocketCheck struct {
 	Name string
