@@ -73,7 +73,7 @@ func (p *PodCheck) MustRunning() error {
 	if err != nil {
 		return err
 	}
-	
+
 	if status := po.Status.Phase; status != p.Status {
 		return syserr.New(fmt.Sprintf("[ %s ] pod status is %s, need %s", p.Name, status, p.Status))
 	}

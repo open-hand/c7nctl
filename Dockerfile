@@ -4,12 +4,17 @@ ADD . .
 
 RUN go build .
 
-FROM alpine
+FROM vinkdong/helm:2.11.0
 
-COPY --from=builder /go/src/github.com/choerodon/c7n/c7n /c7n
+COPY --from=builder /go/src/github.com/choerodon/c7n/c7n usr/local/bin/
 
 RUN \
 set -ex \
    && apk add --no-cache ca-certificates
 
-CMD ["/c7n"]
+WORKDIR /etc/c7n
+
+mv install.yml /etc/c7n/install.yml
+
+ENTRYPOINT c7n
+CMD ["install","-c","/etc/c7n/install.yml","--no-timeout"]
