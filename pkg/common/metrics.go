@@ -26,7 +26,7 @@ type Metrics struct {
 
 const (
 	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
-	ipUrl      = "http://ns1.dnspod.net:6666"
+	ipAddr      = "ns1.dnspod.net:6666"
 )
 
 func (m *Metrics) Send() {
@@ -63,7 +63,7 @@ func (m *Metrics) pack() []byte {
 }
 
 func GetPublicIP() string {
-	conn, _ := net.Dial("tcp", "ns1.dnspod.net:6666")
+	conn, _ := net.Dial("tcp", ipAddr)
 	defer conn.Close()
 
 	ip, _ := bufio.NewReader(conn).ReadString('\n')
