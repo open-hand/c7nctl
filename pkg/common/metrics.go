@@ -7,22 +7,26 @@ import (
 	"net/http"
 	"bytes"
 	"github.com/vinkdong/gox/log"
+	"net"
+	"bufio"
 )
 
 type Metrics struct {
-	CPU         int64
-	Memory      int64
-	Province    string
-	City        string
-	Version     string
-	Status      string
-	ErrorMsg    []string
-	CurrentApp  string
-	Mux         sync.Mutex
+	CPU        int64
+	Memory     int64
+	Province   string
+	City       string
+	Version    string
+	Status     string
+	ErrorMsg   []string
+	CurrentApp string
+	Mux        sync.Mutex
+	Ip         string
 }
 
 const (
 	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
+	ipUrl      = "http://ns1.dnspod.net:6666"
 )
 
 func (m *Metrics) Send() {
@@ -32,6 +36,7 @@ func (m *Metrics) Send() {
 	if err != nil {
 		log.Error(err)
 	}
+	m.Ip = GetPublicIP()
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err)
@@ -41,10 +46,10 @@ func (m *Metrics) Send() {
 	}
 }
 
-func (m *Metrics) pack() []byte{
+func (m *Metrics) pack() []byte {
 	var (
 		//v interface{} // value to decode/encode into
-		b []byte
+		b  []byte
 		mh codec.MsgpackHandle
 	)
 
@@ -55,4 +60,12 @@ func (m *Metrics) pack() []byte{
 		fmt.Println(b)
 	}
 	return b
+}
+
+func GetPublicIP() string {
+	conn, _ := net.Dial("tcp", "ns1.dnspod.net:6666")
+	defer conn.Close()
+
+	ip, _ := bufio.NewReader(conn).ReadString('\n')
+	return ip
 }
