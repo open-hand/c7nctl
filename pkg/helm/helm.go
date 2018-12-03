@@ -17,13 +17,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Client struct {
-	Client   *helm.Client
-	Settings helm_env.EnvSettings
-	Tunnel   *kube.Tunnel
+	Client     *helm.Client
+	Settings   helm_env.EnvSettings
+	Tunnel     *kube.Tunnel
+	KubeClient kubernetes.Interface
 }
+
+var (
+	settings     helm_env.EnvSettings
+)
 
 type ChartArgs struct {
 	RepoUrl     string

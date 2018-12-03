@@ -16,6 +16,7 @@ import (
 	"os"
 	"text/template"
 	syserr "errors"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 type Install struct {
@@ -29,6 +30,7 @@ type Install struct {
 	Namespace    string
 	Timeout      int
 	Prefix       string
+	SkipInput    bool
 }
 
 type Metadata struct {
@@ -53,6 +55,7 @@ type InfraResource struct {
 	Health       Health
 	Timeout      int
 	Prefix       string
+	SkipInput    bool
 }
 
 type Health struct {
@@ -236,7 +239,7 @@ func (pl *PreValueList) getValues(key string) string {
 type ChartValue struct {
 	Name  string
 	Value string
-	Input Input
+	Input common.Input
 	Case  string
 }
 
@@ -297,20 +300,6 @@ func (p *PreValue) GetResource(key string) *config.Resource {
 	return nil
 }
 
-type Input struct {
-	Enabled  bool
-	Regex    string
-	Tip      string
-	Password bool
-	Include []KV
-	Exclude []KV
-}
-
-type KV struct {
-	Name  string
-	Value string
-}
-
 func (i *Install) CleanJobs() error {
 	jobInterface := i.Client.BatchV1().Jobs(i.UserConfig.Metadata.Namespace)
 	jobList, err := jobInterface.List(meta_v1.ListOptions{})
@@ -337,6 +326,9 @@ func (i *Install) Install(apps []*InfraResource) error {
 	// 安装基础组件
 	for _, infra := range apps {
 		log.Infof("start install %s",infra.Name)
+
+		infra.SkipInput = i.SkipInput
+
 		if r := i.UserConfig.GetResource(infra.Name); r != nil && r.External {
 			log.Infof("using external %s", infra.Name)
 			continue
@@ -365,6 +357,16 @@ func (i *Install) CheckResource() bool {
 	reqMemory := request.Memory().Value()
 	reqCpu := request.Cpu().Value()
 	clusterMemory, clusterCpu := getClusterResource(i.Client)
+
+	Ctx.Metrics.Memory = clusterMemory
+	Ctx.Metrics.CPU = clusterCpu
+	fmt.Println(i.Client.CoreV1().RESTClient().APIVersion().Version)
+
+	serverVersion, err := i.Client.Discovery().ServerVersion()
+	if err != nil {
+		log.Error("can't get your cluster version")
+	}
+	Ctx.Metrics.Version = serverVersion.String()
 	if clusterMemory < reqMemory {
 		log.Errorf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024))
 		return false

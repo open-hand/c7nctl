@@ -5,6 +5,7 @@ import (
 	"github.com/choerodon/c7n/pkg/kube"
 	"github.com/vinkdong/gox/log"
 	"testing"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 func TestRenderValue(t *testing.T) {
@@ -30,7 +31,7 @@ func TestHelmValues(t *testing.T) {
 			ChartValue{
 				Name:  "abc",
 				Value: "",
-				Input: Input{},
+				Input: common.Input{},
 			},
 			ChartValue{
 				Name: "cde",

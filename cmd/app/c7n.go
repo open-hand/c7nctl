@@ -14,6 +14,7 @@ import (
 	"os"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"encoding/json"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 var (
@@ -123,6 +124,11 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 	}else {
 		installDef.Namespace = UserConfig.Metadata.Namespace
 	}
+
+	if installDef.SkipInput, err = cmd.Flags().GetBool("skip-input"); err != nil {
+		log.Error(err)
+		os.Exit(127)
+	}
 	return installDef
 }
 
@@ -144,8 +150,12 @@ func Delete(cmd *cobra.Command, args []string) error {
 
 	// prepare environment
 	tillerTunnel = kube2.GetTunnel()
+
+	kubeClient := kube2.GetClient()
+
 	helmClient := &helm.Client{
 		Tunnel: tillerTunnel,
+		KubeClient: kubeClient,
 	}
 	helmClient.InitClient()
 
@@ -155,8 +165,9 @@ func Delete(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := install.Context{
-		Client:    kube2.GetClient(),
+		Client:    kubeClient,
 		Namespace: ns,
+		Metrics:   common.Metrics{},
 	}
 
 	for _, a := range args {

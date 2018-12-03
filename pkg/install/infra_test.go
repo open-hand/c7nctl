@@ -27,7 +27,7 @@ func TestInfraResource_GetRequirement(t *testing.T) {
 			ChartValue{
 				Name:  "abc",
 				Value: `{{ .GetRequirement "mysql" "GITLAB_BASE_DOMAIN" }}`,
-				Input: Input{},
+				Input: commonInput{},
 			},
 		},
 	}

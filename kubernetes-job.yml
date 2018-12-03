@@ -1,3 +1,23 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: c7n-installer
+  namespace: c7n-system
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: c7n-installer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: c7n-installer
+  namespace: c7n-system
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -61,8 +81,9 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: c7n-installer
       containers:
-      - image: registry.choerodon.com.cn/choerodon-infra/c7n:2018.11.23-095152-master
+      - image: registry.choerodon.com.cn/choerodon-infra/c7n:2018.11.23-103436-master
         imagePullPolicy: Always
         name: install-choerodon
         resources: {}

@@ -18,6 +18,7 @@ import (
 	"github.com/choerodon/c7n/cmd/app"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 // installCmd represents the install command
@@ -29,6 +30,7 @@ var installCmd = &cobra.Command{
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.EnableDebug()
 		}
+		common.AskAgreeTerms()
 		err := app.Install(cmd, args)
 		if err != nil {
 			log.Error(err)
@@ -50,6 +52,7 @@ func init() {
 	installCmd.Flags().Bool("debug", false, "enable debug output")
 	installCmd.Flags().Bool("no-timeout",false,"disable install job timeout")
 	installCmd.Flags().String("prefix","","add prefix to all helm release")
+	installCmd.Flags().Bool("skip-input",false,"use default username and password to avoid user input")
 	rootCmd.AddCommand(installCmd)
 
 	// Here you will define your flags and configuration settings.

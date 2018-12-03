@@ -15,6 +15,7 @@ import (
 	"os"
 	"text/template"
 	"time"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -194,13 +195,13 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 			log.Debugf("evict %s because case not true", v.Name)
 			continue
 		}
-		if v.Input.Enabled {
+		if v.Input.Enabled && !infra.SkipInput {
 			log.Lock()
 			var err error
 			if v.Input.Password {
 				value, err = AcceptUserPassword(v.Input)
 			} else {
-				value, err = AcceptUserInput(v.Input)
+				value, err = common.AcceptUserInput(v.Input)
 			}
 			log.Unlock()
 			if err != nil {
@@ -456,7 +457,9 @@ func (infra *InfraResource) GetResource(key string) *config.Resource {
 			return r
 		}
 	}
-	log.Errorf("can't get required resource [%s]", key)
+	errMsg := fmt.Sprintf("can't get required resource [%s]", key)
+	log.Error(errMsg)
+	Ctx.Metrics.ErrorMsg = append(Ctx.Metrics.ErrorMsg, errMsg)
 	Ctx.CheckExist(188)
 	return nil
 }

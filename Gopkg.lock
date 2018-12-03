@@ -937,6 +937,7 @@
 [[projects]]
   name = "k8s.io/helm"
   packages = [
+    "cmd/helm/installer",
     "pkg/chartutil",
     "pkg/downloader",
     "pkg/getter",
@@ -1154,6 +1155,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9ffe05c61e1088e6f8f1a085b2101b5b0c4869fd2279912830aa413c96e4ff65"
+  inputs-digest = "ce456bd46b5c85e356374d8ed29e5c284fa04e89da5618f066f9334ceb69d566"
   solver-name = "gps-cdcl"
   solver-version = 1

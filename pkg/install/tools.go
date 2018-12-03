@@ -14,12 +14,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"math/rand"
 	"os"
-	"regexp"
 	"sync"
 	"syscall"
 	"time"
-	"bufio"
-	"strings"
+	"github.com/choerodon/c7n/pkg/common"
 )
 
 var Ctx Context
@@ -53,6 +51,7 @@ type Context struct {
 	UserConfig    *config.Config
 	BackendTasks  []*BackendTask
 	Mux           sync.Mutex
+	Metrics       common.Metrics
 }
 
 type BackendTask struct {
@@ -91,19 +90,33 @@ func (ctx *Context) AddBackendTask(task *BackendTask) bool {
 	return true
 }
 
-func (ctx *Context) CheckExist(code int) {
+func (ctx *Context) CheckExist(code int, errMsg ...string) {
+	if code == 0 {
+		ctx.Metrics.Status = "succeed"
+	} else {
+		ctx.Metrics.Status = "failed"
+	}
 	if !ctx.HasBackendTask() {
-		os.Exit(code)
+		goto exit
 	}
 	log.Info("some backend task not finished yet wait it to be finished")
 	for {
 		select {
 		case <-time.Tick(time.Second * 1):
 			if !ctx.HasBackendTask() {
-				os.Exit(code)
+				goto exit
 			}
 		}
 	}
+exit:
+	if len(errMsg) > 0 {
+		for _, err := range errMsg {
+			log.Error(err)
+			ctx.Metrics.ErrorMsg = append(ctx.Metrics.ErrorMsg, err)
+		}
+	}
+	ctx.Metrics.Send()
+	os.Exit(code)
 }
 
 func (ctx *Context) HasBackendTask() bool {
@@ -382,34 +395,7 @@ func RandomString(length ...int) string {
 	return string(bytes)
 }
 
-func CheckMatch(value string, input Input) bool {
-
-	r := regexp.MustCompile(input.Regex)
-	if !r.MatchString(value) {
-		log.Errorf("输入不满足需求")
-		return false
-	}
-
-	for _, include := range input.Include {
-		r := regexp.MustCompile(include.Value)
-		if !r.MatchString(value) {
-			log.Errorf(include.Name)
-			return false
-		}
-	}
-
-	for _,exclude := range input.Exclude {
-		r := regexp.MustCompile(exclude.Value)
-		if r.MatchString(value) {
-			log.Errorf(exclude.Name)
-			return false
-		}
-	}
-
-	return true
-}
-
-func AcceptUserPassword(input Input) (string, error) {
+func AcceptUserPassword(input common.Input) (string, error) {
 start:
 	fmt.Print(input.Tip)
 	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
@@ -418,7 +404,7 @@ start:
 		return "", err
 	}
 
-	if !CheckMatch(string(bytePassword[:]),input) {
+	if !common.CheckMatch(string(bytePassword[:]),input) {
 		goto start
 	}
 
@@ -442,20 +428,4 @@ start:
 	fmt.Println("waiting...")
 
 	return string(bytePassword[:]), nil
-}
-
-func AcceptUserInput(input Input) (string, error) {
-start:
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print(input.Tip)
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		Ctx.CheckExist(128)
-	}
-	text = strings.Trim(text,"\n")
-
-	if !CheckMatch(text,input) {
-		goto start
-	}
-	return text, nil
 }
