@@ -30,7 +30,12 @@ var installCmd = &cobra.Command{
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.EnableDebug()
 		}
-		common.AskAgreeTerms()
+		skip, _:= cmd.Flags().GetBool("skip-input")
+		if !skip {
+			common.AskAgreeTerms()
+		}else {
+			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
+		}
 		err := app.Install(cmd, args)
 		if err != nil {
 			log.Error(err)
