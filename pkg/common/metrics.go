@@ -22,6 +22,7 @@ type Metrics struct {
 	CurrentApp string
 	Mux        sync.Mutex
 	Ip         string
+	Mail       string
 }
 
 const (

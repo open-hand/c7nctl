@@ -375,6 +375,16 @@ func (i *Install) CheckResource() bool {
 		log.Errorf("cluster cpu not enough, request %dc", reqCpu/1000)
 		return false
 	}
+	if !i.SkipInput {
+		Ctx.Metrics.Mail, err = common.AcceptUserInput(common.Input{
+			Password: false,
+			Tip:      "请输入您的邮箱：\nPlease enter your email address:\n",
+			Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+		})
+		if err != nil {
+			log.Error(err)
+		}
+	}
 	return true
 }
 
@@ -497,6 +507,7 @@ func (i *Install) Run(args ...string) error {
 		Namespace:    i.UserConfig.Metadata.Namespace,
 		CommonLabels: i.CommonLabels,
 		UserConfig:   i.UserConfig,
+		Metrics:      Ctx.Metrics,
 	}
 
 	stopCh := make(chan struct{})

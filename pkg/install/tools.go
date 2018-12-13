@@ -304,6 +304,7 @@ func (ctx *Context) createNewsData() *v1.ConfigMap {
 	defer ctx.Mux.Unlock()
 	data := make(map[string]string)
 	data[staticLogKey] = ""
+	data["user_info"] = fmt.Sprintf("email: %s", ctx.Metrics.Mail)
 	cm := &v1.ConfigMap{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "ConfigMap",
