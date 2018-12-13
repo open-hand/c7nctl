@@ -1,4 +1,10 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: c7n-system
+
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: c7n-installer
@@ -35,36 +41,36 @@ data:
         storageClassName: nfs-provisioner
       resources:
         gitlab:
-          domain: gitlab.ali.vk.vu
+          domain: gitlab.example.com
           external: false
           username: root
           schema: http
         minio:
-          domain: minio.ali.vk.vu
+          domain: minio.example.com
           schema: http
         harbor:
-          domain: harbor.ali.vk.vu
+          domain: harbor.example.com
           schema: https
         chartmuseum:
-          domain: chart.ali.vk.vu
+          domain: chart.example.com
           schema: http
         api-gateway:
-          domain: api.ali.vk.vu
+          domain: api.example.com
           schema: http
         notify-service:
-          domain: notify.ali.vk.vu
+          domain: notify.example.com
           schema: ws
         choerodon-front:
-          domain: front.ali.vk.vu
+          domain: front.example.com
           schema: http
         devops-service:
-          domain: devops.ali.vk.vu
+          domain: devops.example.com
           schema: ws
         choerodon-front:
-          domain: c7n.ali.vk.vu
+          domain: c7n.example.com
           schema: http
         xwiki:
-          domain: wiki.ali.vk.vu
+          domain: wiki.example.com
 
 ---
 apiVersion: batch/v1
@@ -83,7 +89,7 @@ spec:
       restartPolicy: OnFailure
       serviceAccountName: c7n-installer
       containers:
-      - image: registry.choerodon.com.cn/choerodon-infra/c7n:2018.11.23-103436-master
+      - image: registry.cn-shanghai.aliyuncs.com/choerodon/c7n:0.1
         imagePullPolicy: Always
         name: install-choerodon
         resources: {}
