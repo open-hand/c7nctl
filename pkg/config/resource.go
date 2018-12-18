@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/spf13/pflag"
 	"os"
 	"io/ioutil"
 	"github.com/vinkdong/gox/log"
@@ -19,7 +18,7 @@ const (
 )
 
 type ResourceDefinition struct {
-	LocalFile string
+	LocalFile    string
 	Version      string
 	Metadata     Metadata
 	Spec         Spec
@@ -48,8 +47,17 @@ func (v *Versions) GetLastStable() Version {
 	return Version{}
 }
 
-func (r *ResourceDefinition) getVersion(set *pflag.FlagSet) Version {
+func (r *ResourceDefinition) getVersion(version string) Version {
 	versions := r.getVersions()
+	if version != "" {
+		for _, v := range versions.Versions {
+			if v.Version == version {
+				return v
+			}
+		}
+		log.Errorf("can't get version %s from remote server", version)
+		os.Exit(1)
+	}
 	//todo: select version
 	return versions.GetLastStable()
 }
@@ -83,9 +91,9 @@ func (r *ResourceDefinition) requireRemoteResource(resourcePath string) []byte {
 	return data
 }
 
-func (r *ResourceDefinition) GetResourceDate() ([]byte, error) {
+func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
 	// request network resource
-	currentVersion := r.getVersion(nil)
+	currentVersion := r.getVersion(version)
 	var data []byte
 	var err error
 	if r.LocalFile == "" {
@@ -98,5 +106,5 @@ func (r *ResourceDefinition) GetResourceDate() ([]byte, error) {
 			os.Exit(127)
 		}
 	}
-	return data,err
+	return data, err
 }

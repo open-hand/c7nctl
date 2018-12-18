@@ -26,7 +26,7 @@ type KV struct {
 func AskAgreeTerms() {
 	input := Input{
 		Password: false,
-		Tip:      "为了提高用户体验，程序会收集一些非敏感信息上传到我们服务器，具体包括:主机内存大小、CPU数量/频率、IP(仅用于确认您所在的地区不会进行储存)、Kubernetes版本等\nIn order to improve the user experience, the program will collect some non-sensitive information to upload to our server, including: host memory size, CPU frequency, ip(just for ensure where your city), Kubernetes version, etc. \n同意请输入Y，不同意请输入N。\nagree to enter Y, do not agree to enter N.\n[Y/N]",
+		Tip:      "为了提高用户体验，程序会收集一些非敏感信息上传到我们服务器，具体包括:主机内存大小、CPU数量/频率、IP(仅用于确认您所在的地区不会进行储存)、Kubernetes版本等\nIn order to improve the user experience, the program will collect some non-sensitive information to upload to our server, including: host memory size, CPU frequency, ip(just for ensure where your city), Kubernetes version, etc. \n同意请输入Y，不同意请输入N。\nagree to enter Y, do not agree to enter N. [Y/N]:   ",
 		Regex:    "^(y|Y|n|N)$",
 	}
 	r, err := AcceptUserInput(input)

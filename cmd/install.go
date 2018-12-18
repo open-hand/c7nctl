@@ -31,12 +31,28 @@ var installCmd = &cobra.Command{
 			log.EnableDebug()
 		}
 		skip, _:= cmd.Flags().GetBool("skip-input")
+
+		var (
+			mail string
+			err error
+			)
+
 		if !skip {
 			common.AskAgreeTerms()
+			mail, err = common.AcceptUserInput(common.Input{
+				Password: false,
+				Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):\n",
+				Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+			})
+			if err !=nil {
+				return err
+			}
 		}else {
 			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 		}
-		err := app.Install(cmd, args)
+
+
+		err = app.Install(cmd, args, mail)
 		if err != nil {
 			log.Error(err)
 			log.Error("install failed")
@@ -54,6 +70,7 @@ var (
 func init() {
 	installCmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
 	installCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
+	installCmd.Flags().String("version", "", "specify a version")
 	installCmd.Flags().Bool("debug", false, "enable debug output")
 	installCmd.Flags().Bool("no-timeout",false,"disable install job timeout")
 	installCmd.Flags().String("prefix","","add prefix to all helm release")

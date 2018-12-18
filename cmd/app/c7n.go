@@ -86,7 +86,13 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 
 	installDef.Prefix = prefix
 
-	data, err := r.GetResourceDate()
+	version,err := cmd.Flags().GetString("version")
+	if err != nil{
+		log.Error(err)
+		os.Exit(128)
+	}
+
+	data, err := r.GetResourceDate(version)
 	if err != nil {
 		log.Error(err)
 
@@ -132,9 +138,10 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 	return installDef
 }
 
-func Install(cmd *cobra.Command, args []string) error {
+func Install(cmd *cobra.Command, args []string, mail string) error {
 
 	InstallDef := GetInstall(cmd, args)
+	InstallDef.Mail = mail
 
 	defer TearDown()
 	//tunnel.Close()
