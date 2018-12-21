@@ -15,7 +15,9 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/choerodon/c7n/cmd/app"
+	"github.com/choerodon/c7n/pkg/common"
+	"github.com/vinkdong/gox/log"
 
 	"github.com/spf13/cobra"
 )
@@ -30,12 +32,27 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("upgrade called")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			log.EnableDebug()
+		}
+		common.AskAgreeTerms()
+		err := app.Upgrade(cmd, args)
+		if err != nil {
+			log.Error(err)
+			log.Error("Upgrade failed")
+		}
+		log.Success("Upgrade succeed")
+		return nil
 	},
 }
 
+var (
+	UpgradeResourceFile string
+)
+
 func init() {
+	installCmd.Flags().StringVarP(&UpgradeResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be upgrade")
 	rootCmd.AddCommand(upgradeCmd)
 
 	// Here you will define your flags and configuration settings.

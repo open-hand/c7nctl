@@ -2,11 +2,12 @@ package common
 
 import (
 	"bufio"
-	"os"
 	"fmt"
-	"strings"
-	"regexp"
+	"github.com/hashicorp/go-version"
 	"github.com/vinkdong/gox/log"
+	"os"
+	"regexp"
+	"strings"
 )
 
 type Input struct {
@@ -14,8 +15,8 @@ type Input struct {
 	Regex    string
 	Tip      string
 	Password bool
-	Include []KV
-	Exclude []KV
+	Include  []KV
+	Exclude  []KV
 }
 
 type KV struct {
@@ -45,11 +46,11 @@ start:
 	fmt.Print(input.Tip)
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		return "",err
+		return "", err
 	}
-	text = strings.Trim(text,"\n")
+	text = strings.Trim(text, "\n")
 
-	if !CheckMatch(text,input) {
+	if !CheckMatch(text, input) {
 		goto start
 	}
 	return text, nil
@@ -71,7 +72,7 @@ func CheckMatch(value string, input Input) bool {
 		}
 	}
 
-	for _,exclude := range input.Exclude {
+	for _, exclude := range input.Exclude {
 		r := regexp.MustCompile(exclude.Value)
 		if r.MatchString(value) {
 			log.Errorf(exclude.Name)
@@ -80,4 +81,16 @@ func CheckMatch(value string, input Input) bool {
 	}
 
 	return true
+}
+
+func CheckVersion(versionRaw, constraint string) (bool, error) {
+	v1, err := version.NewVersion(versionRaw)
+	if err != nil {
+		return false, err
+	}
+	constraints, err := version.NewConstraint(constraint)
+	if err != nil {
+		return false, err
+	}
+	return constraints.Check(v1), nil
 }

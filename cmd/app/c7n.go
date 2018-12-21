@@ -1,20 +1,19 @@
 package app
 
 import (
+	"github.com/choerodon/c7n/pkg/common"
 	"github.com/choerodon/c7n/pkg/config"
 	"github.com/choerodon/c7n/pkg/helm"
 	"github.com/choerodon/c7n/pkg/install"
 	kube2 "github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7n/pkg/upgrade"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
-	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
 	"os"
-	"k8s.io/apimachinery/pkg/util/yaml"
-	"encoding/json"
-	"github.com/choerodon/c7n/pkg/common"
 )
 
 var (
@@ -54,7 +53,7 @@ func getUserConfig(filePath string) *config.Config {
 		os.Exit(124)
 	}
 	userConfig := &config.Config{}
-	err = yaml_v2.Unmarshal(data, userConfig)
+	err = yaml.Unmarshal(data, userConfig)
 	if err != nil {
 		log.Error(err)
 		os.Exit(124)
@@ -97,12 +96,7 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 		log.Error(err)
 
 	}
-	data2, err := yaml.ToJSON(data)
-	if err != nil {
-		panic(err)
-	}
-	json.Unmarshal(data2, installDef)
-
+	yaml.Unmarshal(data, installDef)
 	if installDef.Version == "" {
 		log.Error("get install config error")
 		os.Exit(127)
@@ -127,7 +121,7 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 
 	if UserConfig == nil {
 		installDef.Namespace = "c7n-system"
-	}else {
+	} else {
 		installDef.Namespace = UserConfig.Metadata.Namespace
 	}
 
@@ -149,6 +143,25 @@ func Install(cmd *cobra.Command, args []string, mail string) error {
 	return InstallDef.Run(args...)
 }
 
+func Upgrade(cmd *cobra.Command, args []string) error {
+	ResourceFile, err := cmd.Flags().GetString("resource-file")
+	if err != nil {
+		return err
+	}
+	r := config.ResourceDefinition{}
+	r.LocalFile = ResourceFile
+	data, err := r.GetUpgradeResourceDate()
+	if err != nil {
+		return err
+	}
+	u := upgrade.Upgrader{}
+	yaml.Unmarshal(data, &u)
+	//tunnel.Close()
+	defer TearDown()
+	// do upgrade
+	return u.Run(args...)
+}
+
 func Delete(cmd *cobra.Command, args []string) error {
 	var err error
 
@@ -161,7 +174,7 @@ func Delete(cmd *cobra.Command, args []string) error {
 	kubeClient := kube2.GetClient()
 
 	helmClient := &helm.Client{
-		Tunnel: tillerTunnel,
+		Tunnel:     tillerTunnel,
 		KubeClient: kubeClient,
 	}
 	helmClient.InitClient()

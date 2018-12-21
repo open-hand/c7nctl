@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
@@ -17,7 +18,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"k8s.io/client-go/kubernetes"
 )
 
 type Client struct {
@@ -28,7 +28,7 @@ type Client struct {
 }
 
 var (
-	settings     helm_env.EnvSettings
+	settings helm_env.EnvSettings
 )
 
 type ChartArgs struct {
@@ -158,9 +158,44 @@ func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error
 
 	rel := res.GetRelease()
 	if rel == nil {
-		log.Errorf("can't get release name of chart %s")
+		log.Errorf("can't get release name of chart %s", rel.Name)
 	}
 	log.Successf("installed %s", rel.Name)
+	return nil
+}
+
+func (client *Client) UpgradeRelease(values []byte, chartArgs ChartArgs) error {
+
+	cp, err := client.locateChartPath(chartArgs)
+	if err != nil {
+		return err
+	}
+	chartRequested, err := chartutil.Load(cp)
+
+	// todo: add dependencies
+	//chartRequested, err := chartutil.Load(cp)
+	//if err != nil {
+	//	log.Error(err)
+	//}
+	// todo: get default ns form kube-context
+	res, err := client.Client.UpdateReleaseFromChart(
+		chartArgs.ReleaseName,
+		chartRequested,
+		helm.UpdateValueOverrides(values),
+		helm.ResetValues(true),
+		helm.ReuseValues(true),
+		helm.UpgradeDryRun(false),
+		helm.UpgradeForce(true),
+		helm.UpgradeTimeout(86400))
+	if err != nil {
+		return err
+	}
+
+	rel := res.GetRelease()
+	if rel == nil {
+		log.Errorf("can't get release name of chart %s", rel.Name)
+	}
+	log.Successf("Upgrade %s success", rel.Name)
 	return nil
 }
 

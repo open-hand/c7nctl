@@ -3,18 +3,22 @@ package config
 import (
 	"os"
 	"io/ioutil"
-	"github.com/vinkdong/gox/log"
-	"net/http"
 	"fmt"
-	yaml_v2 "gopkg.in/yaml.v2"
-	"k8s.io/client-go/kubernetes"
 	"github.com/choerodon/c7n/pkg/helm"
+	"github.com/spf13/pflag"
+	"github.com/vinkdong/gox/log"
+	yaml_v2 "gopkg.in/yaml.v2"
+	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
+	"net/http"
+	"os"
 )
 
 const (
 	remoteConfigUrlPrefix = "https://file.choerodon.com.cn/choerodon-install"
 	versionPath           = "/version.yml"
 	installConfigPath     = "/%s/install.yml"
+	upgradeConfigPath     = "/%s/upgrade.yml"
 )
 
 type ResourceDefinition struct {
@@ -98,6 +102,24 @@ func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
 	var err error
 	if r.LocalFile == "" {
 		data = r.requireRemoteResource(fmt.Sprintf(installConfigPath, currentVersion.Version))
+	}
+	if r.LocalFile != "" {
+		data, err = ioutil.ReadFile(r.LocalFile)
+		if err != nil {
+			log.Error("read install file error")
+			os.Exit(127)
+		}
+	}
+	return data, err
+}
+
+func (r *ResourceDefinition) GetUpgradeResourceDate() ([]byte, error) {
+	// request network resource
+	var data []byte
+	var err error
+	if r.LocalFile == "" {
+		currentVersion := r.getVersion(nil)
+		data = r.requireRemoteResource(fmt.Sprintf(upgradeConfigPath, currentVersion.Version))
 	}
 	if r.LocalFile != "" {
 		data, err = ioutil.ReadFile(r.LocalFile)

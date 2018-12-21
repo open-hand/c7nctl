@@ -36,9 +36,6 @@ spec:
     notify-service:
       domain: notify.ali.vk.vu
       schema: ws
-    choerodon-front:
-      domain: front.ali.vk.vu
-      schema: http
     devops-service:
       domain: devops.ali.vk.vu
       schema: ws
