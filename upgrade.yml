@@ -196,13 +196,13 @@ spec:
         - name: "env.open.JAVA_OPTS"
           value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
         - name: "env.open.SERVICES_WIKI_HOST"
-          value: "http://wiki.xn--0zwm56d.vinkdong.com"
+          value: "http://wiki.example.choerodon.iom"
           input:
-            enabled: false
+            enabled: true
             password: false
             regex: ".+"
             tip: "请输入xwiki的域名地址，例如:http://wiki.example.choerodon.io\n"
-            exclude:
+            include:
               - value: "^((http://)|(https://)).*"
                 name: "请输入正确域名地址！"
         - name: "env.open.SERVICES_WIKI_TOKEN"

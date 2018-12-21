@@ -8,7 +8,6 @@ import (
 	"github.com/choerodon/c7n/pkg/install"
 	kube2 "github.com/choerodon/c7n/pkg/kube"
 	"github.com/choerodon/c7n/pkg/upgrade"
-	yaml_g "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
@@ -151,6 +150,10 @@ func Install(cmd *cobra.Command, args []string, mail string) error {
 }
 
 func Upgrade(cmd *cobra.Command, args []string) error {
+	// prepare environment
+	tillerTunnel = kube2.GetTunnel()
+	//tunnel.Close()
+	defer TearDown()
 	ResourceFile, err := cmd.Flags().GetString("resource-file")
 	if err != nil {
 		return err
@@ -163,9 +166,11 @@ func Upgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	u := upgrade.Upgrader{}
-	yaml_g.Unmarshal(data, &u)
-	//tunnel.Close()
-	defer TearDown()
+	data, err = yaml.ToJSON(data)
+	if err != nil {
+		panic(err)
+	}
+	json.Unmarshal(data, &u)
 	// do upgrade
 	return u.Run(args...)
 }
