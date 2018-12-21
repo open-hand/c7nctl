@@ -308,7 +308,7 @@ func TestUpgrader_Run(t *testing.T) {
 	log.EnableDebug()
 	r := config.ResourceDefinition{}
 	r.LocalFile = "../../upgrade.yml"
-	data, _ := r.GetUpgradeResourceDate()
+	data, _ := r.GetUpgradeResourceDate("0.12")
 	u := Upgrader{}
 	yaml.Unmarshal(data, &u)
 	e := u.Run()

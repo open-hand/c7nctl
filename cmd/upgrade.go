@@ -53,6 +53,7 @@ var (
 
 func init() {
 	installCmd.Flags().StringVarP(&UpgradeResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be upgrade")
+	installCmd.Flags().String("version", "", "specify a version")
 	rootCmd.AddCommand(upgradeCmd)
 
 	// Here you will define your flags and configuration settings.

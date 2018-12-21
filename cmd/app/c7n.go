@@ -85,8 +85,8 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 
 	installDef.Prefix = prefix
 
-	version,err := cmd.Flags().GetString("version")
-	if err != nil{
+	version, err := cmd.Flags().GetString("version")
+	if err != nil {
 		log.Error(err)
 		os.Exit(128)
 	}
@@ -150,7 +150,8 @@ func Upgrade(cmd *cobra.Command, args []string) error {
 	}
 	r := config.ResourceDefinition{}
 	r.LocalFile = ResourceFile
-	data, err := r.GetUpgradeResourceDate()
+	version, err := cmd.Flags().GetString("version")
+	data, err := r.GetUpgradeResourceDate(version)
 	if err != nil {
 		return err
 	}

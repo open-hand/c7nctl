@@ -1,11 +1,8 @@
 package config
 
 import (
-	"os"
-	"io/ioutil"
 	"fmt"
 	"github.com/choerodon/c7n/pkg/helm"
-	"github.com/spf13/pflag"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -113,12 +110,12 @@ func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
 	return data, err
 }
 
-func (r *ResourceDefinition) GetUpgradeResourceDate() ([]byte, error) {
+func (r *ResourceDefinition) GetUpgradeResourceDate(version string) ([]byte, error) {
 	// request network resource
+	currentVersion := r.getVersion(version)
 	var data []byte
 	var err error
 	if r.LocalFile == "" {
-		currentVersion := r.getVersion(nil)
 		data = r.requireRemoteResource(fmt.Sprintf(upgradeConfigPath, currentVersion.Version))
 	}
 	if r.LocalFile != "" {
