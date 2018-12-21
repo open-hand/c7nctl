@@ -6,6 +6,7 @@ import (
 	"github.com/vinkdong/gox/log"
 	"testing"
 	"github.com/choerodon/c7n/pkg/common"
+	"fmt"
 )
 
 func TestRenderValue(t *testing.T) {
@@ -92,4 +93,36 @@ func TestCleanJobs(t *testing.T) {
 		},
 	}
 	i.CleanJobs()
+}
+
+func TestRequestParserParams(t *testing.T)  {
+	param1 := ChartValue{
+		Name: "name",
+		Value: "value1",
+	}
+	param2 := ChartValue{
+		Name: "name2",
+		Value: "value5",
+	}
+	r := Request{
+		Parameters: []ChartValue{param1, param2},
+	}
+	if r.parserParams() != "name=value1&name2=value5" {
+		t.Error("request parames to params error")
+	}
+}
+
+func TestRequestParserUrl(t *testing.T)  {
+	param1 := ChartValue{
+		Name: "name",
+		Value: "value1",
+	}
+	param2 := ChartValue{
+		Name: "name2",
+		Value: "value5",
+	}
+	r := Request{
+		Parameters: []ChartValue{param1, param2},
+	}
+	fmt.Println(r.parserUrl())
 }

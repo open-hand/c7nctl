@@ -17,6 +17,7 @@ import (
 	"text/template"
 	syserr "errors"
 	"github.com/choerodon/c7n/pkg/common"
+	"strings"
 )
 
 type Install struct {
@@ -129,8 +130,26 @@ type PreInstall struct {
 type Request struct {
 	Header []ChartValue
 	Url    string
+	Parameters []ChartValue
 	Body   string
 	Method string
+}
+
+func (r *Request) parserParams() string {
+	var params []string
+	for _, p := range r.Parameters {
+		params = append(params, fmt.Sprintf("%s=%s", p.Name, p.Value))
+	}
+	return strings.Join(params, "&")
+}
+
+func (r *Request) parserUrl() string {
+	params := r.parserParams()
+	url := r.Url
+	if params != "" {
+		url = fmt.Sprintf("%s?%s", url, params)
+	}
+	return url
 }
 
 func (r *Request) Render(infra *InfraResource) error {
@@ -139,6 +158,10 @@ func (r *Request) Render(infra *InfraResource) error {
 	for k, v := range r.Header {
 		v.Value = infra.renderValue(v.Value)
 		r.Header[k] = v
+	}
+	for k, v := range r.Parameters {
+		v.Value = infra.renderValue(v.Value)
+		r.Parameters[k] = v
 	}
 	return nil
 }
@@ -203,12 +226,19 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 	for _, h := range req.Header {
 		header[h.Name] = []string{h.Value}
 	}
+
+	reqUrl := req.Url
+	paramsString := req.parserParams()
+	if paramsString != "" {
+		reqUrl = reqUrl + "?" + paramsString
+	}
 	f := slaver.Forward{
-		Url:    req.Url,
+		Url:    reqUrl,
 		Body:   req.Body,
 		Header: header,
 		Method: req.Method,
 	}
+
 	_, err := s.ExecuteRemoteRequest(f)
 	if err != nil {
 		news.Status = FailedStatus
