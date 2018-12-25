@@ -132,8 +132,7 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 	}
 
 	if installDef.SkipInput, err = cmd.Flags().GetBool("skip-input"); err != nil {
-		log.Error(err)
-		os.Exit(127)
+		installDef.SkipInput = false
 	}
 	return installDef
 }
