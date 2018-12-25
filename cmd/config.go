@@ -70,6 +70,7 @@ func init() {
 	gitlabRunnerCmd.Flags().StringP("namespace","n","c7n-system","the namespace you install choerodon")
 	gitlabRunnerCmd.Flags().String("prefix","","add prefix to all helm release")
 	gitlabRunnerCmd.Flags().String("version", "", "specify a version")
+	installCmd.Flags().Bool("skip-input",false,"use default username and password to avoid user input")
 	gitlabCmd.AddCommand(gitlabRunnerCmd)
 	configCmd.AddCommand(gitlabCmd)
 	rootCmd.AddCommand(configCmd)
