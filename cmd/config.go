@@ -69,6 +69,7 @@ func init() {
 	gitlabRunnerCmd.Flags().Bool("debug", false, "enable debug output")
 	gitlabRunnerCmd.Flags().StringP("namespace","n","c7n-system","the namespace you install choerodon")
 	gitlabRunnerCmd.Flags().String("prefix","","add prefix to all helm release")
+	gitlabRunnerCmd.Flags().String("version", "", "specify a version")
 	gitlabCmd.AddCommand(gitlabRunnerCmd)
 	configCmd.AddCommand(gitlabCmd)
 	rootCmd.AddCommand(configCmd)
