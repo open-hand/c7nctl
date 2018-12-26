@@ -15,10 +15,14 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/choerodon/c7n/cmd/app"
+	"github.com/choerodon/c7n/pkg/common"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
-	"github.com/choerodon/c7n/pkg/common"
+	"io/ioutil"
+	"os"
+	"os/user"
 )
 
 // installCmd represents the install command
@@ -35,22 +39,56 @@ var installCmd = &cobra.Command{
 		var (
 			mail string
 			err error
+			accept bool
+			path string
 			)
-
-		if !skip {
-			common.AskAgreeTerms()
-			mail, err = common.AcceptUserInput(common.Input{
-				Password: false,
-				Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):\n",
-				Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-			})
-			if err !=nil {
-				return err
-			}
+		usr, err := user.Current()
+		if err != nil {
+			log.Error(err)
+			path = "./.c7n"
 		}else {
-			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
+			path = fmt.Sprintf("%s/.c7n", usr.HomeDir)
 		}
-
+		file := fmt.Sprint(path,"/config")
+		_, err = os.Stat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				err = os.Mkdir(path, 0644)
+				_, err = os.Create(file)
+				if err != nil {
+					log.Error(err)
+				}
+				accept = true
+			}
+		}
+		r, err := ioutil.ReadFile(file)
+		if err != nil {
+			log.Error(err)
+		}
+		if string(r) == "" {
+			accept = true
+		}
+		if accept {
+			if !skip {
+				common.AskAgreeTerms()
+				mail, err = common.AcceptUserInput(common.Input{
+					Password: false,
+					Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):\n",
+					Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+				})
+				if err !=nil {
+					return err
+				}
+			}else {
+				log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
+			}
+			line := fmt.Sprintf("mail: %s\naccept: true\n", mail)
+			b := []byte(line)
+			err = ioutil.WriteFile(file, b, 0644)
+			if err != nil {
+				log.Error(err)
+			}
+		}
 
 		err = app.Install(cmd, args, mail)
 		if err != nil {
