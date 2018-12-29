@@ -15,14 +15,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/choerodon/c7n/cmd/app"
 	"github.com/choerodon/c7n/pkg/common"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/vinkdong/gox/log"
-	"os"
 )
 
 // installCmd represents the install command
@@ -36,65 +32,37 @@ var installCmd = &cobra.Command{
 		}
 		skip, _ := cmd.Flags().GetBool("skip-input")
 
-		type UserInfo struct {
-			Mail   string
-			Accept bool
-		}
 		var (
 			mail   string
 			err    error
-			accept bool
 		)
 
-		home, err := homedir.Dir()
+		c, err := common.GetConfig()
 		if err != nil {
-			log.Error(err)
-			os.Exit(1)
+			return err
 		}
-		configPath := fmt.Sprintf("%s%c.c7n%c", home, os.PathSeparator, os.PathSeparator)
-		fileName := "config.yaml"
-		viper.SetConfigFile(fmt.Sprint(configPath,fileName))
-		viper.SetConfigType("yaml")
-		err = viper.ReadInConfig()
-		if err == nil {
-			if viper.GetString("UserInfo.mail") != "" {
-				accept = true
-				mail = viper.GetString("UserInfo.mail")
-			}
-		} else {
-			_, err = os.Stat(configPath)
-			if os.IsNotExist(err) {
-				err = os.Mkdir(configPath, 0644)
-				if err != nil {
-					log.Error(err)
-				}
-			}
-		}
-		if !accept {
-			if !skip {
-				common.AskAgreeTerms()
-				mail, err = common.AcceptUserInput(common.Input{
-					Password: false,
-					Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):\n",
-					Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-				})
-				if err != nil {
-					return err
-				}
-			} else {
-				log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
-			}
-			userInfo := UserInfo{
-				Mail:   mail,
-				Accept: true,
-			}
-			viper.Set("UserInfo", userInfo)
-			err = viper.WriteConfigAs(fmt.Sprint(configPath,fileName))
-			if err != nil {
-				log.Error(err)
-			}
+		if c.Terms.Accepted {
+			goto start
 		}
 
+		if !skip {
+			common.AskAgreeTerms()
+			mail, err = common.AcceptUserInput(common.Input{
+				Password: false,
+				Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
+				Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+			})
+			if err != nil {
+				return err
+			}
+			c.Terms.Accepted = true
+			c.User.Mail = mail
+			c.Write()
+		} else {
+			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
+		}
+
+start:
 		err = app.Install(cmd, args, mail)
 		if err != nil {
 			log.Error(err)
