@@ -31,6 +31,7 @@ const (
 )
 
 func (m *Metrics) Send() {
+	log.Debug("sending metrics...")
 	data := m.pack()
 	client := http.Client{}
 	req, err := http.NewRequest("POST", metricsUrl, bytes.NewReader(data))

@@ -42,6 +42,7 @@ var installCmd = &cobra.Command{
 			return err
 		}
 		if c.Terms.Accepted {
+			mail = c.User.Mail
 			goto start
 		}
 

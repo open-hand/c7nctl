@@ -318,8 +318,7 @@ func (ctx *Context) createNewsData() *v1.ConfigMap {
 	}
 	configMap, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Create(cm)
 	if err != nil {
-		log.Error(err)
-		os.Exit(122)
+		ctx.CheckExist(128, err.Error())
 	}
 	return configMap
 }

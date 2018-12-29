@@ -391,7 +391,6 @@ func (i *Install) CheckResource() bool {
 
 	Ctx.Metrics.Memory = clusterMemory
 	Ctx.Metrics.CPU = clusterCpu
-	fmt.Println(i.Client.CoreV1().RESTClient().APIVersion().Version)
 
 	serverVersion, err := i.Client.Discovery().ServerVersion()
 	if err != nil {
