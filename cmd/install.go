@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"github.com/choerodon/c7n/cmd/app"
 	"github.com/choerodon/c7n/pkg/common"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/vinkdong/gox/log"
-	"io/ioutil"
 	"os"
-	"os/user"
 )
 
 // installCmd represents the install command
@@ -34,41 +34,43 @@ var installCmd = &cobra.Command{
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.EnableDebug()
 		}
-		skip, _:= cmd.Flags().GetBool("skip-input")
+		skip, _ := cmd.Flags().GetBool("skip-input")
 
+		type UserInfo struct {
+			Mail   string
+			Accept bool
+		}
 		var (
-			mail string
-			err error
+			mail   string
+			err    error
 			accept bool
-			path string
-			)
-		usr, err := user.Current()
+		)
+
+		home, err := homedir.Dir()
 		if err != nil {
 			log.Error(err)
-			path = "./.c7n"
-		}else {
-			path = fmt.Sprintf("%s/.c7n", usr.HomeDir)
+			os.Exit(1)
 		}
-		file := fmt.Sprint(path,"/config")
-		_, err = os.Stat(path)
-		if err != nil {
+		configPath := fmt.Sprintf("%s%c.c7n%c", home, os.PathSeparator, os.PathSeparator)
+		fileName := "config.yaml"
+		viper.SetConfigFile(fmt.Sprint(configPath,fileName))
+		viper.SetConfigType("yaml")
+		err = viper.ReadInConfig()
+		if err == nil {
+			if viper.GetString("UserInfo.mail") != "" {
+				accept = true
+				mail = viper.GetString("UserInfo.mail")
+			}
+		} else {
+			_, err = os.Stat(configPath)
 			if os.IsNotExist(err) {
-				err = os.Mkdir(path, 0644)
-				_, err = os.Create(file)
+				err = os.Mkdir(configPath, 0644)
 				if err != nil {
 					log.Error(err)
 				}
-				accept = true
 			}
 		}
-		r, err := ioutil.ReadFile(file)
-		if err != nil {
-			log.Error(err)
-		}
-		if string(r) == "" {
-			accept = true
-		}
-		if accept {
+		if !accept {
 			if !skip {
 				common.AskAgreeTerms()
 				mail, err = common.AcceptUserInput(common.Input{
@@ -76,15 +78,18 @@ var installCmd = &cobra.Command{
 					Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):\n",
 					Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
 				})
-				if err !=nil {
+				if err != nil {
 					return err
 				}
-			}else {
+			} else {
 				log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 			}
-			line := fmt.Sprintf("mail: %s\naccept: true\n", mail)
-			b := []byte(line)
-			err = ioutil.WriteFile(file, b, 0644)
+			userInfo := UserInfo{
+				Mail:   mail,
+				Accept: true,
+			}
+			viper.Set("UserInfo", userInfo)
+			err = viper.WriteConfigAs(fmt.Sprint(configPath,fileName))
 			if err != nil {
 				log.Error(err)
 			}
@@ -110,9 +115,9 @@ func init() {
 	installCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
 	installCmd.Flags().String("version", "", "specify a version")
 	installCmd.Flags().Bool("debug", false, "enable debug output")
-	installCmd.Flags().Bool("no-timeout",false,"disable install job timeout")
-	installCmd.Flags().String("prefix","","add prefix to all helm release")
-	installCmd.Flags().Bool("skip-input",false,"use default username and password to avoid user input")
+	installCmd.Flags().Bool("no-timeout", false, "disable install job timeout")
+	installCmd.Flags().String("prefix", "", "add prefix to all helm release")
+	installCmd.Flags().Bool("skip-input", false, "use default username and password to avoid user input")
 	rootCmd.AddCommand(installCmd)
 
 	// Here you will define your flags and configuration settings.

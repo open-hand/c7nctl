@@ -26,7 +26,7 @@ type Metrics struct {
 }
 
 const (
-	metricsUrl = "http://c7n-gateway.staging.saas.hand-china.com/api/v1/metrics"
+	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
 	ipAddr      = "ns1.dnspod.net:6666"
 )
 
