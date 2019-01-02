@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/choerodon/c7n/cmd"
+import "github.com/choerodon/c7nctl/cmd"
 
 func main() {
 	cmd.Execute()

@@ -3,10 +3,10 @@ package install
 import (
 	"bytes"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/helm"
-	"github.com/choerodon/c7n/pkg/kube"
-	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/helm"
+	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/template"
 	syserr "errors"
-	"github.com/choerodon/c7n/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/common"
 	"strings"
 )
 

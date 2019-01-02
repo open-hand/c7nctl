@@ -2,7 +2,7 @@ package helm
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/kube"
 	"testing"
 )
 

@@ -1,11 +1,11 @@
 package install
 
 import (
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/kube"
 	"github.com/vinkdong/gox/log"
 	"testing"
-	"github.com/choerodon/c7n/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/common"
 	"fmt"
 )
 

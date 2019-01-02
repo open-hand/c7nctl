@@ -1,8 +1,8 @@
 package gitlab
 
 import (
-	"github.com/choerodon/c7n/pkg/install"
-	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/install"
+	"github.com/choerodon/c7nctl/pkg/kube"
 )
 
 const RunnerTokenLength = 30

@@ -2,12 +2,12 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/choerodon/c7n/pkg/common"
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/helm"
-	"github.com/choerodon/c7n/pkg/install"
-	kube2 "github.com/choerodon/c7n/pkg/kube"
-	"github.com/choerodon/c7n/pkg/upgrade"
+	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/helm"
+	"github.com/choerodon/c7nctl/pkg/install"
+	kube2 "github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/upgrade"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"

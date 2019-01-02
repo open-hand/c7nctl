@@ -2,7 +2,7 @@ package upgrade
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/config"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/choerodon/c7n/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/common"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
 )

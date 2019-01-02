@@ -17,8 +17,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
-	"github.com/choerodon/c7n/pkg/gitlab"
-	"github.com/choerodon/c7n/cmd/app"
+	"github.com/choerodon/c7nctl/pkg/gitlab"
+	"github.com/choerodon/c7nctl/cmd/app"
 )
 
 // installCmd represents the install command

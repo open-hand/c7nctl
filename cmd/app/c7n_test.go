@@ -2,8 +2,8 @@ package app
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/helm"
-	"github.com/choerodon/c7n/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/helm"
+	"github.com/choerodon/c7nctl/pkg/kube"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )

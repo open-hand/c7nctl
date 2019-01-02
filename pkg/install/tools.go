@@ -2,8 +2,8 @@ package install
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/vinkdong/gox/log"
 	"github.com/vinkdong/gox/random"
 	"golang.org/x/crypto/ssh/terminal"
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"github.com/choerodon/c7n/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/common"
 )
 
 var Ctx Context

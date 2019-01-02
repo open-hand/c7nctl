@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/helm"
+	"github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"

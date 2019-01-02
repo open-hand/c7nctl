@@ -2,7 +2,7 @@ package install
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

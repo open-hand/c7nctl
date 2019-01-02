@@ -3,9 +3,9 @@ package install
 import (
 	"bytes"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/helm"
-	pb "github.com/choerodon/c7n/pkg/protobuf"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/helm"
+	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
 	core_v1 "k8s.io/api/core/v1"
@@ -15,7 +15,7 @@ import (
 	"os"
 	"text/template"
 	"time"
-	"github.com/choerodon/c7n/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/common"
 )
 
 func (infra *InfraResource) executePreCommands() error {

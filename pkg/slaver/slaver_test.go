@@ -1,9 +1,9 @@
 package slaver
 
 import (
-	"github.com/choerodon/c7n/pkg/config"
-	"github.com/choerodon/c7n/pkg/kube"
-	pb "github.com/choerodon/c7n/pkg/protobuf"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/kube"
+	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"testing"
