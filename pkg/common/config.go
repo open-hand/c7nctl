@@ -26,6 +26,18 @@ type User struct {
 	Mail string
 }
 
+func newConfig() *Config {
+	return &Config{
+		Version: "v1",
+		Terms: Terms{
+			Accepted: false,
+		},
+		User: User{
+			Mail: "",
+		},
+	}
+}
+
 func getPath() string {
 	homePath := homedir.HomeDir()
 	configDir := fmt.Sprintf("%s%c.c7n%c", homePath, os.PathSeparator, os.PathSeparator)
@@ -39,19 +51,17 @@ func getPath() string {
 
 func GetConfig() (*Config, error) {
 
-	c := &Config{
-		Version: "v1",
-	}
+	c := newConfig()
 
 	configFile := getPath()
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		c.Write()
-		return nil, nil
+		return c, nil
 	}
 
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return nil, err
+		return c, err
 	}
 
 	yaml.Unmarshal(data, c)
