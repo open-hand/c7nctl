@@ -1,4 +1,4 @@
-package common
+package utils
 
 import (
 	"bufio"
@@ -8,6 +8,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"golang.org/x/crypto/ssh/terminal"
+	"syscall"
 )
 
 type Input struct {
@@ -17,6 +19,7 @@ type Input struct {
 	Password bool
 	Include  []KV
 	Exclude  []KV
+	Twice    bool
 }
 
 type KV struct {
@@ -41,6 +44,9 @@ func AskAgreeTerms() {
 }
 
 func AcceptUserInput(input Input) (string, error) {
+	if input.Password {
+		return AcceptUserPassword(input)
+	}
 start:
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(input.Tip)
@@ -54,6 +60,44 @@ start:
 		goto start
 	}
 	return text, nil
+}
+
+func AcceptUserPassword(input Input) (string, error) {
+start:
+	fmt.Print(input.Tip)
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		return "", err
+	}
+
+	if !CheckMatch(string(bytePassword[:]), input) {
+		goto start
+	}
+
+	if !input.Twice{
+		return string(bytePassword[:]), nil
+	}
+
+	fmt.Print("请再输入一次:")
+	bytePassword2, err := terminal.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		return "", err
+	}
+	if len(bytePassword2) != len(bytePassword) {
+		log.Error("两次输入长度不符")
+		goto start
+	}
+	for k, v := range bytePassword {
+		if bytePassword2[k] != v {
+			log.Error("两次输入不同")
+			goto start
+		}
+	}
+
+	fmt.Println("waiting...")
+	return string(bytePassword[:]), nil
 }
 
 func CheckMatch(value string, input Input) bool {

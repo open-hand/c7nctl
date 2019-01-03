@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/template"
 	syserr "errors"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"strings"
 )
 
@@ -270,7 +270,7 @@ func (pl *PreValueList) getValues(key string) string {
 type ChartValue struct {
 	Name  string
 	Value string
-	Input common.Input
+	Input utils.Input
 	Case  string
 }
 

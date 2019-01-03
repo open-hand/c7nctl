@@ -5,7 +5,7 @@ import (
 	"github.com/choerodon/c7nctl/pkg/kube"
 	"github.com/vinkdong/gox/log"
 	"testing"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 func TestInfraResource_GetRequirement(t *testing.T) {
@@ -28,7 +28,7 @@ func TestInfraResource_GetRequirement(t *testing.T) {
 			ChartValue{
 				Name:  "abc",
 				Value: `{{ .GetRequirement "mysql" "GITLAB_BASE_DOMAIN" }}`,
-				Input: common.Input{},
+				Input: utils.Input{},
 			},
 		},
 	}

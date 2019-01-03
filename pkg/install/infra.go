@@ -15,7 +15,7 @@ import (
 	"os"
 	"text/template"
 	"time"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -199,9 +199,10 @@ func (infra *InfraResource) HelmValues() ([]string, []ChartValue) {
 			log.Lock()
 			var err error
 			if v.Input.Password {
-				value, err = AcceptUserPassword(v.Input)
+				v.Input.Twice = true
+				value, err = utils.AcceptUserPassword(v.Input)
 			} else {
-				value, err = common.AcceptUserInput(v.Input)
+				value, err = utils.AcceptUserInput(v.Input)
 			}
 			log.Unlock()
 			if err != nil {

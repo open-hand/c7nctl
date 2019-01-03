@@ -6,7 +6,6 @@ import (
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/vinkdong/gox/log"
 	"github.com/vinkdong/gox/random"
-	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,9 +14,8 @@ import (
 	"math/rand"
 	"os"
 	"sync"
-	"syscall"
 	"time"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 var Ctx Context
@@ -37,7 +35,6 @@ const (
 	staticTaskKey      = "tasks"
 	staticInstalledKey = "installed"
 	staticExecutedKey  = "execute"
-	randomLength       = 4
 	SqlTask            = "sql"
 	HttpGetTask        = "httpGet"
 )
@@ -51,7 +48,7 @@ type Context struct {
 	UserConfig    *config.Config
 	BackendTasks  []*BackendTask
 	Mux           sync.Mutex
-	Metrics       common.Metrics
+	Metrics       utils.Metrics
 }
 
 type BackendTask struct {
@@ -379,53 +376,4 @@ func GenerateRunnerToken(length int) string {
 		bytes[i] = byte(op) //A=65 and Z = 65+25
 	}
 	return string(bytes)
-}
-
-func RandomString(length ...int) string {
-
-	randomLength := randomLength
-	if len(length) > 0 {
-		randomLength = length[0]
-	}
-	bytes := make([]byte, randomLength)
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < randomLength; i++ {
-		bytes[i] = byte(97 + rand.Intn(25)) //A=65 and Z = 65+25
-	}
-	return string(bytes)
-}
-
-func AcceptUserPassword(input common.Input) (string, error) {
-start:
-	fmt.Print(input.Tip)
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
-	if err != nil {
-		return "", err
-	}
-
-	if !common.CheckMatch(string(bytePassword[:]),input) {
-		goto start
-	}
-
-	fmt.Print("请再输入一次:")
-	bytePassword2, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
-	if err != nil {
-		return "", err
-	}
-	if len(bytePassword2) != len(bytePassword) {
-		log.Error("两次输入长度不符")
-		goto start
-	}
-	for k, v := range bytePassword {
-		if bytePassword2[k] != v {
-			log.Error("两次输入不同")
-			goto start
-		}
-	}
-
-	fmt.Println("waiting...")
-
-	return string(bytePassword[:]), nil
 }

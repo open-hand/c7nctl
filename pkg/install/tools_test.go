@@ -31,13 +31,6 @@ func TestSaveNewsData(t *testing.T) {
 	ctx.SaveNews(news)
 }
 
-func TestRandomString(t *testing.T) {
-	fmt.Println(RandomString(), RandomString())
-	if RandomString() == RandomString() {
-		t.Error("Func RandowString not work")
-	}
-}
-
 func TestRandomToken(t *testing.T) {
 	fmt.Println(RandomToken(17), RandomToken(12))
 }

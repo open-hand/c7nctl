@@ -3,7 +3,7 @@ package upgrade
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	c7n_helm "github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/choerodon/c7nctl/pkg/install"
 	"github.com/choerodon/c7nctl/pkg/kube"
@@ -58,7 +58,7 @@ type Basic struct {
 type SetKey struct {
 	Name  string
 	Value string
-	Input common.Input
+	Input utils.Input
 }
 
 type ChangeKey struct {
@@ -136,9 +136,10 @@ func upgradeValues(upgrade *Upgrade) error {
 			var err error
 			value := ""
 			if v.Input.Password {
-				value, err = install.AcceptUserPassword(v.Input)
+				v.Input.Twice = true
+				value, err = utils.AcceptUserPassword(v.Input)
 			} else {
-				value, err = common.AcceptUserInput(v.Input)
+				value, err = utils.AcceptUserInput(v.Input)
 			}
 			if err != nil {
 				return err
@@ -155,7 +156,7 @@ func upgradeValues(upgrade *Upgrade) error {
 		value, e := getValueByKey(upgrade.Values, v.Old)
 		if e != nil {
 			log.Errorf("Key: %s not found", v.Old)
-			value, e = common.AcceptUserInput(common.Input{
+			value, e = utils.AcceptUserInput(utils.Input{
 				Tip:   fmt.Sprintf("Please value for Key: %s\n", v.New),
 				Regex: ".+",
 			})
@@ -214,7 +215,7 @@ func (u *Upgrader) preUpgrade() error {
 		if err := u.GetReleaseValues(v); err == nil {
 			log.Debugf("Got %s,version %s", v.Name, v.InstalledVersion)
 			constraintVersion := fmt.Sprintf("%s,<=%s", v.ConstraintVersion, v.Version)
-			b, e := common.CheckVersion(v.InstalledVersion, constraintVersion)
+			b, e := utils.CheckVersion(v.InstalledVersion, constraintVersion)
 			if !b || e != nil {
 				return fmt.Errorf("Can't auto upgrade of %s installed version. Want version %s,but got version %s.",
 					v.Name, constraintVersion, v.InstalledVersion)

@@ -4,10 +4,15 @@ import (
 	"fmt"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+	"github.com/vinkdong/gox/log"
 )
 
 func TestGetConfig(t *testing.T) {
-	getConfig()
+	c,err :=getConfig()
+	if err != nil{
+		log.Error(err)
+	}
+	log.Info(c)
 }
 
 func TestGetClientset(t *testing.T) {

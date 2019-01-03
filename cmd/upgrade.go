@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"github.com/choerodon/c7nctl/cmd/app"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 
 	"github.com/spf13/cobra"
@@ -31,7 +31,7 @@ var upgradeCmd = &cobra.Command{
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.EnableDebug()
 		}
-		common.AskAgreeTerms()
+		utils.AskAgreeTerms()
 		err := app.Upgrade(cmd, args)
 		if err != nil {
 			log.Error(err)

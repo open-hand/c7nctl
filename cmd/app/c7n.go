@@ -2,7 +2,7 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/choerodon/c7nctl/pkg/install"
@@ -199,7 +199,7 @@ func Delete(cmd *cobra.Command, args []string) error {
 	ctx := install.Context{
 		Client:    kubeClient,
 		Namespace: ns,
-		Metrics:   common.Metrics{},
+		Metrics:   utils.Metrics{},
 	}
 
 	for _, a := range args {

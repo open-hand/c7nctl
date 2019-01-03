@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 type Persistence struct {
@@ -91,7 +92,7 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 
 checkpv:
 	if got, _ := p.getPv(); got {
-		p.RefPvName = fmt.Sprintf("%s-%s", p.Name, RandomString())
+		p.RefPvName = fmt.Sprintf("%s-%s", p.Name, utils.RandomString())
 		goto checkpv
 	}
 	return p.CreatePv(pvs)
@@ -107,7 +108,7 @@ func (p *Persistence) CheckOrCreatePvc() error {
 	}
 checkpvc:
 	if got, _ := p.getPvc(); got {
-		p.RefPvcName = fmt.Sprintf("%s-%s", p.Name, RandomString())
+		p.RefPvcName = fmt.Sprintf("%s-%s", p.Name, utils.RandomString())
 		goto checkpvc
 	}
 	return p.CreatePvc()

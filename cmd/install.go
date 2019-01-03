@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"github.com/choerodon/c7nctl/cmd/app"
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
 )
@@ -37,18 +37,18 @@ var installCmd = &cobra.Command{
 			err    error
 		)
 
-		c, err := common.GetConfig()
+		c, err := utils.GetConfig()
 		if err != nil {
 			return err
 		}
 		if c.Terms.Accepted {
-			mail = c.User.Mail
+			mail = c.OpsMail
 			goto start
 		}
 
 		if !skip {
-			common.AskAgreeTerms()
-			mail, err = common.AcceptUserInput(common.Input{
+			utils.AskAgreeTerms()
+			mail, err = utils.AcceptUserInput(utils.Input{
 				Password: false,
 				Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
 				Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
@@ -57,7 +57,7 @@ var installCmd = &cobra.Command{
 				return err
 			}
 			c.Terms.Accepted = true
-			c.User.Mail = mail
+			c.OpsMail = mail
 			c.Write()
 		} else {
 			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")

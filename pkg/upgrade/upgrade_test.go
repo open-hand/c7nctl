@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/choerodon/c7nctl/pkg/common"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
 )
@@ -276,7 +276,7 @@ func TestUpgrader_UpgradeRelease(t *testing.T) {
 }
 
 func Test_CheckVersion(t *testing.T) {
-	b, e := common.CheckVersion("0.11.1", ">=0.11.0")
+	b, e := utils.CheckVersion("0.11.1", ">=0.11.0")
 	fmt.Print(b, e)
 }
 
