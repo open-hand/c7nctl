@@ -1,14 +1,14 @@
 package utils
 
 import (
-	"github.com/ugorji/go/codec"
-	"fmt"
-	"sync"
-	"net/http"
+	"bufio"
 	"bytes"
+	"fmt"
+	"github.com/ugorji/go/codec"
 	"github.com/vinkdong/gox/log"
 	"net"
-	"bufio"
+	"net/http"
+	"sync"
 )
 
 type Metrics struct {
@@ -27,7 +27,7 @@ type Metrics struct {
 
 const (
 	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
-	ipAddr      = "ns1.dnspod.net:6666"
+	ipAddr     = "ns1.dnspod.net:6666"
 )
 
 func (m *Metrics) Send() {

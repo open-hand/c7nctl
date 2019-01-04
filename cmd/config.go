@@ -15,10 +15,10 @@
 package cmd
 
 import (
+	"github.com/choerodon/c7nctl/cmd/app"
+	"github.com/choerodon/c7nctl/pkg/gitlab"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
-	"github.com/choerodon/c7nctl/pkg/gitlab"
-	"github.com/choerodon/c7nctl/cmd/app"
 )
 
 // installCmd represents the install command
@@ -44,13 +44,13 @@ var gitlabRunnerCmd = &cobra.Command{
 		}
 		installDef := app.GetInstall(cmd, args)
 
-		ns ,err := cmd.Flags().GetString("namespace")
-		if err!=nil {
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
 			return err
 		}
 		runner := gitlab.Runner{
 			InstallDef: installDef,
-			Namespace: ns,
+			Namespace:  ns,
 		}
 		err = runner.InstallRunner()
 		if err != nil {
@@ -67,10 +67,10 @@ func init() {
 	gitlabRunnerCmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
 	gitlabRunnerCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
 	gitlabRunnerCmd.Flags().Bool("debug", false, "enable debug output")
-	gitlabRunnerCmd.Flags().StringP("namespace","n","c7n-system","the namespace you install choerodon")
-	gitlabRunnerCmd.Flags().String("prefix","","add prefix to all helm release")
+	gitlabRunnerCmd.Flags().StringP("namespace", "n", "c7n-system", "the namespace you install choerodon")
+	gitlabRunnerCmd.Flags().String("prefix", "", "add prefix to all helm release")
 	gitlabRunnerCmd.Flags().String("version", "", "specify a version")
-	gitlabRunnerCmd.Flags().Bool("skip-input",false,"use default username and password to avoid user input")
+	gitlabRunnerCmd.Flags().Bool("skip-input", false, "use default username and password to avoid user input")
 	gitlabCmd.AddCommand(gitlabRunnerCmd)
 	configCmd.AddCommand(gitlabCmd)
 	rootCmd.AddCommand(configCmd)

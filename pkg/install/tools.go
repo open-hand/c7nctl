@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"github.com/vinkdong/gox/random"
 	"gopkg.in/yaml.v2"
@@ -15,7 +16,6 @@ import (
 	"os"
 	"sync"
 	"time"
-	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 var Ctx Context
@@ -226,12 +226,12 @@ func (ctx *Context) DeleteSucceedTask(appName string) error {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
 	nr := ctx.getSucceedData(staticExecutedKey)
-	leftNews := make([]News,0)
+	leftNews := make([]News, 0)
 	for _, v := range nr.News {
-		if v.RefName == appName  {
+		if v.RefName == appName {
 			// todo: make sure gc effort
-		}else {
-			leftNews = append(leftNews,v)
+		} else {
+			leftNews = append(leftNews, v)
 		}
 	}
 

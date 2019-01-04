@@ -95,7 +95,7 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 	}
 
 	volume := core_v1.Volume{
-		Name: "data",
+		Name:         "data",
 		VolumeSource: volumeSource,
 	}
 

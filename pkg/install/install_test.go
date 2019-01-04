@@ -1,12 +1,12 @@
 package install
 
 import (
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"testing"
-	"github.com/choerodon/c7nctl/pkg/utils"
-	"fmt"
 )
 
 func TestRenderValue(t *testing.T) {
@@ -35,9 +35,9 @@ func TestHelmValues(t *testing.T) {
 				Input: utils.Input{},
 			},
 			ChartValue{
-				Name: "cde",
+				Name:  "cde",
 				Value: "cde",
-				Case: "{{ not .IgnorePv }}",
+				Case:  "{{ not .IgnorePv }}",
 			},
 		},
 		Name: "test-name-1",
@@ -95,13 +95,13 @@ func TestCleanJobs(t *testing.T) {
 	i.CleanJobs()
 }
 
-func TestRequestParserParams(t *testing.T)  {
+func TestRequestParserParams(t *testing.T) {
 	param1 := ChartValue{
-		Name: "name",
+		Name:  "name",
 		Value: "value1",
 	}
 	param2 := ChartValue{
-		Name: "name2",
+		Name:  "name2",
 		Value: "value5",
 	}
 	r := Request{
@@ -112,13 +112,13 @@ func TestRequestParserParams(t *testing.T)  {
 	}
 }
 
-func TestRequestParserUrl(t *testing.T)  {
+func TestRequestParserUrl(t *testing.T) {
 	param1 := ChartValue{
-		Name: "name",
+		Name:  "name",
 		Value: "value1",
 	}
 	param2 := ChartValue{
-		Name: "name2",
+		Name:  "name2",
 		Value: "value5",
 	}
 	r := Request{

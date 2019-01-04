@@ -1,18 +1,18 @@
 package utils
 
 import (
-	"testing"
 	"github.com/ugorji/go/codec"
 	"github.com/vinkdong/gox/log"
+	"testing"
 )
 
-func TestPack(t *testing.T)  {
+func TestPack(t *testing.T) {
 	m := Metrics{
-		CPU: 8,
-		Memory: 1024 * 1024 * 1024 * 16,
+		CPU:      8,
+		Memory:   1024 * 1024 * 1024 * 16,
 		Province: "Shanghai",
-		City: "Shanghai",
-		ErrorMsg: []string{"error 01","error 02"},
+		City:     "Shanghai",
+		ErrorMsg: []string{"error 01", "error 02"},
 	}
 
 	data := m.pack()
@@ -31,17 +31,19 @@ func TestPack(t *testing.T)  {
 	}
 }
 
-func TestSend(t *testing.T)  {
+func TestSend(t *testing.T) {
+
+	return
 	m := Metrics{
-		CPU: 8,
-		Memory: 1024 * 1024 * 1024 * 16,
+		CPU:      8,
+		Memory:   1024 * 1024 * 1024 * 16,
 		Province: "Shanghai",
-		City: "Shanghai",
-		ErrorMsg: []string{"error 01","error 02"},
+		City:     "Shanghai",
+		ErrorMsg: []string{"error 01", "error 02"},
 	}
 	m.Send()
 }
 
-func TestGetPublicIP(t *testing.T)  {
+func TestGetPublicIP(t *testing.T) {
 	log.Info(GetPublicIP())
 }

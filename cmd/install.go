@@ -33,8 +33,8 @@ var installCmd = &cobra.Command{
 		skip, _ := cmd.Flags().GetBool("skip-input")
 
 		var (
-			mail   string
-			err    error
+			mail string
+			err  error
 		)
 
 		c, err := utils.GetConfig()
@@ -63,7 +63,7 @@ var installCmd = &cobra.Command{
 			log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 		}
 
-start:
+	start:
 		err = app.Install(cmd, args, mail)
 		if err != nil {
 			log.Error(err)

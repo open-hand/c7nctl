@@ -6,6 +6,7 @@ import (
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
 	core_v1 "k8s.io/api/core/v1"
@@ -15,7 +16,6 @@ import (
 	"os"
 	"text/template"
 	"time"
-	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 func (infra *InfraResource) executePreCommands() error {
@@ -431,8 +431,8 @@ func (infra *InfraResource) CheckRunning() error {
 		p.Client = infra.Home.Client
 		p.Namespace = infra.Namespace
 		p.Name = infra.renderValue(p.Name)
-		log.Infof("check %s running",p.Name)
-check:
+		log.Infof("check %s running", p.Name)
+	check:
 		err := p.MustRunning()
 		if err != nil {
 			log.Debug(err)

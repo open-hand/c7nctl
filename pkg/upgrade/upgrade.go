@@ -3,10 +3,10 @@ package upgrade
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	c7n_helm "github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/choerodon/c7nctl/pkg/install"
 	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

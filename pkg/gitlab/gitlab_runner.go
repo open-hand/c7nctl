@@ -12,7 +12,6 @@ type Runner struct {
 	InstallDef *install.Install
 }
 
-
 func (runner *Runner) InstallRunner() error {
 
 	runner.InstallDef.Client = kube.GetClient()

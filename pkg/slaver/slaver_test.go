@@ -4,6 +4,7 @@ import (
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/kube"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"testing"
@@ -14,7 +15,6 @@ const C7nLabelKey = "c7n-usage"
 const C7nLabelValue = "c7n-installer"
 
 func TestInstall(t *testing.T) {
-
 	port := v1.ContainerPort{
 		Name:          "http",
 		ContainerPort: 9000,
@@ -30,6 +30,10 @@ func TestInstall(t *testing.T) {
 		CommonLabels: labels,
 		Image:        "vinkdong/timing",
 		Ports:        ports,
+	}
+	//skip test
+	if utils.ConditionSkip() {
+		return
 	}
 	ds, err := slaver.Install()
 	if err != nil {
@@ -55,13 +59,18 @@ func TestPortForward(t *testing.T) {
 			ContainerPort: 9800,
 		}},
 	}
+	// skip test
+	return
 	stopCh := make(chan struct{})
 	port := slaver.ForwardPort("http", stopCh)
 	log.Infof("success get listening port on %d", port)
-	time.Sleep(time.Second * 60)
+	time.Sleep(time.Second * 1)
 }
 
 func TestCheckHealth(t *testing.T) {
+	if utils.ConditionSkip() {
+		return
+	}
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
 	}
@@ -82,6 +91,9 @@ func TestCheckHealth(t *testing.T) {
 }
 
 func TestExecuteRemoteSql(t *testing.T) {
+	if utils.ConditionSkip() {
+		return
+	}
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
 	}
@@ -99,6 +111,9 @@ func TestExecuteRemoteSql(t *testing.T) {
 }
 
 func TestExecuteRemoteCommand(t *testing.T) {
+	if utils.ConditionSkip() {
+		return
+	}
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
 	}
@@ -113,6 +128,9 @@ func TestExecuteRemoteCommand(t *testing.T) {
 }
 
 func TestSendAll(t *testing.T) {
+	if utils.ConditionSkip() {
+		return
+	}
 	log.EnableDebug()
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
@@ -137,6 +155,9 @@ func TestSendAll(t *testing.T) {
 }
 
 func TestCheckClusterDomain(t *testing.T) {
+	if utils.ConditionSkip() {
+		return
+	}
 	log.EnableDebug()
 	labels := make(map[string]string)
 	labels["app"] = "c7n-slaver"

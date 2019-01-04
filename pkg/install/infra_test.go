@@ -3,9 +3,9 @@ package install
 import (
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"testing"
-	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 func TestInfraResource_GetRequirement(t *testing.T) {

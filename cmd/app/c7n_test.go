@@ -1,10 +1,8 @@
 package app
 
 import (
-	"fmt"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/choerodon/c7nctl/pkg/kube"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
 
@@ -14,27 +12,15 @@ func TestNewClient(t *testing.T) {
 	helmClient := &helm.Client{
 		Tunnel: tillerTunnel,
 	}
-
-	res, err := helmClient.Client.ListReleases()
-	fmt.Println(err)
-	for _, v := range res.Releases {
-		fmt.Println(v.Name, v.Chart.Metadata.Name, v.Chart.Metadata.Version)
+	if tillerTunnel == nil {
+		t.Log("skip...")
+		return
 	}
-}
-
-func TestGetNoInfo(t *testing.T) {
-
-	var sumMemory int64
-	var sumCpu int64
-	client := kube.GetClient()
-	list, _ := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
-	for _, v := range list.Items {
-		fmt.Printf("node %s: %d \n", v.Name, v.Status.Capacity.Memory().Value())
-		sumMemory += v.Status.Capacity.Memory().Value()
-		sumCpu += v.Status.Capacity.Cpu().Value()
+	helmClient.InitClient()
+	_, err := helmClient.Client.ListReleases()
+	if err != nil {
+		t.Error("Test get client failed")
 	}
-	//fmt.Print(sumMemory)
-	fmt.Print(sumCpu)
 }
 
 func TestCheckResource(t *testing.T) {
@@ -42,7 +28,7 @@ func TestCheckResource(t *testing.T) {
 }
 
 func TestGetUserConfig(t *testing.T) {
-	getUserConfig("/Users/vink/go/src/github.com/choerodon/c7n/install.yaml")
+	getUserConfig("~/go/src/github.com/choerodon/c7nctl/install.yaml")
 	if UserConfig.Spec.Resources["mysql"].Host != "192.168.12.88" {
 		t.Error("read user config error")
 	}

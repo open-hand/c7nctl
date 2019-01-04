@@ -3,12 +3,12 @@ package install
 import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"github.com/choerodon/c7nctl/pkg/utils"
 )
 
 type Persistence struct {

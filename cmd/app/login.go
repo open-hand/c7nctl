@@ -1,12 +1,12 @@
 package app
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/authorize"
 	"github.com/choerodon/c7nctl/pkg/utils"
-	"net/url"
-	"fmt"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"net/url"
 )
 
 func Login(cmd *cobra.Command, args []string) error {

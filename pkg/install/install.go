@@ -2,11 +2,13 @@ package install
 
 import (
 	"bytes"
+	syserr "errors"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	"github.com/choerodon/c7nctl/pkg/kube"
 	"github.com/choerodon/c7nctl/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,10 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/util/maps"
 	"os"
-	"text/template"
-	syserr "errors"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	"strings"
+	"text/template"
 )
 
 type Install struct {
@@ -63,7 +63,7 @@ type InfraResource struct {
 type Health struct {
 	HttpGet   []HttpGetCheck `yaml:"httpGet"`
 	Socket    []SocketCheck
-	PodStatus []PodCheck     `yaml:"podStatus"`
+	PodStatus []PodCheck `yaml:"podStatus"`
 }
 
 type PodCheck struct {
@@ -85,7 +85,6 @@ func (p *PodCheck) MustRunning() error {
 
 	return nil
 }
-
 
 type SocketCheck struct {
 	Name string
@@ -128,11 +127,11 @@ type PreInstall struct {
 }
 
 type Request struct {
-	Header []ChartValue
-	Url    string
+	Header     []ChartValue
+	Url        string
 	Parameters []ChartValue
-	Body   string
-	Method string
+	Body       string
+	Method     string
 }
 
 func (r *Request) parserParams() string {
@@ -356,7 +355,7 @@ func (i *Install) CleanJobs() error {
 func (i *Install) Install(apps []*InfraResource) error {
 	// 安装基础组件
 	for _, infra := range apps {
-		log.Infof("start install %s",infra.Name)
+		log.Infof("start install %s", infra.Name)
 
 		infra.SkipInput = i.SkipInput
 
@@ -451,7 +450,7 @@ func getClusterResource(client kubernetes.Interface) (int64, int64) {
 
 func (i *Install) PrepareSlaverPvc() (string, error) {
 	if i.UserConfig == nil {
-		return "",nil
+		return "", nil
 	}
 	pvs := i.UserConfig.Spec.Persistence.GetPersistentVolumeSource("")
 	persistence := Persistence{
@@ -486,19 +485,19 @@ func (i *Install) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error) 
 	s.Namespace = i.Namespace
 
 	if pvcName, err := i.PrepareSlaverPvc(); err != nil {
-		return s,err
+		return s, err
 	} else {
 		s.PvcName = pvcName
 	}
 
 	if _, err := s.CheckInstall(); err != nil {
-		return s,err
+		return s, err
 	}
 	port := s.ForwardPort("http", stopCh)
 	grpcPort := s.ForwardPort("grpc", stopCh)
 	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
 	s.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
-	return s,nil
+	return s, nil
 }
 
 func (i *Install) Run(args ...string) error {
@@ -534,7 +533,7 @@ func (i *Install) Run(args ...string) error {
 
 	stopCh := make(chan struct{})
 
-	s,err := i.PrepareSlaver(stopCh)
+	s, err := i.PrepareSlaver(stopCh)
 	if err != nil {
 		return err
 	}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-version"
 	"github.com/vinkdong/gox/log"
+	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"regexp"
 	"strings"
-	"golang.org/x/crypto/ssh/terminal"
 	"syscall"
 )
 
@@ -75,7 +75,7 @@ start:
 		goto start
 	}
 
-	if !input.Twice{
+	if !input.Twice {
 		return string(bytePassword[:]), nil
 	}
 
@@ -137,4 +137,9 @@ func CheckVersion(versionRaw, constraint string) (bool, error) {
 		return false, err
 	}
 	return constraints.Check(v1), nil
+}
+
+func ConditionSkip() bool {
+	//todo skip some test in conditions
+	return true
 }

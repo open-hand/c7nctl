@@ -1,14 +1,14 @@
 package authorize
 
 import (
-	"github.com/choerodon/c7nctl/pkg/utils"
-	"net/http"
-	"fmt"
-	"net/url"
 	"encoding/base64"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 )
 
 const (
@@ -33,7 +33,6 @@ func (a *Authorization) Login() error {
 		Password: true,
 		Tip:      "请输入密码: ",
 	}
-
 
 input:
 	if username, err = utils.AcceptUserInput(userNameInput); err != nil {

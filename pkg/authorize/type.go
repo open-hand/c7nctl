@@ -1,8 +1,8 @@
 package authorize
 
 import (
-	"github.com/choerodon/c7nctl/pkg/utils"
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	"net/http"
 )
@@ -44,8 +44,7 @@ func (a *Authorization) Write() error {
 	user.Name = a.Username
 	cluster = a.Config.CurrentCluster()
 	if cluster == nil {
-		cluster = &utils.Cluster{
-		}
+		cluster = &utils.Cluster{}
 		a.Config.Clusters = append(a.Config.Clusters, &utils.NamedCluster{
 			Name:    a.ClusterName,
 			Cluster: cluster,
@@ -77,10 +76,10 @@ func DefaultAuthorization(configs ...*utils.Config) *Authorization {
 	var (
 		err error
 		cfg *utils.Config
-		)
-	if len(configs)==1 {
+	)
+	if len(configs) == 1 {
 		cfg = configs[0]
-	}else{
+	} else {
 		cfg, err = utils.GetConfig()
 	}
 	if err != nil {
@@ -94,7 +93,7 @@ func DefaultAuthorization(configs ...*utils.Config) *Authorization {
 		TokenType:   "Bearer",
 	}
 
-	user:= cfg.CurrentUser()
+	user := cfg.CurrentUser()
 	if user != nil {
 		auth.Username = user.Name
 		auth.Token = user.Token

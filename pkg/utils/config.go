@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"k8s.io/client-go/util/homedir"
-	"os"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"k8s.io/client-go/util/homedir"
+	"os"
 )
 
 const (

@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestGetConfigMail(t *testing.T) {
-	c,err := GetConfig()
+	c, err := GetConfig()
 
 	fmt.Println(c.Clusters)
 	if err != nil {
@@ -16,7 +16,7 @@ func TestGetConfigMail(t *testing.T) {
 	c.Write()
 	d, _ := GetConfig()
 	mail := d.OpsMail
-	if mail != "test@test.com"{
-		 t.Error("get config mail error")
+	if mail != "test@test.com" {
+		t.Error("get config mail error")
 	}
 }

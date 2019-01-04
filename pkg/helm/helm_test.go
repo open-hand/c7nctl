@@ -1,7 +1,6 @@
 package helm
 
 import (
-	"fmt"
 	"github.com/choerodon/c7nctl/pkg/kube"
 	"testing"
 )
@@ -9,6 +8,7 @@ import (
 var (
 	testRepoURL = "https://openchart.choerodon.com.cn/choerodon/c7n/"
 	testVersion = ""
+	testChart   = "minio"
 )
 
 func TestLocateChartPath(t *testing.T) {
@@ -21,8 +21,10 @@ func TestLocateChartPath(t *testing.T) {
 		Verify:      false,
 		Version:     testVersion,
 	}
-	cp, err := client.locateChartPath(chartArgs)
-	fmt.Println(cp, err)
+	_, err := client.locateChartPath(chartArgs)
+	if err != nil {
+		t.Error("locate chart failed")
+	}
 }
 
 func TestInstallRelease(t *testing.T) {
@@ -39,6 +41,7 @@ func TestInstallRelease(t *testing.T) {
 		RepoUrl:     testRepoURL,
 		Verify:      false,
 		Version:     testVersion,
+		ChartName:   testChart,
 	}
 	err := client.InstallRelease(vals, chartArgs)
 	if err != nil {
