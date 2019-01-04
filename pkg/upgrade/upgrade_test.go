@@ -1,11 +1,6 @@
 package upgrade
 
 import (
-	"fmt"
-	"github.com/choerodon/c7nctl/pkg/config"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -72,7 +67,7 @@ func TestGetValueByKey(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    string
+		want    interface{}
 		wantErr bool
 	}{
 		{name: "string",
@@ -164,13 +159,13 @@ persistence:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setValueByKey(tt.args.data, tt.args.value, tt.args.key)
+			got, err := setValueByKey(tt.args.data, tt.args.key, tt.args.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetValueByKey() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if strings.Compare(string(got), string(tt.want)) != 0 {
-				t.Errorf("SetValueByKey() = %s, want %s", got, tt.want)
+				t.Errorf("SetValueByKey() = %s, want %s", string(got), tt.want)
 			}
 		})
 	}
@@ -272,48 +267,14 @@ func TestUpgrader_UpgradeRelease(t *testing.T) {
 		},
 	}
 	release := upgradeRelease(u, up)
-	fmt.Print(release)
+	if release != nil {
+		t.Error(release)
+	}
 }
 
 func Test_CheckVersion(t *testing.T) {
-	b, _ := utils.CheckVersion("0.11.1", ">=0.11.0")
-	//fmt.Print(b, e)
-	if !b {
-		t.Error("check version failed")
+	b, e := utils.CheckVersion("0.11.1", ">=0.11.0")
+	if !b || e != nil {
+		t.Errorf("check version failed %v %v", b, e)
 	}
-}
-
-func Test(t *testing.T) {
-	var (
-		data []byte
-		err  error
-	)
-	resp, err := http.Get(fmt.Sprintf("%s%s", "https://file.choerodon.com.cn/choerodon-install", "/upgrade.yml"))
-	if err != nil {
-		log.Error(err)
-		os.Exit(127)
-	}
-	defer resp.Body.Close()
-
-	data, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Get resource %s failed", "/upgrade.yml")
-		log.Error(err)
-		os.Exit(127)
-	}
-	fmt.Printf("%s", string(data))
-	var u Upgrader
-	yaml.Unmarshal(data, &u)
-	fmt.Printf("%s", string(data))
-}
-
-func TestUpgrader_Run(t *testing.T) {
-	log.EnableDebug()
-	r := config.ResourceDefinition{}
-	r.LocalFile = "../../upgrade.yml"
-	data, _ := r.GetUpgradeResourceDate("0.12")
-	u := Upgrader{}
-	yaml.Unmarshal(data, &u)
-	e := u.Run()
-	fmt.Println(e)
 }

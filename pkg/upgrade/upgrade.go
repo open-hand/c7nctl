@@ -178,11 +178,14 @@ func upgradeValues(upgrade *Upgrade) error {
 }
 
 func getValueByKey(data []byte, key string) (string, error) {
-	value, err := jsonparser.GetString(data, strings.Split(key, ".")...)
+	value, err := jsonparser.GetUnsafeString(data, strings.Split(key, ".")...)
 	return string(value), err
 }
 
 func setValueByKey(data []byte, key, value string) ([]byte, error) {
+	if value == "true" || value == "false" {
+		return jsonparser.Set(data, []byte(value), strings.Split(key, ".")...)
+	}
 	if !(strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) {
 		value = fmt.Sprintf(`"%s"`, value)
 	}
