@@ -41,10 +41,10 @@ func (m *Metrics) Send() {
 	m.Ip = GetPublicIP()
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error(err)
+		log.Debug(err)
 	}
 	if resp.StatusCode != 200 {
-		log.Errorf("send metrics failed with code: %d", resp.StatusCode)
+		log.Debugf("send metrics failed with code: %d", resp.StatusCode)
 	}
 }
 
