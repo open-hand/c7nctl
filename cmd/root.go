@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/choerodon/c7n/pkg/c7nclient"
 	"os"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -24,7 +25,9 @@ import (
 )
 
 var cfgFile string
+var config c7nclient.C7NConfig
 
+var clientConfig c7nclient.C7NPlatformContext
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "c7n",
@@ -85,5 +88,16 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+	if err := viper.Unmarshal(&config); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if len(config.Contexts) == 0{
+		fmt.Println("No C7nConfig Context")
+	}
+	if config.CurrentContext == "" {
+		clientConfig = config.Contexts[0].Context
+		clientConfig.Name = config.Contexts[0].Name
 	}
 }
