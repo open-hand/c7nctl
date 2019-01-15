@@ -113,6 +113,9 @@ exit:
 		}
 	}
 	ctx.Metrics.Send()
+	if code == 0 {
+		return
+	}
 	os.Exit(code)
 }
 

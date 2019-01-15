@@ -66,8 +66,8 @@ var installCmd = &cobra.Command{
 	start:
 		err = app.Install(cmd, args, mail)
 		if err != nil {
-			log.Error(err)
 			log.Error("install failed")
+			return err
 		}
 		log.Success("Install succeed")
 		return nil
