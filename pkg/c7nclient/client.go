@@ -38,7 +38,7 @@ func (c *C7NClient) ListEnvs(out io.Writer,) {
 		fmt.Printf("Set project Id")
 		return
 	}
-	paras := make(map[string]string)
+	paras := make(map[string]interface{})
 	paras["active"]="true"
 	req,err := c.newRequest("GET",fmt.Sprintf("/devops/v1/projects/%d/envs/groups",c.config.ProjectId,),paras,nil)
 	if err != nil {
@@ -46,18 +46,13 @@ func (c *C7NClient) ListEnvs(out io.Writer,) {
 
 	}
 	var devOpsEnvs = []model.DevOpsEnvs{}
-	resp,err := c.do(req,&devOpsEnvs)
+	_,err = c.do(req,&devOpsEnvs)
 	if err != nil {
 		fmt.Printf("request err:%v",err)
 		return
 
 	}
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
-		return
-	}
+
 	envInfos := []model.EnvInfo{}
 	for _,devOpsEnv := range devOpsEnvs[0].DevopsEnviromentRepDTOs {
 		var status string
@@ -106,7 +101,7 @@ func (c *C7NClient) QuerySelf(out io.Writer,) {
 }
 
 
-func (c *C7NClient) newRequest(method, path string,paras map[string]string, body interface{}) (*http.Request, error) {
+func (c *C7NClient) newRequest(method, path string,paras map[string]interface{}, body interface{}) (*http.Request, error) {
 	rel := &url.URL{Path: path}
 	base,_ := url.Parse(c.BaseURL)
 	u := base.ResolveReference(rel)
@@ -125,7 +120,7 @@ func (c *C7NClient) newRequest(method, path string,paras map[string]string, body
 	q := req.URL.Query()
 	if paras != nil {
 		for key,value := range paras {
-			q.Add(key, value)
+			q.Add(key, fmt.Sprintf("%v",value))
 		}
 	}
 	req.URL.RawQuery = q.Encode()
@@ -141,6 +136,11 @@ func (c *C7NClient) do(req *http.Request, v interface{}) (*http.Response, error)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		return nil, fmt.Errorf("request error with: %s", bodyString)
 	}
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(v)

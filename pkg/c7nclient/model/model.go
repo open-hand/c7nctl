@@ -33,6 +33,8 @@ type EnvInfo struct {
 	Group string
 	Status string
 	Cluster string
+	SyncStatus bool
+	Id int
 }
 
 
@@ -67,19 +69,38 @@ func PrintEnvInfo(envs []EnvInfo, out io.Writer)  {
 		table.AddRow(r.Name, r.Code, r.Status,"default",  r.Cluster)
 	}
 	fmt.Fprintf(out,table.String())
-
 }
 
-
-
-func formatText(results []EnvInfo, colWidth uint) string {
-
+func PrintAuthEnvInfo(envs []EnvInfo, out io.Writer)  {
 	table := uitable.New()
-	table.MaxColWidth = colWidth
-	table.AddRow("Name","Code","Status","Group","Cluster")
-	for _, r := range results {
-		table.AddRow(r.Name, r.Code, r.Status,"default",  r.Cluster)
+	table.MaxColWidth = 60
+	table.AddRow("Id","Name","Code","SyncStatus")
+	for _, r := range envs {
+		table.AddRow(r.Id,r.Name, r.Code,r.SyncStatus)
 	}
-
-	return fmt.Sprintf("%s" ,table.String())
+	fmt.Fprintf(out,table.String())
 }
+
+
+type AuthEnv struct {
+	ID               int         `json:"id"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	Code             string      `json:"code"`
+	ClusterID        int         `json:"clusterId"`
+	Sequence         int         `json:"sequence"`
+	Permission       bool        `json:"permission"`
+	Active           bool        `json:"active"`
+	Synchro          bool        `json:"synchro"`
+	Failed           bool        `json:"failed"`
+	Connect          bool        `json:"connect"`
+}
+
+
+type EnvSyncStatus struct {
+	DevopsSyncCommit string `json:"devopsSyncCommit"`
+	AgentSyncCommit  string `json:"agentSyncCommit"`
+	SagaSyncCommit   string `json:"sagaSyncCommit"`
+	CommitURL        string `json:"commitUrl"`
+}
+
