@@ -1,4 +1,4 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2018 VinkDong <dong@wenqi.us>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 
 var envId int
 var instanceId int
+var appCode string
 
 func init() {
 	rootCmd.AddCommand(getCmd)
@@ -28,12 +29,16 @@ func init() {
 	getCmd.AddCommand(authEnvCmd)
 	getCmd.AddCommand(instanceCmd)
 	getCmd.AddCommand(instanceConfig)
-	getCmd.AddCommand(ServiceCmd)
+	getCmd.AddCommand(serviceCmd)
 	getCmd.AddCommand(instanceResources)
 	getCmd.AddCommand(ingressCmd)
+	getCmd.AddCommand(appVersionCmd)
+	getCmd.AddCommand(appTemplateCmd)
+	getCmd.AddCommand(appCmd)
 
+	appVersionCmd.Flags().StringVarP(&appCode, "appCode", "a", "", "app code")
 	instanceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
-	ServiceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
+	serviceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	ingressCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	instanceConfig.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
 	instanceResources.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
@@ -42,30 +47,21 @@ func init() {
 // getCmd represents the get command
 var getCmd = &cobra.Command{
 	Use:   "get",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "The command to get choerodon resource",
+	Long:  `The command to get choerodon resource.such as organization, project, app, instance.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
 	},
 }
-
-
 
 // getCmd represents the get command
 var envCmd = &cobra.Command{
 	Use:   "all-env",
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	and usage of using your command. For example:
+	Cobra is a CLI library for Go that empowers applications.
+	This application`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
 		c7nclient.Client.ListEnvs(cmd.OutOrStdout())
@@ -77,7 +73,6 @@ var authEnvCmd = &cobra.Command{
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
-
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
@@ -119,7 +114,6 @@ to quickly create a Cobra application.`,
 	},
 }
 
-
 // getCmd represents the get command
 var instanceResources = &cobra.Command{
 	Use:   "instance-resources",
@@ -132,13 +126,46 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.InstanceResources(cmd.OutOrStdout(), instanceId)
+		c7nclient.Client.InstanceResources(cmd.OutOrStdout(), instanceId) // get app templates command
+
 	},
 }
 
+// getCmd represents the get command
+var appTemplateCmd = &cobra.Command{
+	Use:   "appTemplate",
+	Short: "Get AppTemplate",
+	Long:  `Get Devops App Templates List`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListAppTemplates(cmd.OutOrStdout())
+	},
+}
+
+// get application command
+var appCmd = &cobra.Command{
+	Use:   "app",
+	Short: "Get Application",
+	Long:  `Get Devops Application List`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListApps(cmd.OutOrStdout())
+	},
+}
+
+// get application version command
+var appVersionCmd = &cobra.Command{
+	Use:   "appVersion",
+	Short: "Get Application version",
+	Long:  `Get Devops Application Version List`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListAppVersions(cmd.OutOrStdout(), &appCode)
+	},
+}
 
 // getCmd represents the get command
-var ServiceCmd = &cobra.Command{
+var serviceCmd = &cobra.Command{
 	Use:   "service",
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples

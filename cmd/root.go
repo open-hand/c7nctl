@@ -17,11 +17,10 @@ package cmd
 import (
 	"fmt"
 	"github.com/choerodon/c7n/pkg/c7nclient"
-	"os"
-
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
@@ -40,7 +39,10 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+		Run: func(cmd *cobra.Command, args []string) {
+			//c7nclient.InitClient(&clientConfig)
+			//apptemplate.ListAppTemplates(cmd.OutOrStdout())
+		},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -67,6 +69,7 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	fmt.Println(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -89,6 +92,7 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+	//序列化配置文件为CONTEXT结构
 	if err := viper.Unmarshal(&config); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

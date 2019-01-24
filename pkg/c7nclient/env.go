@@ -15,7 +15,7 @@ func (c *C7NClient) GetEnvSyncStatus(envId int) ( bool,error) {
 		fmt.Printf("build request error")
 	}
 	var envSyncStatus = model.EnvSyncStatus{}
-	_,err = c.do(req,&envSyncStatus)
+	_ ,err = c.do(req,&envSyncStatus)
 	if err != nil {
 		return false,err
 
@@ -73,5 +73,49 @@ func (c *C7NClient) ListAuthEnvs(out io.Writer,) {
 		envInfos = append(envInfos, envInfo)
 	}
 	model.PrintAuthEnvInfo(envInfos,out)
+
+}
+
+
+func (c *C7NClient) ListEnvs(out io.Writer, ) {
+	if c.config.ProjectId == -1 {
+		fmt.Printf("Set project Id")
+		return
+	}
+	paras := make(map[string]interface{})
+	paras["active"] = "true"
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/groups", c.config.ProjectId, ), paras, nil)
+	if err != nil {
+		fmt.Printf("build request error")
+
+	}
+	var devOpsEnvs = []model.DevOpsEnvs{}
+	_, err = c.do(req, &devOpsEnvs)
+
+	if err != nil {
+		fmt.Printf("request err:%v", err)
+		return
+	}
+
+	envInfos := []model.EnvInfo{}
+	for _, devOpsEnv := range devOpsEnvs[0].DevopsEnviromentRepDTOs {
+		var status string
+		if devOpsEnv.Failed {
+			status = "Failed"
+		} else if devOpsEnv.Connect {
+			status = "Connected"
+		} else {
+			status = "Disconnected"
+		}
+		envInfo := model.EnvInfo{
+			Name:    devOpsEnv.Name,
+			Status:  status,
+			Code:    devOpsEnv.Code,
+			Cluster: devOpsEnv.ClusterName,
+			Group:   devOpsEnvs[0].DevopsEnvGroupName,
+		}
+		envInfos = append(envInfos, envInfo)
+	}
+	model.PrintEnvInfo(envInfos, out)
 
 }
