@@ -22,6 +22,7 @@ import (
 var envId int
 var instanceId int
 var appCode string
+var clusterId int
 
 func init() {
 	rootCmd.AddCommand(getCmd)
@@ -35,11 +36,13 @@ func init() {
 	getCmd.AddCommand(appVersionCmd)
 	getCmd.AddCommand(appTemplateCmd)
 	getCmd.AddCommand(appCmd)
+	getCmd.AddCommand(clusterNodeCmd)
 
 	appVersionCmd.Flags().StringVarP(&appCode, "appCode", "a", "", "app code")
 	instanceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	serviceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	ingressCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
+	clusterNodeCmd.Flags().IntVar(&clusterId, "cluster-id", 0, "cluster id")
 	instanceConfig.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
 	instanceResources.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
 }
@@ -161,6 +164,28 @@ var appVersionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
 		c7nclient.Client.ListAppVersions(cmd.OutOrStdout(), &appCode)
+	},
+}
+
+// get cluster command
+var clusterCmd = &cobra.Command{
+	Use:   "cluster",
+	Short: "Get Clusters",
+	Long:  `Get Clusters`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListClusters(cmd.OutOrStdout())
+	},
+}
+
+// get cluster node command
+var clusterNodeCmd = &cobra.Command{
+	Use:   "node",
+	Short: "Get Cluster Nodes",
+	Long:  `Get Cluster Nodes`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), clusterId)
 	},
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 )
@@ -101,6 +102,22 @@ func (c *C7NClient) handleRep(resp *http.Response) error {
 		return errors.New(resp.Status)
 	}
 	return nil
+}
+
+func (c *C7NClient) getTime(time float64) string {
+	if time < 60 {
+		return "刚刚"
+	} else if time/60 < 60 {
+		return fmt.Sprintf("%.0f分钟前", math.Floor(time/60))
+	} else if time/60/60 < 24 {
+		return fmt.Sprintf("%.0f小时前", math.Floor(time/60/60))
+	} else if time/60/60/24 < 30 {
+		return fmt.Sprintf("%.0f天前", math.Floor(time/60/60/24))
+	} else if time/60/60/24/30 < 12 {
+		return fmt.Sprintf("%.0f月前", math.Floor(time/60/60/24/30))
+	} else {
+		return fmt.Sprintf("%.0f年前", math.Floor(time/60/60/24/30/12))
+	}
 }
 
 func (c *C7NClient) printContextInfo() {

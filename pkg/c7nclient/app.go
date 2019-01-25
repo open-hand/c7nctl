@@ -51,7 +51,7 @@ func (c *C7NClient) ListApps(out io.Writer, ) {
 	model.PrintAppInfo(appInfos, out)
 }
 
-func (c *C7NClient) GetApp(appCode *string) (*model.App, error) {
+func (c *C7NClient) getApp(appCode *string) (*model.App, error) {
 	if c.config.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return nil, nil

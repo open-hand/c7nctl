@@ -14,7 +14,7 @@ func (c *C7NClient) ListAppVersions(out io.Writer, appCode *string) {
 	}
 	paras := make(map[string]interface{})
 	if *appCode != "" {
-		app, _ := c.GetApp(appCode)
+		app, _ := c.getApp(appCode)
 		paras["appId"] = strconv.Itoa(app.ID)
 	}
 	paras["page"] = "0"
@@ -41,9 +41,3 @@ func (c *C7NClient) ListAppVersions(out io.Writer, appCode *string) {
 	}
 	model.PrintAppVersionInfo(appVersionInfos, out)
 }
-
-
-
-
-
-

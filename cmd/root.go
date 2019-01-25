@@ -39,10 +39,10 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-		Run: func(cmd *cobra.Command, args []string) {
-			//c7nclient.InitClient(&clientConfig)
-			//apptemplate.ListAppTemplates(cmd.OutOrStdout())
-		},
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), 37)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -97,7 +97,7 @@ func initConfig() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	if len(config.Contexts) == 0{
+	if len(config.Contexts) == 0 {
 		fmt.Println("No C7nConfig Context")
 	}
 	if config.CurrentContext == "" {
