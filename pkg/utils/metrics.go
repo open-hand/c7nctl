@@ -1,14 +1,14 @@
 package utils
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/ugorji/go/codec"
 	"github.com/vinkdong/gox/log"
-	"net"
 	"net/http"
 	"sync"
+	"bufio"
+	"net"
 )
 
 type Metrics struct {
@@ -38,7 +38,7 @@ func (m *Metrics) Send() {
 	if err != nil {
 		log.Error(err)
 	}
-	m.Ip = GetPublicIP()
+	m.Ip = "127.0.0.1"
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Debug(err)
@@ -59,13 +59,16 @@ func (m *Metrics) pack() []byte {
 	err := enc.Encode(m)
 	if err != nil {
 		fmt.Println(err)
-		fmt.Println(b)
 	}
 	return b
 }
 
 func GetPublicIP() string {
-	conn, _ := net.Dial("tcp", ipAddr)
+	conn, err := net.Dial("tcp", ipAddr)
+	if err != nil{
+		log.Error(err)
+		return "127.0.0.1"
+	}
 	defer conn.Close()
 
 	ip, _ := bufio.NewReader(conn).ReadString('\n')
