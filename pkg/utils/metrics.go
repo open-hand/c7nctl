@@ -1,14 +1,14 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/ugorji/go/codec"
 	"github.com/vinkdong/gox/log"
+	"net"
 	"net/http"
 	"sync"
-	"bufio"
-	"net"
 )
 
 type Metrics struct {
@@ -65,7 +65,7 @@ func (m *Metrics) pack() []byte {
 
 func GetPublicIP() string {
 	conn, err := net.Dial("tcp", ipAddr)
-	if err != nil{
+	if err != nil {
 		log.Error(err)
 		return "127.0.0.1"
 	}

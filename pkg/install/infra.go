@@ -392,7 +392,7 @@ func (infra *InfraResource) getAppFromList(appName string, resourceList []*Infra
 
 // just search the key
 func (infra *InfraResource) CheckRunning() error {
-	log.Infof("Checking %s is running", infra.Name)
+	log.Infof("Waiting %s running", infra.Name)
 	var err error
 
 	// check http
@@ -431,7 +431,7 @@ func (infra *InfraResource) CheckRunning() error {
 		p.Client = infra.Home.Client
 		p.Namespace = infra.Namespace
 		p.Name = infra.renderValue(p.Name)
-		log.Infof("check %s running", p.Name)
+		log.Infof("waiting %s running", p.Name)
 	check:
 		err := p.MustRunning()
 		if err != nil {

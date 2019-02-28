@@ -2,8 +2,8 @@ package utils
 
 import (
 	"github.com/ugorji/go/codec"
-	"testing"
 	"github.com/vinkdong/gox/log"
+	"testing"
 )
 
 func TestPack(t *testing.T) {

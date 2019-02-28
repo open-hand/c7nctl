@@ -432,6 +432,7 @@ func (s *Slaver) InstallService() (*core_v1.Service, error) {
 		Port:       80,
 		Protocol:   "TCP",
 		TargetPort: port,
+		Name:       "http",
 	}
 
 	service := &core_v1.Service{
