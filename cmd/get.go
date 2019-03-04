@@ -22,7 +22,6 @@ import (
 var envId int
 var instanceId int
 var appCode string
-var clusterId int
 
 func init() {
 	rootCmd.AddCommand(getCmd)
@@ -30,6 +29,8 @@ func init() {
 	getCmd.AddCommand(authEnvCmd)
 	getCmd.AddCommand(instanceCmd)
 	getCmd.AddCommand(instanceConfig)
+	getCmd.AddCommand(proCmd)
+	getCmd.AddCommand(orgCmd)
 	getCmd.AddCommand(serviceCmd)
 	getCmd.AddCommand(instanceResources)
 	getCmd.AddCommand(ingressCmd)
@@ -37,14 +38,17 @@ func init() {
 	getCmd.AddCommand(appTemplateCmd)
 	getCmd.AddCommand(appCmd)
 	getCmd.AddCommand(clusterNodeCmd)
+	getCmd.AddCommand(clusterCmd)
 
 	appVersionCmd.Flags().StringVarP(&appCode, "appCode", "a", "", "app code")
 	instanceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	serviceCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
 	ingressCmd.Flags().IntVar(&envId, "env-id", 0, "env id")
-	clusterNodeCmd.Flags().IntVar(&clusterId, "cluster-id", 0, "cluster id")
+	clusterNodeCmd.Flags().StringVarP(&clusterCode, "clusterCode", "c", "", "cluster id")
 	instanceConfig.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
 	instanceResources.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
+	clusterNodeCmd.MarkFlagRequired("clusterCode")
+	appVersionCmd.MarkFlagRequired("appCode")
 }
 
 // getCmd represents the get command
@@ -57,9 +61,9 @@ var getCmd = &cobra.Command{
 	},
 }
 
-// getCmd represents the get command
+// get env command
 var envCmd = &cobra.Command{
-	Use:   "all-env",
+	Use:   "allEnv",
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples
 	and usage of using your command. For example:
@@ -67,12 +71,55 @@ var envCmd = &cobra.Command{
 	This application`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListEnvs(cmd.OutOrStdout())
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListEnvs(cmd.OutOrStdout(),pro.ID)
 	},
 }
-// getCmd represents the get command
+
+// get orginazation command
+var orgCmd = &cobra.Command{
+	Use:   "org",
+	Short: "get organization",
+	Long:  `list the organizations `,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListOrganization(cmd.OutOrStdout(), userinfo.ID)
+	},
+}
+
+// get project command
+var proCmd = &cobra.Command{
+	Use:   "pro",
+	Short: "get project",
+	Long:  `list the projects `,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListProject(cmd.OutOrStdout(), userinfo.ID)
+	},
+}
+
+// get auth env  command
 var authEnvCmd = &cobra.Command{
-	Use:   "env",
+	Use:   "authEnv",
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -81,11 +128,23 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListAuthEnvs(cmd.OutOrStdout())
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListAuthEnvs(cmd.OutOrStdout(), pro.ID)
 	},
 }
 
-// getCmd represents the get command
+// get instance command
 var instanceCmd = &cobra.Command{
 	Use:   "instance",
 	Short: "get env pipeline",
@@ -101,7 +160,7 @@ to quickly create a Cobra application.`,
 	},
 }
 
-// getCmd represents the get command
+// get instance config  command
 var instanceConfig = &cobra.Command{
 	Use:   "instance-config",
 	Short: "get env pipeline",
@@ -117,7 +176,7 @@ to quickly create a Cobra application.`,
 	},
 }
 
-// getCmd represents the get command
+// get instance resource command
 var instanceResources = &cobra.Command{
 	Use:   "instance-resources",
 	Short: "get env pipeline",
@@ -134,14 +193,26 @@ to quickly create a Cobra application.`,
 	},
 }
 
-// getCmd represents the get command
+// get application template command
 var appTemplateCmd = &cobra.Command{
 	Use:   "appTemplate",
 	Short: "Get AppTemplate",
 	Long:  `Get Devops App Templates List`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListAppTemplates(cmd.OutOrStdout())
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListAppTemplates(cmd.OutOrStdout(), organizationId)
 	},
 }
 
@@ -152,7 +223,19 @@ var appCmd = &cobra.Command{
 	Long:  `Get Devops Application List`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListApps(cmd.OutOrStdout())
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListApps(cmd.OutOrStdout(), pro.ID)
 	},
 }
 
@@ -163,7 +246,19 @@ var appVersionCmd = &cobra.Command{
 	Long:  `Get Devops Application Version List`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListAppVersions(cmd.OutOrStdout(), &appCode)
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListAppVersions(cmd.OutOrStdout(), &appCode, pro.ID)
 	},
 }
 
@@ -174,7 +269,19 @@ var clusterCmd = &cobra.Command{
 	Long:  `Get Clusters`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListClusters(cmd.OutOrStdout())
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListClusters(cmd.OutOrStdout(), organizationId)
 	},
 }
 
@@ -185,7 +292,23 @@ var clusterNodeCmd = &cobra.Command{
 	Long:  `Get Cluster Nodes`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
-		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), clusterId)
+		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		if err != nil {
+			return
+		}
+		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		if err != nil {
+			return
+		}
+		err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), organizationId, clusterCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), organizationId, cluster.ID)
 	},
 }
 

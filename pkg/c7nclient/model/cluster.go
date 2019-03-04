@@ -75,6 +75,15 @@ type ClusterInfo struct {
 	Status      string
 }
 
+
+type ClusterPostInfo struct {
+	Name string     `json:"name"`
+	Code string		`json:"code"`
+	Description string   `json:"description"`
+	SkipCheckProjectPermission bool  `json:"skipCheckProjectPermission"`
+}
+
+
 func PrintClusterInfo(clusterInfos []ClusterInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100

@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func (c *C7NClient) ListEnvsInstance(out io.Writer,envId int) {
+func (c *C7NClient) ListEnvsInstance(out io.Writer, envId int) {
 	if c.config.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
@@ -14,28 +14,28 @@ func (c *C7NClient) ListEnvsInstance(out io.Writer,envId int) {
 	body := make(map[string]interface{})
 	body["param"] = ""
 	body["searchParam"] = make(map[string]string)
-	req,err := c.newRequest("POST",fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/listByEnv",c.config.ProjectId,envId),nil,body)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/listByEnv", c.config.ProjectId, envId), nil, body)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
 	var envInstanceList = model.DevopsEnvInstance{}
-	_,err = c.do(req,&envInstanceList)
+	_, err = c.do(req, &envInstanceList)
 	if err != nil {
-		fmt.Printf("request err:%v",err)
+		fmt.Printf("request err:%v", err)
 		return
 
 	}
 	envInstances := []model.EnvInstanceInfo{}
-	for _,app := range envInstanceList.DevopsEnvPreviewApp {
-		for _,appInstance := range app.ApplicationInstanceDTOS {
+	for _, app := range envInstanceList.DevopsEnvPreviewApp {
+		for _, appInstance := range app.ApplicationInstanceDTOS {
 			instance := model.EnvInstanceInfo{
-				AppCode: app.AppCode,
-				AppName: app.AppName,
-				InstanceCode: appInstance.Code,
+				AppCode:         app.AppCode,
+				AppName:         app.AppName,
+				InstanceCode:    appInstance.Code,
 				PodPreviewCount: fmt.Sprintf("%d/%d", appInstance.PodRunningCount, appInstance.PodCount),
-				Status:  appInstance.Status,
-				Version: appInstance.AppVersion,
-				Id:  appInstance.ID,
+				Status:          appInstance.Status,
+				Version:         appInstance.AppVersion,
+				Id:              appInstance.ID,
 			}
 			envInstances = append(envInstances, instance)
 		}
@@ -47,40 +47,39 @@ func (c *C7NClient) ListEnvsInstance(out io.Writer,envId int) {
 
 // devops/v1/projects/42/app_instances/5324/value
 
-func (c *C7NClient) InstanceConfig(out io.Writer,instancesId int) {
+func (c *C7NClient) InstanceConfig(out io.Writer, instancesId int) {
 	if c.config.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
-	req,err := c.newRequest("GET",fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/resources",c.config.ProjectId,instancesId),nil,nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/resources", c.config.ProjectId, instancesId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
 	var resp = model.InstanceResources{}
-	_,err = c.do(req,&resp)
+	_, err = c.do(req, &resp)
 	if err != nil {
 		return
 
 	}
-	model.PrintInstanceResources(resp,out)
+	model.PrintInstanceResources(resp, out)
 
 }
 
-// devops/v1/projects/42/app_instances/5324/value
 
-func (c *C7NClient) InstanceResources(out io.Writer,instancesId int) {
+func (c *C7NClient) InstanceResources(out io.Writer, instancesId int) {
 	if c.config.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
-	req,err := c.newRequest("GET",fmt.Sprintf("devops/v1/projects/%d/app_instances/%d/value",c.config.ProjectId,instancesId),nil,nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_instances/%d/value", c.config.ProjectId, instancesId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
 	var resp = model.InstanceValues{}
-	_,err = c.do(req,&resp)
+	_, err = c.do(req, &resp)
 	if err != nil {
-		fmt.Printf("request err:%v",err)
+		fmt.Printf("request err:%v", err)
 		return
 
 	}
@@ -89,4 +88,30 @@ func (c *C7NClient) InstanceResources(out io.Writer,instancesId int) {
 
 }
 
+func (c *C7NClient) CreateInstance(out io.Writer, projectId int, instancePostInfo *model.InstancePostInfo) {
+	if projectId == 0 {
+		return
+	}
 
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_instances", projectId, ), nil, instancePostInfo)
+	if err != nil {
+		fmt.Printf("build request error")
+	}
+	applicationInstance := model.ApplicationInstanceDTO{}
+	_, err = c.do(req, &applicationInstance)
+	if err != nil {
+		fmt.Printf("request err:%v", err)
+		return
+	}
+
+	envInstances := []model.EnvInstanceInfo{}
+
+	instance := model.EnvInstanceInfo{
+		InstanceCode: applicationInstance.Code,
+		Status:       applicationInstance.Status,
+	}
+	envInstances = append(envInstances, instance)
+
+	model.PrintCreateInstanceInfo(envInstances, out)
+
+}

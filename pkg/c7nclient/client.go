@@ -8,12 +8,17 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
 )
 
 var Client C7NClient
+
+var OrgMap = NewSafeMap()
+
+var ProMap = NewSafeMap()
 
 type C7NClient struct {
 	BaseURL    string
@@ -29,21 +34,6 @@ func InitClient(config *C7NPlatformContext) {
 		},
 		token:  config.Token,
 		config: config,
-	}
-}
-
-func (c *C7NClient) QuerySelf(out io.Writer, ) {
-
-	req, err := c.newRequest("GET", "/iam/v1/users/self", nil, nil)
-	if err != nil {
-		fmt.Printf("build request error")
-
-	}
-	var userInfo *model.UserInfo
-	_, err = c.do(req, userInfo)
-	if err != nil {
-		fmt.Printf("request err:%v", err)
-		return
 	}
 }
 
@@ -74,7 +64,7 @@ func (c *C7NClient) newRequest(method, path string, paras map[string]interface{}
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("authorization", "bearer "+c.token)
+	req.Header.Set("Authorization", "bearer "+c.token)
 	return req, nil
 }
 
@@ -84,16 +74,53 @@ func (c *C7NClient) do(req *http.Request, v interface{}) (*http.Response, error)
 		return resp, err
 	}
 	defer resp.Body.Close()
-	err = c.handleRep(resp)
+	result, _ := ioutil.ReadAll(resp.Body)
+	if string(result) == "" {
+		return resp, nil
+	}
+	newRespBodyToErrorModel := ioutil.NopCloser(bytes.NewBuffer(result))
+	newRespBodyToObjectModel := ioutil.NopCloser(bytes.NewBuffer(result))
+	err = c.handleRep(resp, newRespBodyToErrorModel)
 	if err != nil {
 		return resp, err
 	}
-	err = json.NewDecoder(resp.Body).Decode(v)
+	err = json.NewDecoder(newRespBodyToObjectModel).Decode(v)
+	defer newRespBodyToErrorModel.Close()
+	defer newRespBodyToObjectModel.Close()
 	return resp, err
 }
 
-func (c *C7NClient) handleRep(resp *http.Response) error {
+func (c *C7NClient) doHandleString(req *http.Request, v *string) (*http.Response, error) {
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
+	defer resp.Body.Close()
+	result, _ := ioutil.ReadAll(resp.Body)
+	if string(result) == "" {
+		return resp, nil
+	}
+	newRespBodyToErrorModel := ioutil.NopCloser(bytes.NewBuffer(result))
+	newRespBodyToObjectModel := ioutil.NopCloser(bytes.NewBuffer(result))
+	defer newRespBodyToErrorModel.Close()
+	defer newRespBodyToObjectModel.Close()
+	err = c.handleRep(resp, newRespBodyToErrorModel)
+	if err != nil {
+		return resp, err
+	}
+	resultNew, _ := ioutil.ReadAll(newRespBodyToObjectModel)
+	*v = string(resultNew)
+	return resp, err
+}
+
+func (c *C7NClient) handleRep(resp *http.Response, readCloser io.ReadCloser) error {
+
 	if resp.StatusCode == 200 {
+		var errModel = model.Error{}
+		json.NewDecoder(readCloser).Decode(&errModel)
+		if errModel.Failed  {
+			return errors.New(errModel.Message)
+		}
 		return nil
 	}
 	if resp.StatusCode == 403 {

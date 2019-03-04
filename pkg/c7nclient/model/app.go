@@ -43,6 +43,14 @@ type AppInfo struct {
 }
 
 
+type AppPostInfo struct {
+	Name string   `json:"name"`
+	Code string   `json:"code"`
+	Type string   `json:"type"`
+	ApplicationTemplateId int `json:"applicationTemplateId"`
+	IsSkipCheckPermission  bool  `json:"isSkipCheckPermission"`
+}
+
 func PrintAppInfo(appInfos []AppInfo, out io.Writer)  {
 	table := uitable.New()
 	table.MaxColWidth = 100

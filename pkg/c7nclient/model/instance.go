@@ -44,6 +44,16 @@ type ApplicationInstanceDTO struct {
 	Connect             bool   `json:"connect"`
 }
 
+type InstancePostInfo struct {
+	AppVersionId int `json:"appVersionId"`
+	EnvironmentId int `json:"environmentId"`
+	AppId int `json:"appId"`
+	InstanceName string `json:"instanceName"`
+	Values string `json:"values"`
+	Type string `json:"type"`
+	IsNotChange bool `json:"isNotChange"`
+}
+
 type EnvInstanceInfo struct {
 	AppName string
 	Id       int
@@ -62,6 +72,18 @@ func PrintEnvInstanceInfo(contents []EnvInstanceInfo, out io.Writer)  {
 	for _, r := range contents {
 		app := fmt.Sprintf("%s(%s)", r.AppName, r.AppCode)
 		table.AddRow(r.Id, app, r.InstanceCode, r.Status, r.PodPreviewCount)
+	}
+	fmt.Fprintf(out,table.String())
+}
+
+
+
+func PrintCreateInstanceInfo(contents []EnvInstanceInfo, out io.Writer)  {
+	table := uitable.New()
+	table.MaxColWidth = 60
+	table.AddRow("Code","Status")
+	for _, r := range contents {
+		table.AddRow(r.InstanceCode, r.Status)
 	}
 	fmt.Fprintf(out,table.String())
 }

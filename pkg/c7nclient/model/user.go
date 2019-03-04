@@ -19,3 +19,10 @@ type UserInfo struct {
 	Admin                bool   `json:"admin"`
 	ObjectVersionNumber  int    `json:"objectVersionNumber"`
 }
+
+
+type UserAttrInfo struct {
+
+	IamUserId  int `json:"iamUserId"`
+	GitlabUserId int  `json:"gitlabUserId"`
+}

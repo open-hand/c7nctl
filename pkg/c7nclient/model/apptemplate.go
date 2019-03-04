@@ -38,6 +38,13 @@ type AppTemplateInfo struct {
 	Available string
 }
 
+type AppTemplatePostInfo struct {
+	Name string   `json:"name"`
+	Code string    `json:"code"`
+	Description  string  `json:"description"`
+	CopyFrom int    `json:"copyFrom"`
+}
+
 
 func PrintAppTemplateInfo(appTemplates []AppTemplateInfo, out io.Writer)  {
 	table := uitable.New()
