@@ -50,7 +50,8 @@ type Spec struct {
 }
 
 type Persistence struct {
-	Nfs
+	Nfs                     `yaml:"nfs"`
+	HostPath                `yaml:"hostPath"`
 	StorageClassName string `yaml:"storageClassName"`
 }
 
@@ -58,6 +59,10 @@ type Nfs struct {
 	Server   string
 	RootPath string `yaml:"rootPath"`
 }
+
+type HostPath struct {
+	RootPath string `yaml:"rootPath"`
+} 
 
 type Resource struct {
 	Host     string
@@ -74,6 +79,9 @@ func (p *Persistence) GetPersistentVolumeSource(subPath string) v1.PersistentVol
 	if p.Nfs.Server != "" {
 		return p.prepareNfsPVS(subPath)
 	}
+	if p.HostPath.RootPath != ""{
+		return p.prepareHostPathPVS(subPath)
+	}
 	return v1.PersistentVolumeSource{}
 }
 
@@ -83,6 +91,15 @@ func (p *Persistence) prepareNfsPVS(subPath string) v1.PersistentVolumeSource {
 			Server:   p.Server,
 			Path:     fmt.Sprintf("%s/%s", p.Nfs.RootPath, subPath),
 			ReadOnly: false,
+		},
+	}
+	return pvs
+}
+
+func (p *Persistence) prepareHostPathPVS(subPath string) v1.PersistentVolumeSource {
+	pvs := v1.PersistentVolumeSource{
+		HostPath: &v1.HostPathVolumeSource{
+			Path: fmt.Sprintf("%s/%s", p.HostPath.RootPath, subPath),
 		},
 	}
 	return pvs

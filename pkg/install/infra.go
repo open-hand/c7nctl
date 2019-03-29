@@ -71,19 +71,27 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 	return nil
 }
 
+func (infra *InfraResource) getUserConfig() *config.Resource {
+	return Ctx.UserConfig.GetResource(infra.Name)
+}
+
 func (infra *InfraResource) applyUserResource() error {
-	r := Ctx.UserConfig.GetResource(infra.Name)
+	r := infra.getUserConfig()
 	if r == nil {
-		log.Infof("no user config resource for %s", infra.Name)
+		//log.Infof("no user config resource for %s", infra.Name)
 		return nil
 	}
 	if r.External {
 		infra.Resource = r
 		return nil
 	}
-	// just override domain && schema
+	// just override domain,host and schema
 	if r.Domain != "" {
 		infra.Resource.Domain = r.Domain
+	}
+
+	if r.Host != ""{
+		infra.Resource.Host = r.Host
 	}
 
 	if r.Schema != "" && infra.Resource.Schema == "" {
@@ -394,6 +402,9 @@ func (infra *InfraResource) getAppFromList(appName string, resourceList []*Infra
 func (infra *InfraResource) CheckRunning() error {
 	log.Infof("Waiting %s running", infra.Name)
 	var err error
+
+	infra.applyUserResource()
+	infra.renderResource()
 
 	// check http
 	for _, h := range infra.Health.HttpGet {

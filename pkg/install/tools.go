@@ -122,6 +122,7 @@ exit:
 func (ctx *Context) HasBackendTask() bool {
 	for _, v := range ctx.BackendTasks {
 		if v.Success == false {
+			log.Info(v.Name)
 			return true
 		}
 	}

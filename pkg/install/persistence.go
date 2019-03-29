@@ -64,6 +64,7 @@ func (p *Persistence) getPvc() (hasFound bool, pvc *v1.PersistentVolumeClaim) {
 	return true, pvc
 }
 
+// check and create pv with defined pv schema
 func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
@@ -85,6 +86,9 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		Mode: p.Mode,
 		Path: p.Path,
 		Own:  p.Own,
+	}
+	if Ctx.Slaver == nil{
+		goto checkpv
 	}
 	if err := Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
 		return err
