@@ -116,18 +116,14 @@ func (c *C7NClient) ListEnvs(out io.Writer, projectId int) {
 
 }
 
-func (c *C7NClient) GetEnv(out io.Writer, projectId int, code string, clusterId int) (error error, result *model.DevOpsEnv) {
+func (c *C7NClient) GetEnv(out io.Writer, projectId int, code string) (error error, result *model.DevOpsEnv) {
 	if projectId == 0 {
 		return errors.New("the project you choose is not found!"), nil
 	}
 	if code == "" {
 		return errors.New("the env code is empty!"), nil
 	}
-	if clusterId == 0 {
-		return errors.New("the cluster you choose is not found!"), nil
-	}
 	paras := make(map[string]interface{})
-	paras["cluster_id"] = clusterId
 	paras["code"] = code
 	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/query_by_code", projectId, ), paras, nil)
 	if err != nil {

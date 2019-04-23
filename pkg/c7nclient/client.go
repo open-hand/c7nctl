@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/choerodon/c7n/pkg/c7nclient/model"
-	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
@@ -15,10 +14,6 @@ import (
 )
 
 var Client C7NClient
-
-var OrgMap = NewSafeMap()
-
-var ProMap = NewSafeMap()
 
 type C7NClient struct {
 	BaseURL    string
@@ -64,7 +59,7 @@ func (c *C7NClient) newRequest(method, path string, paras map[string]interface{}
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "bearer "+c.token)
+	req.Header.Set("Authorization", "bearer "+c.config.Token)
 	return req, nil
 }
 
@@ -118,11 +113,16 @@ func (c *C7NClient) handleRep(resp *http.Response, readCloser io.ReadCloser) err
 	if resp.StatusCode == 200 {
 		var errModel = model.Error{}
 		json.NewDecoder(readCloser).Decode(&errModel)
-		if errModel.Failed  {
+		if errModel.Failed {
 			return errors.New(errModel.Message)
 		}
 		return nil
 	}
+
+	if resp.StatusCode == 201 {
+		return nil
+	}
+
 	if resp.StatusCode == 403 {
 		return errors.New("You do not have the permissions!")
 	} else {
@@ -147,17 +147,13 @@ func (c *C7NClient) getTime(time float64) string {
 	}
 }
 
-func (c *C7NClient) printContextInfo() {
-	fmt.Printf("organization: %s(%s) project: %s(%s)", c.config.Organization, c.config.OrganizationCode,
-		c.config.Project, c.config.ProjectCode)
+func (c *C7NClient) CheckIsLogin() error {
+	if c.config.Token == "" {
+		return errors.New("You should to login, please use c7n login!")
+	}
+	return nil
 }
 
-func PrintConfigInfo(config C7NPlatformContext, out io.Writer) {
-	table := uitable.New()
-	table.MaxColWidth = 60
-	table.AddRow("Name", "Server", "Organization", "Project", "Token")
-	table.AddRow(config.Name, config.Server,
-		fmt.Sprintf("%s(%s)", config.Organization, config.OrganizationCode),
-		fmt.Sprintf("%s(%s)", config.Project, config.ProjectCode), config.Token)
-	fmt.Fprintf(out, table.String())
+func (c *C7NClient) printContextInfo() {
+	fmt.Printf("organization: %s(%s) project: %s(%s)", c.config.OrganizationCode, c.config.ProjectCode)
 }

@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/choerodon/c7n/pkg/c7nclient"
 	"github.com/spf13/cobra"
 )
@@ -29,8 +30,9 @@ func init() {
 
 	useOrgCmd.Flags().StringVarP(&orgCode, "orgCode", "o", "", "org code")
 	useProCmd.Flags().StringVarP(&proCode, "proCode", "p", "", "pro code")
+	useOrgCmd.MarkFlagRequired("orgCode")
+	useProCmd.MarkFlagRequired("proCode")
 }
-
 
 // getCmd represents the get command
 var useCmd = &cobra.Command{
@@ -39,6 +41,16 @@ var useCmd = &cobra.Command{
 	Long:  `you can use use command to define a default organization or a default project, then you can use other command with the default organization or the default project`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
+		error := c7nclient.Client.CheckIsLogin()
+		if error != nil {
+			fmt.Println(error)
+			return
+		}
+		if len(args) > 0 {
+			fmt.Printf("don't have the resource %s, you can user c7nctl use --help to see the resource you can use!", args[0])
+		} else {
+			cmd.Help()
+		}
 	},
 }
 
@@ -48,9 +60,22 @@ var useOrgCmd = &cobra.Command{
 	Long:  `you can use use command to define a default organization ,then you can use other command with the default organization`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
+		error := c7nclient.Client.CheckIsLogin()
+		if error != nil {
+			fmt.Println(error)
+			return
+		}
+		error, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if error != nil {
+			return
+		}
+		error = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		if error != nil {
+			return
+		}
+		c7nclient.Client.UseOrganization(cmd.OutOrStdout(), orgCode)
 	},
 }
-
 
 var useProCmd = &cobra.Command{
 	Use:   "pro",
@@ -58,6 +83,20 @@ var useProCmd = &cobra.Command{
 	Long:  `you can use use command to define a default project ,then you can use other command with the default project`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c7nclient.InitClient(&clientConfig)
+		error := c7nclient.Client.CheckIsLogin()
+		if error != nil {
+			fmt.Println(error)
+			return
+		}
+		error, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if error != nil {
+			return
+		}
+		error = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		if error != nil {
+			return
+		}
+		c7nclient.Client.UseProject(cmd.OutOrStdout(), proCode)
+
 	},
 }
-

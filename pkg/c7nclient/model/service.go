@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gosuri/uitable"
 	"io"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type DevOpsService struct {
@@ -60,13 +61,35 @@ type DevOpsServiceInfo struct {
 	Status     string
 }
 
+type ServicePostInfo struct {
+	Name        string                        `json:"name"`
+	AppID       int                           `json:"appId"`
+	AppInstance []string                      `json:"appInstance"`
+	EnvID       int                           `json:"envId"`
+	ExternalIP  string                        `json:"externalIp"`
+	Ports       []ServicePort                 `json:"ports"`
+	Label       map[string]string             `json:"label"`
+	Type        string                        `json:"type"`
+	EndPoints   map[string][]EndPointPortInfo `json:"endPoints"`
+}
 
-func PrintServiceInfo(contents []DevOpsServiceInfo, out io.Writer)  {
+type EndPointPortInfo struct {
+	Name string `json:"name"`
+	Port int32  `json:"port"`
+}
+
+type ServicePort struct {
+	Port       int32              `json:"port"`
+	TargetPort intstr.IntOrString `json:"targetPort"`
+	NodePort   int32              `json:"nodePort"`
+}
+
+func PrintServiceInfo(contents []DevOpsServiceInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id","Name","Type","TargetType","Target", "Status")
+	table.AddRow("Id", "Name", "Type", "TargetType", "Target", "Status")
 	for _, r := range contents {
-		table.AddRow(r.Id, r.Name, r.Type, r.TargetType, r.Target,r.Status)
+		table.AddRow(r.Id, r.Name, r.Type, r.TargetType, r.Target, r.Status)
 	}
-	fmt.Fprintf(out,table.String())
+	fmt.Fprintf(out, table.String())
 }

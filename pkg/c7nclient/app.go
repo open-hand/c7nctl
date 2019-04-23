@@ -51,6 +51,7 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 }
 
 func (c *C7NClient) GetApp(appCode string, projectId int) (error error, result *model.App) {
+
 	if projectId == 0 {
 		return nil, nil
 	}

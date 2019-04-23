@@ -3,16 +3,17 @@ package c7nclient
 import (
 	"fmt"
 	"github.com/choerodon/c7n/pkg/c7nclient/model"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 	"io"
-	"strconv"
+	"io/ioutil"
 )
 
 func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
 	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId, ), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
-
 	}
 	var orgs = []model.Organization{}
 	_, err = c.do(req, &orgs)
@@ -21,7 +22,6 @@ func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
 		return
 	}
 	orgInfos := []model.OrganizationInfo{}
-	OrgMap.Map[strconv.Itoa(userId)] = orgs
 	for _, org := range orgs {
 		orgInfo := model.OrganizationInfo{
 			Name: org.Name,
@@ -32,7 +32,7 @@ func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
 	model.PrintOrgInfo(orgInfos, out)
 }
 
-func (c *C7NClient) SetOrganization(out io.Writer, userId int) (error error){
+func (c *C7NClient) SetOrganization(out io.Writer, userId int) (error error) {
 	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId, ), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
@@ -44,42 +44,46 @@ func (c *C7NClient) SetOrganization(out io.Writer, userId int) (error error){
 		fmt.Printf("request err:%v", err)
 		return err
 	}
-	OrgMap.Map[strconv.Itoa(userId)] = orgs
+	viper.Set("orgs", orgs)
 	return nil
 }
 
-func (c *C7NClient) UseOrganization(out io.Writer, userId int, orgCode string) {
-	values := OrgMap.Map[(strconv.Itoa(userId))]
+func (c *C7NClient) UseOrganization(out io.Writer, orgCode string) {
+	orgs := viper.Get("orgs")
+
 	var index int
-	for _, org := range values.([]model.Organization) {
+	for _, org := range orgs.([]model.Organization) {
 		if org.Code == orgCode {
-			c.config.Organization = orgCode
 			c.config.OrganizationId = org.ID
 			c.config.OrganizationCode = orgCode
-			break;
+			bytes, _ := yaml.Marshal(c.config)
+			if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
+				fmt.Println("modify config file failed")
+			}
+			break
 		} else {
 			index ++
-			if index == len(values.([]model.Organization)) {
+			if index == len(orgs.([]model.Organization)) {
 				fmt.Printf("you do not have the permission of this organization:%v", orgCode)
 			}
 		}
 	}
 }
 
-func (c *C7NClient) GetOrganization(out io.Writer, userId int, orgCode string) (error error,organizationId int) {
+func (c *C7NClient) GetOrganization(out io.Writer, userId int, orgCode string) (error error, organizationId int) {
 	if orgCode == "" {
 		return nil, c.config.OrganizationId
 	} else {
-		values := OrgMap.Map[(strconv.Itoa(userId))]
+		orgs := viper.Get("orgs")
 		var index int
-		for _, org := range values.([]model.Organization) {
+		for _, org := range orgs.([]model.Organization) {
 			if org.Code == orgCode {
 				return nil, org.ID
 			} else {
 				index ++
-				if index == len(values.([]model.Organization)) {
+				if index == len(orgs.([]model.Organization)) {
 					fmt.Printf("you do not have the permission of the organization:%v", orgCode)
-					return errors.New("you do not have the permission of the organization"),0
+					return errors.New("you do not have the permission of the organization"), 0
 				}
 			}
 		}

@@ -1,19 +1,19 @@
 package model
 
 type Release struct {
-	ApiVersion string `yaml:"apiVersion"`
-	Kind       string `yaml:"kind"`
-	Metadata   Metadata `yaml:"metadata"`
-	Spec       Spec `yaml:"spec"`
+	ApiVersion string   `json:"apiVersion"`
+	Kind       string   `json:"kind"`
+	Metadata   Metadata `json:"metadata"`
+	Spec       Spec     `json:"spec"`
 }
 
 type Metadata struct {
-	Name string  `yaml:"name"`
+	Name string `json:"name"`
 }
 
 type Spec struct {
-	ChartName    string `yaml:"chartName"`
-	ChartVersion string `yaml:"chartVersion"`
-	RepoUrl      string `yaml:"repoUrl"`
-	Values       string `yaml:"values"`
+	ChartName    string `json:"chartName"`
+	ChartVersion string `json:"chartVersion"`
+	RepoUrl      string `json:"repoUrl"`
+	Values       string `json:"values"`
 }

@@ -15,7 +15,7 @@ func (c *C7NClient) QuerySelf(out io.Writer) (error error, info model.UserInfo) 
 	var userInfo = model.UserInfo{}
 	_, err = c.do(req, &userInfo)
 	if err != nil {
-		fmt.Printf("request err:%v", err)
+		fmt.Println(err)
 		return err, userInfo
 	}
 	return nil, userInfo
