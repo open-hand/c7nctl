@@ -49,6 +49,12 @@ func (infra *InfraResource) IgnorePv() bool {
 
 func (infra *InfraResource) preparePersistence(client kubernetes.Interface, config *config.Config, commonLabel map[string]string) error {
 	getPvs := config.Spec.Persistence.GetPersistentVolumeSource
+
+	// use app defined persistence
+	if res, ok := config.Spec.Resources[infra.Name]; ok && res.Persistence != nil {
+		getPvs = res.Persistence.GetPersistentVolumeSource
+	}
+
 	namespace := config.Metadata.Namespace
 	commonLabel["app"] = infra.Name
 	for _, persistence := range infra.Persistence {
@@ -90,7 +96,7 @@ func (infra *InfraResource) applyUserResource() error {
 		infra.Resource.Domain = r.Domain
 	}
 
-	if r.Host != ""{
+	if r.Host != "" {
 		infra.Resource.Host = r.Host
 	}
 
