@@ -3,7 +3,7 @@ package c7nclient
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/c7nclient/model"
+	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"

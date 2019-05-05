@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/pkg/c7nclient"
+	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

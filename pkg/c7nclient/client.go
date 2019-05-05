@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/c7nclient/model"
+	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
