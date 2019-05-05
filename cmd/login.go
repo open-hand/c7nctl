@@ -16,8 +16,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/choerodon/c7n/cmd/app"
-	"github.com/choerodon/c7n/pkg/c7nclient"
+	"github.com/choerodon/c7nctl/cmd/app"
+	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
 )

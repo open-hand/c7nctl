@@ -17,8 +17,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/choerodon/c7n/pkg/c7nclient"
-	"github.com/choerodon/c7n/pkg/c7nclient/model"
+	"github.com/choerodon/c7nctl/pkg/c7nclient"
+	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"io/ioutil"
