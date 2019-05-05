@@ -2,7 +2,6 @@ package install
 
 import (
 	"bytes"
-	syserr "errors"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
@@ -16,6 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/util/maps"
 	"os"
+	syserr "errors"
 	"strings"
 	"text/template"
 )
