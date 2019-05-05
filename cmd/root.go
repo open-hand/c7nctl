@@ -16,18 +16,20 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/choerodon/c7n/pkg/c7nclient"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
 
+var clientConfig c7nclient.C7NPlatformContext
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "c7n",
+	Use:   "c7nctl",
 	Short: "A brief description of your application",
 	Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
@@ -37,7 +39,9 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -56,7 +60,9 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.c7n.yaml)")
-
+	rootCmd.PersistentFlags().StringVarP(&orgCode, "orgCode", "o", "", "org code")
+	rootCmd.PersistentFlags().StringVarP(&proCode, "proCode", "p", "", "pro code")
+	rootCmd.HasPersistentFlags()
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -74,7 +80,6 @@ func initConfig() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-
 		// Search config in home directory with name ".c7n" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".c7n")
@@ -84,6 +89,10 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		//序列化配置文件为CONTEXT结构
+		if err := viper.Unmarshal(&clientConfig); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 }

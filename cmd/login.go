@@ -15,7 +15,9 @@
 package cmd
 
 import (
-	"github.com/choerodon/c7nctl/cmd/app"
+	"fmt"
+	"github.com/choerodon/c7n/cmd/app"
+	"github.com/choerodon/c7n/pkg/c7nclient"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
 )
@@ -38,8 +40,37 @@ var loginCmd = &cobra.Command{
 	},
 }
 
+
+var username string
+var password string
+var url string
+
 func init() {
-	loginCmd.Flags().Bool("debug", false, "enable debug output")
-	loginCmd.Flags().String("name", "", "define the cluster name")
 	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
+
+	loginCmd.Flags().StringVarP(&username, "username", "U", "", "username")
+	loginCmd.Flags().StringVarP(&password, "password", "P", "", "password")
+	loginCmd.Flags().StringVarP(&url, "url", "", "", "");
+	loginCmd.MarkFlagRequired("username")
+	loginCmd.MarkFlagRequired("password")
+	loginCmd.MarkFlagRequired("url")
+}
+
+// getCmd represents the get command
+
+
+var logoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "The command to logout choerodon",
+	Long:  `you can use use command to logout choerodon , after you logout ,you can not use some c7n command,such as c7n create,c7n get.....`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		error := c7nclient.Client.CheckIsLogin()
+		if error != nil {
+			fmt.Println(error)
+			return
+		}
+		c7nclient.Client.Logout(cmd.OutOrStdout())
+	},
 }
