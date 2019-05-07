@@ -74,10 +74,10 @@ func (c *C7NClient) GetService(out io.Writer, projectId int, envId int, name str
 	paras := make(map[string]interface{})
 	paras["envId"] = envId
 	paras["name"] = name
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/service/query_by_name", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/service/query_by_name", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("request build err:%v", err)
-		return err, nil;
+		return err, nil
 	}
 	devopsService := model.DevOpsService{}
 	_, err = c.do(req, &devopsService)
@@ -93,7 +93,7 @@ func (c *C7NClient) CreateService(out io.Writer, projectId int, servicePostInfo 
 		return
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/service", projectId, ), nil, servicePostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/service", projectId), nil, servicePostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

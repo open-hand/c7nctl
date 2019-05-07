@@ -23,7 +23,7 @@ func (c *C7NClient) QuerySelf(out io.Writer) (error error, info model.UserInfo) 
 
 func (c *C7NClient) QueryGitlabUserId(out io.Writer, userId int, projectId int) (error error, gitlabUserId int) {
 
-	req, err := c.newRequest("GET", fmt.Sprintf("/v1/projects/%d/users/%d", projectId, userId, ), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/v1/projects/%d/users/%d", projectId, userId), nil, nil)
 
 	if err != nil {
 		fmt.Printf("build request error")

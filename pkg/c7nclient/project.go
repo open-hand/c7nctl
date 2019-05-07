@@ -11,7 +11,7 @@ import (
 )
 
 func (c *C7NClient) ListProject(out io.Writer, userId int) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/projects", userId, ), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/projects", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -34,7 +34,7 @@ func (c *C7NClient) ListProject(out io.Writer, userId int) {
 }
 
 func (c *C7NClient) SetProject(out io.Writer, userId int) (error error) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/projects", userId, ), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/projects", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -62,7 +62,7 @@ func (c *C7NClient) UseProject(out io.Writer, proCode string) {
 			}
 			break
 		} else {
-			index ++
+			index++
 			if index == len(pros.([]model.Project)) {
 				fmt.Printf("you do not have the permission of this project:%v", proCode)
 			}
@@ -83,7 +83,7 @@ func (c *C7NClient) GetProject(out io.Writer, userId int, proCode string) (error
 			if pro.Code == proCode {
 				return nil, pro
 			} else {
-				index ++
+				index++
 				if index == len(pros.([]model.Project)) {
 					fmt.Printf("you do not have the permission of this project:%v", proCode)
 					return errors.New("you do not have the permission of this project"), model.Project{}

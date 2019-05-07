@@ -2,21 +2,21 @@ package model
 
 import (
 	"fmt"
-	"io"
 	"github.com/gosuri/uitable"
+	"io"
 )
 
 type Apps struct {
-	TotalPages       int `json:"totalPages"`
-	TotalElements    int `json:"totalElements"`
-	NumberOfElements int `json:"numberOfElements"`
-	Size             int `json:"size"`
-	Number           int `json:"number"`
-	Content          []App  `json:"content"`
-	Empty bool `json:"empty"`
+	TotalPages       int   `json:"totalPages"`
+	TotalElements    int   `json:"totalElements"`
+	NumberOfElements int   `json:"numberOfElements"`
+	Size             int   `json:"size"`
+	Number           int   `json:"number"`
+	Content          []App `json:"content"`
+	Empty            bool  `json:"empty"`
 }
 
-type App struct{
+type App struct {
 	ID                    int         `json:"id"`
 	Name                  string      `json:"name"`
 	Code                  string      `json:"code"`
@@ -35,29 +35,27 @@ type App struct{
 }
 
 type AppInfo struct {
-	Type   string
-	Name   string
-	Code   string
+	Type    string
+	Name    string
+	Code    string
 	RepoURL string
-	Status string
+	Status  string
 }
-
 
 type AppPostInfo struct {
-	Name string   `json:"name"`
-	Code string   `json:"code"`
-	Type string   `json:"type"`
-	ApplicationTemplateId int `json:"applicationTemplateId"`
-	IsSkipCheckPermission  bool  `json:"isSkipCheckPermission"`
+	Name                  string `json:"name"`
+	Code                  string `json:"code"`
+	Type                  string `json:"type"`
+	ApplicationTemplateId int    `json:"applicationTemplateId"`
+	IsSkipCheckPermission bool   `json:"isSkipCheckPermission"`
 }
 
-func PrintAppInfo(appInfos []AppInfo, out io.Writer)  {
+func PrintAppInfo(appInfos []AppInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Type","Name","Code","RepoUrl","Status")
+	table.AddRow("Type", "Name", "Code", "RepoUrl", "Status")
 	for _, r := range appInfos {
-		table.AddRow(r.Type, r.Name, r.Code, r.RepoURL,r.Status)
+		table.AddRow(r.Type, r.Name, r.Code, r.RepoURL, r.Status)
 	}
-	fmt.Fprintf(out,table.String())
+	fmt.Fprintf(out, table.String())
 }
-

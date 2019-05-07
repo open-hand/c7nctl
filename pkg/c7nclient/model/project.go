@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-type Project  struct {
+type Project struct {
 	ID                  int         `json:"id"`
 	Name                string      `json:"name"`
 	OrganizationID      int         `json:"organizationId"`
@@ -23,7 +23,7 @@ type ProjectInfo struct {
 	Code string
 }
 
-func PrintProInfo(proInfos []ProjectInfo, out io.Writer)  {
+func PrintProInfo(proInfos []ProjectInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
 	table.AddRow("Name", "Code")

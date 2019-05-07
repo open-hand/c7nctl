@@ -66,7 +66,6 @@ func (c *C7NClient) InstanceConfig(out io.Writer, instancesId int) {
 
 }
 
-
 func (c *C7NClient) InstanceResources(out io.Writer, instancesId int) {
 	if c.config.ProjectId == -1 {
 		fmt.Printf("Set project Id")
@@ -93,7 +92,7 @@ func (c *C7NClient) CreateInstance(out io.Writer, projectId int, instancePostInf
 		return
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_instances", projectId, ), nil, instancePostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_instances", projectId), nil, instancePostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

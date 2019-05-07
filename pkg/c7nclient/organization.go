@@ -11,7 +11,7 @@ import (
 )
 
 func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId, ), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -33,7 +33,7 @@ func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
 }
 
 func (c *C7NClient) SetOrganization(out io.Writer, userId int) (error error) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId, ), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err
@@ -62,7 +62,7 @@ func (c *C7NClient) UseOrganization(out io.Writer, orgCode string) {
 			}
 			break
 		} else {
-			index ++
+			index++
 			if index == len(orgs.([]model.Organization)) {
 				fmt.Printf("you do not have the permission of this organization:%v", orgCode)
 			}
@@ -80,7 +80,7 @@ func (c *C7NClient) GetOrganization(out io.Writer, userId int, orgCode string) (
 			if org.Code == orgCode {
 				return nil, org.ID
 			} else {
-				index ++
+				index++
 				if index == len(orgs.([]model.Organization)) {
 					fmt.Printf("you do not have the permission of the organization:%v", orgCode)
 					return errors.New("you do not have the permission of the organization"), 0

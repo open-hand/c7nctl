@@ -6,9 +6,7 @@ import (
 	"io"
 )
 
-
-type  Organization struct {
-
+type Organization struct {
 	ID                  int         `json:"id"`
 	Name                string      `json:"name"`
 	Code                string      `json:"code"`
@@ -25,14 +23,12 @@ type  Organization struct {
 	UserID              int         `json:"userId"`
 	Address             interface{} `json:"address"`
 	Into                bool        `json:"into"`
-
 }
 
 type OrganizationInfo struct {
-	Name  string
-	Code  string
+	Name string
+	Code string
 }
-
 
 func PrintOrgInfo(orgInfos []OrganizationInfo, out io.Writer) {
 	table := uitable.New()

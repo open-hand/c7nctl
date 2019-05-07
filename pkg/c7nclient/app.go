@@ -13,7 +13,7 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 	paras := make(map[string]interface{})
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/apps/list_by_options", projectId, ), paras, nil)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/apps/list_by_options", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -57,7 +57,7 @@ func (c *C7NClient) GetApp(appCode string, projectId int) (error error, result *
 	}
 	paras := make(map[string]interface{})
 	paras["code"] = appCode
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/apps/query_by_code", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/apps/query_by_code", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err, nil
@@ -83,7 +83,7 @@ func (c *C7NClient) CreateApp(out io.Writer, projectId int, appPostInfo *model.A
 		fmt.Printf("the app type value should be normal or test!")
 		return
 	}
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/apps", projectId, ), nil, appPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/apps", projectId), nil, appPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 

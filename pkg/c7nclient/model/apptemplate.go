@@ -6,15 +6,14 @@ import (
 	"io"
 )
 
-
 type AppTemplates struct {
-	TotalPages       int `json:"totalPages"`
-	TotalElements    int `json:"totalElements"`
-	NumberOfElements int `json:"numberOfElements"`
-	Size             int `json:"size"`
-	Number           int `json:"number"`
-	Content []AppTemplate `json:"content"`
-	Empty bool `json:"empty"`
+	TotalPages       int           `json:"totalPages"`
+	TotalElements    int           `json:"totalElements"`
+	NumberOfElements int           `json:"numberOfElements"`
+	Size             int           `json:"size"`
+	Number           int           `json:"number"`
+	Content          []AppTemplate `json:"content"`
+	Empty            bool          `json:"empty"`
 }
 
 type AppTemplate struct {
@@ -32,26 +31,25 @@ type AppTemplate struct {
 }
 
 type AppTemplateInfo struct {
-	Name string
-	Code string
-	RepoUrl string
+	Name      string
+	Code      string
+	RepoUrl   string
 	Available string
 }
 
 type AppTemplatePostInfo struct {
-	Name string   `json:"name"`
-	Code string    `json:"code"`
-	Description  string  `json:"description"`
-	CopyFrom int    `json:"copyFrom"`
+	Name        string `json:"name"`
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	CopyFrom    int    `json:"copyFrom"`
 }
 
-
-func PrintAppTemplateInfo(appTemplates []AppTemplateInfo, out io.Writer)  {
+func PrintAppTemplateInfo(appTemplates []AppTemplateInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Name","Code","RepoUrl","Available")
+	table.AddRow("Name", "Code", "RepoUrl", "Available")
 	for _, r := range appTemplates {
-		table.AddRow(r.Name, r.Code, r.RepoUrl,r.Available)
+		table.AddRow(r.Name, r.Code, r.RepoUrl, r.Available)
 	}
-	fmt.Fprintf(out,table.String())
+	fmt.Fprintf(out, table.String())
 }

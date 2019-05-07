@@ -226,7 +226,7 @@ var createAppCmd = &cobra.Command{
 		if err != nil {
 			return
 		}
-		appPostInfo := model.AppPostInfo{appName, appCode, appType, apptemplate.ID, true,}
+		appPostInfo := model.AppPostInfo{appName, appCode, appType, apptemplate.ID, true}
 		c7nclient.Client.CreateApp(cmd.OutOrStdout(), pro.ID, &appPostInfo)
 	},
 }

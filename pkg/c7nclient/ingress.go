@@ -59,7 +59,7 @@ func (c *C7NClient) CreateIngress(out io.Writer, projectId int, ingressPostInfo 
 		return
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/ingress", projectId, ), nil, ingressPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/ingress", projectId), nil, ingressPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

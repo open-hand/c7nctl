@@ -6,15 +6,14 @@ import (
 	"io"
 )
 
-
 type AppVersions struct {
-	TotalPages       int `json:"totalPages"`
-	TotalElements    int `json:"totalElements"`
-	NumberOfElements int `json:"numberOfElements"`
-	Size             int `json:"size"`
-	Number           int `json:"number"`
-	Content          []AppVersion  `json:"content"`
-	Empty bool `json:"empty"`
+	TotalPages       int          `json:"totalPages"`
+	TotalElements    int          `json:"totalElements"`
+	NumberOfElements int          `json:"numberOfElements"`
+	Size             int          `json:"size"`
+	Number           int          `json:"number"`
+	Content          []AppVersion `json:"content"`
+	Empty            bool         `json:"empty"`
 }
 
 type AppVersion struct {
@@ -30,18 +29,18 @@ type AppVersion struct {
 }
 
 type AppVersionInfo struct {
-	Version string
-	AppName string
-	AppCode string
+	Version      string
+	AppName      string
+	AppCode      string
 	CreationDate string
 }
 
-func PrintAppVersionInfo(appVersionInfos []AppVersionInfo, out io.Writer)  {
+func PrintAppVersionInfo(appVersionInfos []AppVersionInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Version","AppName","AppCode","CreationDate")
+	table.AddRow("Version", "AppName", "AppCode", "CreationDate")
 	for _, r := range appVersionInfos {
 		table.AddRow(r.Version, r.AppName, r.AppCode, r.CreationDate)
 	}
-	fmt.Fprintf(out,table.String())
+	fmt.Fprintf(out, table.String())
 }

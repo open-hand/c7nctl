@@ -34,7 +34,7 @@ func (c *C7NClient) ListAuthEnvs(out io.Writer, projectId int) {
 	}
 	paras := make(map[string]interface{})
 	paras["active"] = "true"
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -80,7 +80,7 @@ func (c *C7NClient) ListEnvs(out io.Writer, projectId int) {
 	}
 	paras := make(map[string]interface{})
 	paras["active"] = "true"
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/groups", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/groups", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -125,7 +125,7 @@ func (c *C7NClient) GetEnv(out io.Writer, projectId int, code string) (error err
 	}
 	paras := make(map[string]interface{})
 	paras["code"] = code
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/query_by_code", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/query_by_code", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -147,7 +147,7 @@ func (c *C7NClient) CreateEnv(out io.Writer, projectId int, envPostInfo *model.E
 		fmt.Printf("the cluster you choose is not exist!")
 		return
 	}
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/envs", projectId, ), nil, envPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/envs", projectId), nil, envPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

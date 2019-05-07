@@ -12,7 +12,7 @@ func (c *C7NClient) CreateSecret(out io.Writer, projectId int, secretPostInfo *m
 		return
 	}
 
-	req, err := c.newRequest("PUT", fmt.Sprintf("devops/v1/projects/%d/secret", projectId, ), nil, secretPostInfo)
+	req, err := c.newRequest("PUT", fmt.Sprintf("devops/v1/projects/%d/secret", projectId), nil, secretPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

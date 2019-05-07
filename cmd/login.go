@@ -40,7 +40,6 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-
 var username string
 var password string
 var url string
@@ -51,14 +50,13 @@ func init() {
 
 	loginCmd.Flags().StringVarP(&username, "username", "U", "", "username")
 	loginCmd.Flags().StringVarP(&password, "password", "P", "", "password")
-	loginCmd.Flags().StringVarP(&url, "url", "", "", "");
+	loginCmd.Flags().StringVarP(&url, "url", "", "", "")
 	loginCmd.MarkFlagRequired("username")
 	loginCmd.MarkFlagRequired("password")
 	loginCmd.MarkFlagRequired("url")
 }
 
 // getCmd represents the get command
-
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",

@@ -7,7 +7,6 @@ type SafeMap struct {
 	Map map[string]interface{}
 }
 
-
 func NewSafeMap() *SafeMap {
 	sm := new(SafeMap)
 	sm.Map = make(map[string]interface{})

@@ -18,7 +18,7 @@ func (c *C7NClient) ListClusters(out io.Writer, organizationId int) {
 	paras := make(map[string]interface{})
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_cluster", organizationId, ), paras, nil)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_cluster", organizationId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -55,7 +55,7 @@ func (c *C7NClient) GetCluster(out io.Writer, organizationId int, clusterCode st
 	}
 	paras := make(map[string]interface{})
 	paras["code"] = clusterCode
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/query_by_code", organizationId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/query_by_code", organizationId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -76,7 +76,7 @@ func (c *C7NClient) ListClusterNode(out io.Writer, organizationId int, clusterId
 	paras["cluster_id"] = strconv.Itoa(clusterId)
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_nodes", organizationId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_nodes", organizationId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -108,7 +108,7 @@ func (c *C7NClient) ListClusterNode(out io.Writer, organizationId int, clusterId
 }
 
 func (c *C7NClient) CreateCluster(out io.Writer, organizationId int, clusterPostInfo *model.ClusterPostInfo) {
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/organizations/%d/clusters", organizationId, ), nil, clusterPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/organizations/%d/clusters", organizationId), nil, clusterPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

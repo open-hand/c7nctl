@@ -11,7 +11,7 @@ func (c *C7NClient) CreateConfigMap(out io.Writer, projectId int, configMapPostI
 		return
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/config_maps", projectId, ), nil, configMapPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/config_maps", projectId), nil, configMapPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

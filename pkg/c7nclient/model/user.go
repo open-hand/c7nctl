@@ -20,9 +20,7 @@ type UserInfo struct {
 	ObjectVersionNumber  int    `json:"objectVersionNumber"`
 }
 
-
 type UserAttrInfo struct {
-
-	IamUserId  int `json:"iamUserId"`
-	GitlabUserId int  `json:"gitlabUserId"`
+	IamUserId    int `json:"iamUserId"`
+	GitlabUserId int `json:"gitlabUserId"`
 }

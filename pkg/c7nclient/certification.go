@@ -12,7 +12,7 @@ func (c *C7NClient) CreateCert(out io.Writer, projectId int, certPostInfo *model
 		return
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/certifications", projectId, ), nil, certPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/certifications", projectId), nil, certPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -36,10 +36,10 @@ func (c *C7NClient) GetCert(out io.Writer, projectId int, envId int, name string
 	paras := make(map[string]interface{})
 	paras["env_id"] = envId
 	paras["cert_name"] = name
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/certifications/query_by_name", projectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/certifications/query_by_name", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("request build err:%v", err)
-		return err, nil;
+		return err, nil
 	}
 	devopsCertification := model.Certification{}
 	_, err = c.do(req, &devopsCertification)
