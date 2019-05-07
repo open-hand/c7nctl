@@ -87,7 +87,7 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		Path: p.Path,
 		Own:  p.Own,
 	}
-	if Ctx.Slaver == nil{
+	if Ctx.Slaver == nil {
 		goto checkpv
 	}
 	if err := Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {

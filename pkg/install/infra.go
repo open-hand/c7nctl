@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
+	uc "github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	"github.com/choerodon/c7nctl/pkg/utils"
@@ -62,6 +63,13 @@ func (infra *InfraResource) preparePersistence(client kubernetes.Interface, conf
 
 		persistence.CommonLabels = commonLabel
 		persistence.CommonLabels["pv"] = persistence.Name
+		if len(persistence.AccessModes) == 0 {
+			persistence.AccessModes = infra.Home.DefaultAccessModes
+		}
+
+		if config.Spec.Persistence.GetStorageType() == uc.PersistenceHostPathType {
+			persistence.MountOptions = []string{}
+		}
 
 		if err := persistence.CheckOrCreatePv(getPvs(persistence.Path)); err != nil {
 			return err

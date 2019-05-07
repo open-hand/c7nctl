@@ -2,6 +2,7 @@ package install
 
 import (
 	"bytes"
+	syserr "errors"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/helm"
@@ -15,24 +16,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/util/maps"
 	"os"
-	syserr "errors"
 	"strings"
 	"text/template"
 )
 
 type Install struct {
-	Version      string
-	Metadata     Metadata
-	Spec         Spec
-	Client       kubernetes.Interface
-	UserConfig   *config.Config
-	HelmClient   *helm.Client
-	CommonLabels map[string]string
-	Namespace    string
-	Timeout      int
-	Prefix       string
-	SkipInput    bool
-	Mail         string
+	Version            string
+	Metadata           Metadata
+	Spec               Spec
+	Client             kubernetes.Interface
+	UserConfig         *config.Config
+	HelmClient         *helm.Client
+	CommonLabels       map[string]string
+	Namespace          string
+	Timeout            int
+	Prefix             string
+	SkipInput          bool
+	Mail               string
+	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
 type Metadata struct {
@@ -363,15 +364,18 @@ func (i *Install) Install(apps []*InfraResource) error {
 			log.Infof("using external %s", infra.Name)
 			continue
 		}
-		// 准备pv和pvc
-		if err := infra.preparePersistence(i.Client, i.UserConfig, i.CommonLabels); err != nil {
-			return err
-		}
+		// apply configs
 		infra.Client = i.HelmClient
 		infra.Namespace = i.UserConfig.Metadata.Namespace
 		infra.Home = i
 		infra.Timeout = i.Timeout
 		infra.Prefix = i.Prefix
+
+		// 准备pv和pvc
+		if err := infra.preparePersistence(i.Client, i.UserConfig, i.CommonLabels); err != nil {
+			return err
+		}
+
 		if infra.RepoURL == "" {
 			infra.RepoURL = i.Spec.Basic.RepoURL
 		}
@@ -453,10 +457,11 @@ func (i *Install) PrepareSlaverPvc() (string, error) {
 		return "", nil
 	}
 	pvs := i.UserConfig.Spec.Persistence.GetPersistentVolumeSource("")
+
 	persistence := Persistence{
 		Client:       i.Client,
 		CommonLabels: i.CommonLabels,
-		AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteOnce"},
+		AccessModes:  i.DefaultAccessModes,
 		Size:         "1Gi",
 		Mode:         "755",
 		PvcEnabled:   true,

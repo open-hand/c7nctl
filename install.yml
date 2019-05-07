@@ -8,6 +8,8 @@ spec:
 #      server: 98dbe4b804-yxc75.cn-zhangjiakou.nas.aliyuncs.com
 #      rootPath: /u01
     storageClassName: nfs-provisioner
+    accessModes:
+    - ReadWriteMany
   resources:
     mysql:
       host: 192.168.12.88

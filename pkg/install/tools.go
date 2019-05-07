@@ -140,7 +140,9 @@ func (ctx *Context) SaveNews(news *News) error {
 	}
 	data := ctx.GetOrCreateConfigMapData(staticLogName, key)
 	nr := &NewsResourceList{}
-	yaml.Unmarshal([]byte(data), nr)
+	if err := yaml.Unmarshal([]byte(data), nr); err != nil {
+		return err
+	}
 	news.Date = time.Now()
 	if news.RefName == "" {
 		news.RefName = news.Name

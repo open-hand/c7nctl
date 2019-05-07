@@ -12,6 +12,7 @@ import (
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
@@ -133,6 +134,12 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 
 	if installDef.SkipInput, err = cmd.Flags().GetBool("skip-input"); err != nil {
 		installDef.SkipInput = false
+	}
+
+	if accessModes := UserConfig.Spec.Persistence.AccessModes; len(accessModes) > 0 {
+		installDef.DefaultAccessModes = accessModes
+	} else {
+		installDef.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
 	}
 	return installDef
 }

@@ -11,6 +11,12 @@ type Config struct {
 	Spec     Spec
 }
 
+const (
+	PersistenceStorageClassType = "storageClass"
+	PersistenceNfsType          = "nfs"
+	PersistenceHostPathType     = "hostPath"
+)
+
 func (c *Config) GetStorageClassName() string {
 	return c.Spec.Persistence.StorageClassName
 }
@@ -19,6 +25,7 @@ func (c *Config) IgnorePv() bool {
 	if c.GetStorageClassName() == "" {
 		return false
 	}
+	// todo :  get storage class and get nfs server how to do?
 	// from now just support nfs
 	if c.Spec.Persistence.Nfs.Server == "" {
 		return true
@@ -50,10 +57,11 @@ type Spec struct {
 }
 
 type Persistence struct {
-	Nfs                     `yaml:"nfs"`
-	HostPath                `yaml:"hostPath"`
+	Nfs              `yaml:"nfs"`
+	HostPath         `yaml:"hostPath"`
 	StorageClassName string `yaml:"storageClassName"`
 	Type             string
+	AccessModes      []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
 type Nfs struct {
@@ -78,13 +86,28 @@ type Resource struct {
 	Persistence *Persistence `yaml:"persistence"`
 }
 
-func (p *Persistence) GetPersistentVolumeSource(subPath string) v1.PersistentVolumeSource {
+func (p *Persistence) GetStorageType() string {
+	if p.StorageClassName != "" {
+		p.Type = "storageClass"
+		return PersistenceStorageClassType
+	}
 	if p.Nfs.Server != "" {
 		p.Type = "nfs"
+		return PersistenceNfsType
+	}
+	if p.HostPath.RootPath != "" || p.HostPath.Path != "" {
+		p.Type = "hostPath"
+		return PersistenceHostPathType
+	}
+	return ""
+}
+
+func (p *Persistence) GetPersistentVolumeSource(subPath string) v1.PersistentVolumeSource {
+	storageType := p.GetStorageType()
+	if storageType == PersistenceNfsType {
 		return p.prepareNfsPVS(subPath)
 	}
-	if p.HostPath.RootPath != "" || p.HostPath.Path != ""{
-		p.Type = "hostPath"
+	if storageType == PersistenceHostPathType {
 		return p.prepareHostPathPVS(subPath)
 	}
 	return v1.PersistentVolumeSource{}
