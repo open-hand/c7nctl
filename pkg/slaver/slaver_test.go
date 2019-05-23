@@ -107,7 +107,29 @@ func TestExecuteRemoteSql(t *testing.T) {
 		Username: "root",
 		Password: "abc123",
 	}
-	log.Info(slaver.ExecuteRemoteSql(sqlList, r))
+	log.Info(slaver.ExecuteRemoteSql(sqlList, r, "", "mysql"))
+
+	log.Info(slaver.ExecuteRemoteSql(sqlList, r, "", "postgres"))
+}
+
+func TestExecuteRemotePSql(t *testing.T) {
+	if !utils.ConditionSkip() {
+		return
+	}
+	slaver := Slaver{
+		GRpcAddress: "192.168.99.100:9001",
+	}
+	sqlList := []string{
+		"CREATE DATABASE abc",
+		"DROP DATABASE abc",
+	}
+	r := &config.Resource{
+		Host:     "192.168.99.100",
+		Port:     5432,
+		Username: "root",
+		Password: "abc123",
+	}
+	log.Info(slaver.ExecuteRemoteSql(sqlList, r, "", "postgres"))
 }
 
 func TestExecuteRemoteCommand(t *testing.T) {

@@ -324,7 +324,7 @@ func (s *Slaver) ExecuteRemoteRequest(f Forward) (string, error) {
 	return string(data), nil
 }
 
-func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) error {
+func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource, database, sqlType string) error {
 	conn, err := s.connectGRpc()
 	if err != nil {
 		r := fmt.Sprintf("connect %s grpc path  failed", s.GRpcAddress)
@@ -337,14 +337,16 @@ func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource) e
 	if err != nil {
 		return err
 	}
-	m := &pb.Mysql{
+	m := &pb.Datasource{
 		Host:     resource.Host,
 		Port:     resource.Port,
 		Username: resource.Username,
 		Password: resource.Password,
+		Database: database,
+		Type:     sqlType,
 	}
 	r := &pb.RouteSql{
-		Mysql: m,
+		Datasource: m,
 	}
 	err = stream.Send(r)
 	if err != nil {

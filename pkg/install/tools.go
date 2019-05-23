@@ -36,7 +36,10 @@ const (
 	staticInstalledKey = "installed"
 	staticExecutedKey  = "execute"
 	SqlTask            = "sql"
-	HttpGetTask        = "httpGet"
+	HttpGetTask        = "htt" +
+		"" +
+		"" +
+		"pGet"
 )
 
 type Context struct {
@@ -99,7 +102,7 @@ func (ctx *Context) CheckExist(code int, errMsg ...string) {
 	log.Info("some backend task not finished yet wait it to be finished")
 	for {
 		select {
-		case <-time.Tick(time.Second * 1):
+		case <-time.Tick(time.Second * 10):
 			if !ctx.HasBackendTask() {
 				goto exit
 			}
@@ -122,7 +125,7 @@ exit:
 func (ctx *Context) HasBackendTask() bool {
 	for _, v := range ctx.BackendTasks {
 		if v.Success == false {
-			log.Info(v.Name)
+			log.Infof("%s has task not finish", v.Name)
 			return true
 		}
 	}
@@ -217,9 +220,9 @@ func (ctx *Context) GetSucceed(name string, resourceType string) *News {
 }
 
 func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *News {
-	nr := ctx.getSucceedData(staticExecutedKey)
+	nr := ctx.getSucceedData(staticTaskKey)
 	for _, v := range nr.News {
-		if v.Name == taskName && v.RefName == appName && v.TaskType == taskType {
+		if v.Name == taskName && v.RefName == appName && v.TaskType == taskType && v.Status == SucceedStatus {
 			// todo: make sure gc effort
 			p := v
 			return &p

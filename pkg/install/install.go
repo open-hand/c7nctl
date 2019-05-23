@@ -121,10 +121,13 @@ type Basic struct {
 
 type PreInstall struct {
 	Name     string
-	Commands []string
-	Request  *Request
 	InfraRef string `yaml:"infraRef"`
+	Database string `yaml:"database"`
+	Commands []string
+	Mysql    []string
+	Psql     []string `yaml:"psql"`
 	Opens    []string
+	Request  *Request
 }
 
 type Request struct {
@@ -166,7 +169,7 @@ func (r *Request) Render(infra *InfraResource) error {
 	return nil
 }
 
-func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
+func (pi *PreInstall) ExecuteSql(infra *InfraResource, sqlType string) error {
 
 	news := Ctx.GetSucceedTask(pi.Name, infra.Name, SqlTask)
 	if news != nil {
@@ -185,12 +188,20 @@ func (pi *PreInstall) ExecuteCommands(infra *InfraResource) error {
 
 	defer Ctx.SaveNews(news)
 
-	for k, v := range pi.Commands {
-		pi.Commands[k] = infra.renderValue(v)
+	sqlList := make([]string, 0)
+
+	for _, v := range pi.Commands {
+		sqlList = append(sqlList, infra.renderValue(v))
+	}
+	for _, v := range pi.Mysql {
+		sqlList = append(sqlList, infra.renderValue(v))
+	}
+	for _, v := range pi.Psql {
+		sqlList = append(sqlList, infra.renderValue(v))
 	}
 	r := infra.GetResource(pi.InfraRef)
 	s := Ctx.Slaver
-	if err := s.ExecuteRemoteSql(pi.Commands, r); err != nil {
+	if err := s.ExecuteRemoteSql(sqlList, r, pi.Database, sqlType); err != nil {
 		news.Status = FailedStatus
 		news.Reason = err.Error()
 		return err

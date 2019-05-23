@@ -27,7 +27,17 @@ func (infra *InfraResource) executePreCommands() error {
 func (infra *InfraResource) executeExternalFunc(c []PreInstall) error {
 	for _, pi := range c {
 		if len(pi.Commands) > 0 {
-			if err := pi.ExecuteCommands(infra); err != nil {
+			if err := pi.ExecuteSql(infra, "mysql"); err != nil {
+				return err
+			}
+		}
+		if len(pi.Mysql) > 0 {
+			if err := pi.ExecuteSql(infra, "mysql"); err != nil {
+				return err
+			}
+		}
+		if len(pi.Psql) > 0 {
+			if err := pi.ExecuteSql(infra, "postgres"); err != nil {
 				return err
 			}
 		}
@@ -104,10 +114,6 @@ func (infra *InfraResource) applyUserResource() error {
 		infra.Resource.Domain = r.Domain
 	}
 
-	if r.Host != "" {
-		infra.Resource.Host = r.Host
-	}
-
 	if r.Schema != "" && infra.Resource.Schema == "" {
 		infra.Resource.Schema = r.Schema
 	}
@@ -176,32 +182,6 @@ func (infra *InfraResource) GetRequire(app string) *InfraResource {
 		Values:    news.Values,
 	}
 	return i
-}
-
-func (infra *InfraResource) GetRequireResource(app string) config.Resource {
-	res := Ctx.UserConfig.Spec.Resources
-	if r, ok := res[app]; ok {
-		return *r
-	}
-	news := Ctx.GetSucceed(app, ReleaseTYPE)
-	if news == nil {
-		log.Errorf("require [%s] not right installed or defined", app)
-		os.Exit(121)
-	}
-	return news.Resource
-}
-
-func (infra *InfraResource) GetRequirePreValue(app string) config.Resource {
-	res := Ctx.UserConfig.Spec.Resources
-	if r, ok := res[app]; ok {
-		return *r
-	}
-	news := Ctx.GetSucceed(app, ReleaseTYPE)
-	if news == nil {
-		log.Errorf("require [%s] not right installed or defined", app)
-		os.Exit(121)
-	}
-	return news.Resource
 }
 
 // convert yml values to values list as xxx=yyy
@@ -510,7 +490,7 @@ func (infra *InfraResource) CheckInstall() error {
 
 	if news != nil {
 		log.Successf("using exist release %s", news.RefName)
-		if news.Status == CreatedStatus {
+		if news.Status != SucceedStatus {
 			infra.PreValues = news.PreValue
 			infra.CheckExecuteAfterTasks()
 		}

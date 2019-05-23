@@ -32,12 +32,12 @@ func TestInfraResource_GetRequirement(t *testing.T) {
 			},
 		},
 	}
-	result := infra.GetRequireResource("mysql")
+	result := infra.GetResource("mysql")
 	log.Info(result.Password)
 
 	client := kube.GetClient()
 	Ctx.Client = client
 	Ctx.Namespace = "install"
-	result2 := infra.GetRequireResource("mysql4")
+	result2 := infra.GetResource("mysql4")
 	log.Info(result2.Password)
 }

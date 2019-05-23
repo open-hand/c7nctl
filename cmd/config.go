@@ -54,10 +54,10 @@ var gitlabRunnerCmd = &cobra.Command{
 		}
 		err = runner.InstallRunner()
 		if err != nil {
-			log.Error(err)
-			log.Error("install failed")
+			log.Error("install gitlab runner failed")
+			return err
 		}
-		log.Success("config gitlab succeed")
+		log.Success("config gitlab runner succeed")
 		return nil
 	},
 }
