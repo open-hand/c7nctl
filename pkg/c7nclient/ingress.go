@@ -10,7 +10,7 @@ import (
 // /devops/v1/projects/42/ingress/54/listByEnv
 func (c *C7NClient) ListIngress(out io.Writer, envId int) {
 
-	if c.config.ProjectId == -1 {
+	if c.config.User.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
@@ -21,7 +21,7 @@ func (c *C7NClient) ListIngress(out io.Writer, envId int) {
 	body := make(map[string]interface{})
 	body["param"] = ""
 	body["searchParam"] = make(map[string]string)
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/ingress/%d/listByEnv", c.config.ProjectId, envId), paras, body)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/ingress/%d/listByEnv", c.config.User.ProjectId, envId), paras, body)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -69,6 +69,6 @@ func (c *C7NClient) CreateIngress(out io.Writer, projectId int, ingressPostInfo 
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Printf("create ingress %s success!", ingressPostInfo.Name)
+	fmt.Printf("Successfully created Ingress %s", ingressPostInfo.Name)
 
 }

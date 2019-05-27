@@ -54,8 +54,8 @@ func (c *C7NClient) UseProject(out io.Writer, proCode string) {
 	var index int
 	for _, pro := range pros.([]model.Project) {
 		if pro.Code == proCode {
-			c.config.ProjectId = pro.ID
-			c.config.ProjectCode = proCode
+			c.config.User.ProjectId = pro.ID
+			c.config.User.ProjectCode = proCode
 			bytes, _ := yaml.Marshal(c.config)
 			if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
 				fmt.Println("modify config file failed")
@@ -73,8 +73,8 @@ func (c *C7NClient) UseProject(out io.Writer, proCode string) {
 func (c *C7NClient) GetProject(out io.Writer, userId int, proCode string) (error error, project model.Project) {
 	if proCode == "" {
 		pro := model.Project{}
-		pro.ID = c.config.ProjectId
-		pro.OrganizationID = c.config.OrganizationId
+		pro.ID = c.config.User.ProjectId
+		pro.OrganizationID = c.config.User.OrganizationId
 		return nil, pro
 	} else {
 		pros := viper.Get("pros")

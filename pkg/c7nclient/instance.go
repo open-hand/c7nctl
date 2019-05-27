@@ -7,14 +7,14 @@ import (
 )
 
 func (c *C7NClient) ListEnvsInstance(out io.Writer, envId int) {
-	if c.config.ProjectId == -1 {
+	if c.config.User.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
 	body := make(map[string]interface{})
 	body["param"] = ""
 	body["searchParam"] = make(map[string]string)
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/listByEnv", c.config.ProjectId, envId), nil, body)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/listByEnv", c.config.User.ProjectId, envId), nil, body)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -48,11 +48,11 @@ func (c *C7NClient) ListEnvsInstance(out io.Writer, envId int) {
 // devops/v1/projects/42/app_instances/5324/value
 
 func (c *C7NClient) InstanceConfig(out io.Writer, instancesId int) {
-	if c.config.ProjectId == -1 {
+	if c.config.User.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/resources", c.config.ProjectId, instancesId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/app_instances/%d/resources", c.config.User.ProjectId, instancesId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -67,11 +67,11 @@ func (c *C7NClient) InstanceConfig(out io.Writer, instancesId int) {
 }
 
 func (c *C7NClient) InstanceResources(out io.Writer, instancesId int) {
-	if c.config.ProjectId == -1 {
+	if c.config.User.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_instances/%d/value", c.config.ProjectId, instancesId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_instances/%d/value", c.config.User.ProjectId, instancesId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}

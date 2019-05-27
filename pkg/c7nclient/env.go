@@ -10,7 +10,7 @@ import (
 )
 
 func (c *C7NClient) GetEnvSyncStatus(envId int) (bool, error) {
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/envs/%d/status", c.config.ProjectId, envId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/envs/%d/status", c.config.User.ProjectId, envId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -158,5 +158,5 @@ func (c *C7NClient) CreateEnv(out io.Writer, projectId int, envPostInfo *model.E
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Printf("the env is create success!")
+	fmt.Sprintf("Successfully created env %s",envPostInfo.Name)
 }

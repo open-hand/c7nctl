@@ -54,8 +54,8 @@ func (c *C7NClient) UseOrganization(out io.Writer, orgCode string) {
 	var index int
 	for _, org := range orgs.([]model.Organization) {
 		if org.Code == orgCode {
-			c.config.OrganizationId = org.ID
-			c.config.OrganizationCode = orgCode
+			c.config.User.OrganizationId = org.ID
+			c.config.User.OrganizationCode = orgCode
 			bytes, _ := yaml.Marshal(c.config)
 			if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
 				fmt.Println("modify config file failed")
@@ -72,7 +72,7 @@ func (c *C7NClient) UseOrganization(out io.Writer, orgCode string) {
 
 func (c *C7NClient) GetOrganization(out io.Writer, userId int, orgCode string) (error error, organizationId int) {
 	if orgCode == "" {
-		return nil, c.config.OrganizationId
+		return nil, c.config.User.OrganizationId
 	} else {
 		orgs := viper.Get("orgs")
 		var index int

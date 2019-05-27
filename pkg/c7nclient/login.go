@@ -4,29 +4,48 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 const client = "c7nclient"
 const secret = "secret"
 const grantType = "password"
 
-func (c *C7NClient) Login(out io.Writer, password string, username string, server string) {
+func (c *C7NClient) Login(out io.Writer, ) {
 
-	if c.config.Token != "" {
+	if c.config.User.Token != "" {
 		fmt.Println("you have login, you can use logout when you want to login of other user or other env")
 		return
 	}
 
-	home, err := homedir.Dir()
-	configDir := home + string(os.PathSeparator) + ".c7n.yaml"
+	var (
+		username string
+		password string
+		err      error
+	)
 
-	c.BaseURL = server
+	username, err = utils.AcceptUserInput(utils.Input{
+		Password: false,
+		Tip:      "请输入用户名: ",
+		Regex:    ".+",
+	})
+	password, err = utils.AcceptUserInput(utils.Input{
+		Password: true,
+		Tip:      "请输入密码: ",
+		Regex:    ".+",
+	})
+
+	home, err := homedir.Dir()
+	configDir := fmt.Sprintf("%s%c.c7n%c%s", home, os.PathSeparator, os.PathSeparator, "config.yaml")
+
+	c.BaseURL = c.config.Server
 
 	strbytes := []byte(password)
 	password = base64.StdEncoding.EncodeToString(strbytes)
@@ -36,18 +55,21 @@ func (c *C7NClient) Login(out io.Writer, password string, username string, serve
 	paras["client_secret"] = secret
 	paras["grant_type"] = grantType
 	paras["password"] = password
-	paras["username"] = username
+	paras["username"] = strings.TrimSpace(username)
 
 	req, err := c.newRequest("POST", "oauth/oauth/token", paras, nil)
-
 	if err != nil {
 		fmt.Println("build request error")
 		os.Exit(1)
 	}
 	var token = model.Token{}
 	_, err = c.do(req, &token)
-	c.config.Server = server
-	c.config.Token = token.AccessToken
+	if err != nil {
+		fmt.Println("username or password is error!")
+		os.Exit(1)
+	}
+	c.config.User.Token = token.AccessToken
+	c.config.User.UserName = username
 	err, user := c.QuerySelf(out)
 	if err != nil {
 		fmt.Println("query self error")
@@ -65,17 +87,27 @@ func (c *C7NClient) Login(out io.Writer, password string, username string, serve
 	}
 	organizations := viper.Get("orgs")
 	organization := organizations.([]model.Organization)[0]
-	c.config.OrganizationId = organization.ID
-	c.config.OrganizationCode = organization.Code
+	c.config.User.OrganizationId = organization.ID
+	c.config.User.OrganizationCode = organization.Code
 	projects := viper.Get("pros")
 	for _, pro := range projects.([]model.Project) {
 		if pro.OrganizationID == organization.ID {
-			c.config.ProjectId = pro.ID
-			c.config.ProjectCode = pro.Code
+			c.config.User.ProjectId = pro.ID
+			c.config.User.ProjectCode = pro.Code
 			break
 		}
 	}
-	bytes, err := yaml.Marshal(c.config)
+
+	var allConfig C7NConfig
+	viper.Unmarshal(&allConfig)
+
+	for i, context := range allConfig.Contexts {
+		if context.Name == allConfig.CurrentContext {
+			allConfig.Contexts[i] = *c.config
+		}
+	}
+
+	bytes, err := yaml.Marshal(allConfig)
 
 	_, err = os.Stat(configDir)
 	if os.IsNotExist(err) {
@@ -87,16 +119,50 @@ func (c *C7NClient) Login(out io.Writer, password string, username string, serve
 	if ioutil.WriteFile(configDir, bytes, 0644) != nil {
 		fmt.Println("modify config file failed")
 	}
-	fmt.Println("Login Success")
+	fmt.Println("Login Succeeded!")
 }
 
 func (c *C7NClient) Logout(out io.Writer) {
 
-	emptyContext := C7NPlatformContext{}
-	bytes, _ := yaml.Marshal(emptyContext)
+	var allConfig C7NConfig
+	viper.Unmarshal(&allConfig)
+
+	for i, context := range allConfig.Contexts {
+		if context.Name == allConfig.CurrentContext {
+			allConfig.Contexts[i].User = C7NUser{}
+		}
+	}
+
+	bytes, _ := yaml.Marshal(allConfig)
 	if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
 		fmt.Println("modify config file failed")
 	}
 	fmt.Println("Login Out")
+
+}
+
+func (c *C7NClient) SwitchContext(out io.Writer, name string) {
+
+	var allConfig C7NConfig
+	viper.Unmarshal(&allConfig)
+
+	var index int
+	for _, context := range allConfig.Contexts {
+		if context.Name == name {
+			allConfig.CurrentContext = name
+		}else {
+			index ++
+		}
+	}
+	if index == len(allConfig.Contexts) {
+		fmt.Println("The context is not exist in the config.yaml")
+		return
+	}
+
+	bytes, _ := yaml.Marshal(allConfig)
+	if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
+		fmt.Println("modify config file failed")
+		return
+	}
 
 }

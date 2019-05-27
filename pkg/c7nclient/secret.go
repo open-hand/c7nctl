@@ -22,6 +22,6 @@ func (c *C7NClient) CreateSecret(out io.Writer, projectId int, secretPostInfo *m
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Printf("create Secret %s success!", secretPostInfo.Name)
+	fmt.Printf("Successfully created Secret %s", secretPostInfo.Name)
 
 }
