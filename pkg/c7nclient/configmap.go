@@ -21,6 +21,6 @@ func (c *C7NClient) CreateConfigMap(out io.Writer, projectId int, configMapPostI
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Printf("create ConfigMap %s success!", configMapPostInfo.Name)
+	fmt.Printf("Successfully created ConfigMap %s", configMapPostInfo.Name)
 
 }

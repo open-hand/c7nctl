@@ -22,7 +22,7 @@ func (c *C7NClient) CreateCert(out io.Writer, projectId int, certPostInfo *model
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Printf("create Certification %s success!", certPostInfo.CertName)
+	fmt.Printf("Successfully created Certification %s", certPostInfo.CertName)
 
 }
 

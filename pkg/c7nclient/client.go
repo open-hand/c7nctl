@@ -19,15 +19,16 @@ type C7NClient struct {
 	BaseURL    string
 	httpClient *http.Client
 	token      string
-	config     *C7NPlatformContext
+	config     *C7NContext
 }
 
-func InitClient(config *C7NPlatformContext) {
+func InitClient(config *C7NContext) {
 	Client = C7NClient{
-		BaseURL:    config.Server,
-		httpClient: &http.Client{},
-		token:      config.Token,
-		config:     config,
+		BaseURL: config.Server,
+		httpClient: &http.Client{
+		},
+		token:  config.User.Token,
+		config: config,
 	}
 }
 
@@ -58,7 +59,7 @@ func (c *C7NClient) newRequest(method, path string, paras map[string]interface{}
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "bearer "+c.config.Token)
+	req.Header.Set("Authorization", "bearer "+c.config.User.Token)
 	return req, nil
 }
 
@@ -147,12 +148,12 @@ func (c *C7NClient) getTime(time float64) string {
 }
 
 func (c *C7NClient) CheckIsLogin() error {
-	if c.config.Token == "" {
+	if c.config.User.Token == "" {
 		return errors.New("You should to login, please use c7n login!")
 	}
 	return nil
 }
 
 func (c *C7NClient) printContextInfo() {
-	fmt.Printf("organization: %s(%s) project: %s(%s)", c.config.OrganizationCode, c.config.ProjectCode)
+	fmt.Printf("organization: %s(%s) project: %s(%s)", c.config.User.OrganizationCode, c.config.User.ProjectCode)
 }

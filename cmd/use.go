@@ -22,6 +22,7 @@ import (
 
 var orgCode string
 var proCode string
+var defaultValue string
 
 func init() {
 	rootCmd.AddCommand(useCmd)
@@ -30,6 +31,9 @@ func init() {
 
 	useOrgCmd.Flags().StringVarP(&orgCode, "orgCode", "o", "", "org code")
 	useProCmd.Flags().StringVarP(&proCode, "proCode", "p", "", "pro code")
+	useOrgCmd.Flags().StringVarP(&defaultValue, "default", "", "", "default")
+	useProCmd.Flags().StringVarP(&defaultValue, "default", "", "", "default")
+
 	useOrgCmd.MarkFlagRequired("orgCode")
 	useProCmd.MarkFlagRequired("proCode")
 }
@@ -78,7 +82,7 @@ var useOrgCmd = &cobra.Command{
 }
 
 var useProCmd = &cobra.Command{
-	Use:   "pro",
+	Use:   "proj",
 	Short: "The command to use project",
 	Long:  `you can use use command to define a default project ,then you can use other command with the default project`,
 	Run: func(cmd *cobra.Command, args []string) {

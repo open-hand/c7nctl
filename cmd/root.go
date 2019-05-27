@@ -25,8 +25,8 @@ import (
 
 var cfgFile string
 
-var clientConfig c7nclient.C7NPlatformContext
-
+var clientPlatformConfig c7nclient.C7NConfig
+var clientConfig c7nclient.C7NContext
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "c7nctl",
@@ -40,7 +40,8 @@ to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.SwitchContext(cmd.OutOrStdout(),"staging")
 	},
 }
 
@@ -59,7 +60,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.c7n.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.c7n/config.yaml)")
 	rootCmd.PersistentFlags().StringVarP(&orgCode, "orgCode", "o", "", "org code")
 	rootCmd.PersistentFlags().StringVarP(&proCode, "proCode", "p", "", "pro code")
 	rootCmd.HasPersistentFlags()
@@ -81,8 +82,9 @@ func initConfig() {
 			os.Exit(1)
 		}
 		// Search config in home directory with name ".c7n" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".c7n")
+		configDir := fmt.Sprintf("%s%c.c7n%c", home, os.PathSeparator, os.PathSeparator)
+		viper.AddConfigPath(configDir)
+		viper.SetConfigName("config")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -90,9 +92,30 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		//序列化配置文件为CONTEXT结构
-		if err := viper.Unmarshal(&clientConfig); err != nil {
+		if err := viper.Unmarshal(&clientPlatformConfig); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
+		} else {
+			if clientPlatformConfig.CurrentContext == "" {
+				fmt.Println(" You have to define current context!")
+				os.Exit(1)
+			}
+			for _, context := range clientPlatformConfig.Contexts {
+				if context.Name == clientPlatformConfig.CurrentContext {
+					if context.Server == "" {
+						fmt.Println(" You should define a server under the current context!")
+						os.Exit(1)
+					}
+					clientConfig = context
+				}
+			}
+			if clientConfig.Name == "" {
+				fmt.Println(" The current context is not exist!")
+				os.Exit(1)
+			}
 		}
+	} else {
+		fmt.Println(" You have to define a config file!")
+		os.Exit(1)
 	}
 }

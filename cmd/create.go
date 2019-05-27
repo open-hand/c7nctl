@@ -133,7 +133,7 @@ var createCmd = &cobra.Command{
 
 // create apptemplate command
 var createAppTemplateCmd = &cobra.Command{
-	Use:   "appTemplate",
+	Use:   "app-template",
 	Short: "create application template",
 	Long:  `you can use this command to create application template `,
 	Run: func(cmd *cobra.Command, args []string) {

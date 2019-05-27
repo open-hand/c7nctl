@@ -76,7 +76,7 @@ var getCmd = &cobra.Command{
 
 // get env command
 var envCmd = &cobra.Command{
-	Use:   "env",
+	Use:   "envs",
 	Short: "get env pipeline",
 	Long: `A longer description that spans multiple lines and likely contains examples
 	and usage of using your command. For example:
@@ -127,7 +127,7 @@ var orgCmd = &cobra.Command{
 
 // get project command
 var proCmd = &cobra.Command{
-	Use:   "pro",
+	Use:   "proj",
 	Short: "get project",
 	Long:  `list the projects `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -259,7 +259,7 @@ to quickly create a Cobra application.`,
 
 // get application template command
 var appTemplateCmd = &cobra.Command{
-	Use:   "appTemplate",
+	Use:   "app-template",
 	Short: "Get AppTemplate",
 	Long:  `Get Devops App Templates List`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -315,7 +315,7 @@ var appCmd = &cobra.Command{
 
 // get application version command
 var appVersionCmd = &cobra.Command{
-	Use:   "appVersion",
+	Use:   "app-version",
 	Short: "Get Application version",
 	Long:  `Get Devops Application Version List`,
 	Run: func(cmd *cobra.Command, args []string) {

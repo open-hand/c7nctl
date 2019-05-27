@@ -16,44 +16,33 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/choerodon/c7nctl/cmd/app"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/spf13/cobra"
-	"github.com/vinkdong/gox/log"
 )
+
+
+
+var name string
+
+func init() {
+	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(contextCmd)
+
+	contextCmd.Flags().StringVarP(&name, "name", "", "", "context name")
+	contextCmd.MarkFlagRequired("name")
+}
 
 // installCmd represents the install command
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "login to Choerodon",
 	Long:  `Login to Choerodon.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if debug, _ := cmd.Flags().GetBool("debug"); debug {
-			log.EnableDebug()
-		}
-		err := app.Login(cmd, args)
-		if err != nil {
-			log.Error("login failed")
-		}
-		log.Success("login succeed")
-		return err
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.Login(cmd.OutOrStdout())
+
 	},
-}
-
-var username string
-var password string
-var url string
-
-func init() {
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(logoutCmd)
-
-	loginCmd.Flags().StringVarP(&username, "username", "U", "", "username")
-	loginCmd.Flags().StringVarP(&password, "password", "P", "", "password")
-	loginCmd.Flags().StringVarP(&url, "url", "", "", "")
-	loginCmd.MarkFlagRequired("username")
-	loginCmd.MarkFlagRequired("password")
-	loginCmd.MarkFlagRequired("url")
 }
 
 // getCmd represents the get command
@@ -70,5 +59,15 @@ var logoutCmd = &cobra.Command{
 			return
 		}
 		c7nclient.Client.Logout(cmd.OutOrStdout())
+	},
+}
+
+var contextCmd = &cobra.Command{
+	Use:   "context",
+	Short: "The command to switch context",
+	Long:  `you can use use command to switch context, after you swith ,the current context is changed!`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig)
+		c7nclient.Client.SwitchContext(cmd.OutOrStdout(), name)
 	},
 }
