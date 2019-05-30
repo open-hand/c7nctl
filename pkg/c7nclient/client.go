@@ -24,11 +24,10 @@ type C7NClient struct {
 
 func InitClient(config *C7NContext) {
 	Client = C7NClient{
-		BaseURL: config.Server,
-		httpClient: &http.Client{
-		},
-		token:  config.User.Token,
-		config: config,
+		BaseURL:    config.Server,
+		httpClient: &http.Client{},
+		token:      config.User.Token,
+		config:     config,
 	}
 }
 

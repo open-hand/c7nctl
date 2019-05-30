@@ -113,7 +113,7 @@ func TestExecuteRemoteSql(t *testing.T) {
 }
 
 func TestExecuteRemotePSql(t *testing.T) {
-	if !utils.ConditionSkip() {
+	if utils.ConditionSkip() {
 		return
 	}
 	slaver := Slaver{

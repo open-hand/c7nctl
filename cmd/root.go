@@ -27,6 +27,7 @@ var cfgFile string
 
 var clientPlatformConfig c7nclient.C7NConfig
 var clientConfig c7nclient.C7NContext
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "c7nctl",

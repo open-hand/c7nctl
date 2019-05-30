@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// todo: remove it
 func Login(cmd *cobra.Command, args []string) error {
 
 	cfg, err := utils.GetConfig()

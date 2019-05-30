@@ -23,7 +23,7 @@ func (c *C7NClient) ListAppVersions(out io.Writer, appCode *string, projectId in
 	}
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_versions/list_by_options", c.config.User.ProjectId, ), paras, nil)
+	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_versions/list_by_options", c.config.User.ProjectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -59,7 +59,7 @@ func (c *C7NClient) GetAppVersion(out io.Writer, projectId int, version string, 
 	paras := make(map[string]interface{})
 	paras["version"] = version
 	paras["appId"] = strconv.Itoa(appId)
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_versions/query_by_version", c.config.User.ProjectId, ), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_versions/query_by_version", c.config.User.ProjectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err, nil

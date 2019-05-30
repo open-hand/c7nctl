@@ -15,8 +15,6 @@ const (
 	loginPath = "/oauth/oauth/token"
 )
 
-//curl -XPOST https://api.choerodon.com.cn/oauth/oauth/token\?grant_type\=password\&password\=UXdlcjEyMzQ\=\&username\=8377
-
 func (a *Authorization) Login() error {
 	var (
 		username string
@@ -67,7 +65,9 @@ input:
 
 	data, err := ioutil.ReadAll(resp.Body)
 	loginResp := &LoginResp{}
-	json.Unmarshal(data, loginResp)
+	if err := json.Unmarshal(data, loginResp); err != nil {
+		return err
+	}
 	a.Token = loginResp.AccessToken
 	a.Username = username
 	return a.Write()

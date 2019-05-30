@@ -158,5 +158,5 @@ func (c *C7NClient) CreateEnv(out io.Writer, projectId int, envPostInfo *model.E
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	fmt.Sprintf("Successfully created env %s",envPostInfo.Name)
+	fmt.Sprintf("Successfully created env %s", envPostInfo.Name)
 }

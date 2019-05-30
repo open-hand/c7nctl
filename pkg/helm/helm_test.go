@@ -2,6 +2,7 @@ package helm
 
 import (
 	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"testing"
 )
 
@@ -28,6 +29,10 @@ func TestLocateChartPath(t *testing.T) {
 }
 
 func TestInstallRelease(t *testing.T) {
+	if utils.ConditionSkip(){
+		return
+	}
+
 	client := Client{
 		Tunnel: kube.GetTunnel(),
 	}

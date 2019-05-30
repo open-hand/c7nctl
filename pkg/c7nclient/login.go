@@ -18,7 +18,7 @@ const client = "c7nclient"
 const secret = "secret"
 const grantType = "password"
 
-func (c *C7NClient) Login(out io.Writer, ) {
+func (c *C7NClient) Login(out io.Writer) {
 
 	if c.config.User.Token != "" {
 		fmt.Println("you have login, you can use logout when you want to login of other user or other env")
@@ -150,8 +150,8 @@ func (c *C7NClient) SwitchContext(out io.Writer, name string) {
 	for _, context := range allConfig.Contexts {
 		if context.Name == name {
 			allConfig.CurrentContext = name
-		}else {
-			index ++
+		} else {
+			index++
 		}
 	}
 	if index == len(allConfig.Contexts) {
