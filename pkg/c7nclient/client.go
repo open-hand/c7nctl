@@ -154,5 +154,5 @@ func (c *C7NClient) CheckIsLogin() error {
 }
 
 func (c *C7NClient) printContextInfo() {
-	fmt.Printf("organization: %s(%s) project: %s(%s)", c.config.User.OrganizationCode, c.config.User.ProjectCode)
+	fmt.Printf("organization: %s project: %s", c.config.User.OrganizationCode, c.config.User.ProjectCode)
 }
