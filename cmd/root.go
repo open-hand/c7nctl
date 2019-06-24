@@ -60,7 +60,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.c7n/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.c7n.yaml)")
 	rootCmd.PersistentFlags().StringVarP(&orgCode, "orgCode", "o", "", "org code")
 	rootCmd.PersistentFlags().StringVarP(&proCode, "proCode", "p", "", "pro code")
 	rootCmd.HasPersistentFlags()
@@ -82,9 +82,8 @@ func initConfig() {
 			os.Exit(1)
 		}
 		// Search config in home directory with name ".c7n" (without extension).
-		configDir := fmt.Sprintf("%s%c.c7n%c", home, os.PathSeparator, os.PathSeparator)
-		viper.AddConfigPath(configDir)
-		viper.SetConfigName("config")
+		viper.AddConfigPath(home)
+		viper.SetConfigName(".c7n")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -114,8 +113,5 @@ func initConfig() {
 				os.Exit(1)
 			}
 		}
-	} else {
-		fmt.Println(" You have to define a config file!")
-		os.Exit(1)
 	}
 }
