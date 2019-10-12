@@ -43,10 +43,9 @@ func (c *C7NClient) Login(out io.Writer) {
 	})
 
 	home, err := homedir.Dir()
-	configDir := fmt.Sprintf("%s%c.c7n%c%s", home, os.PathSeparator, os.PathSeparator, "config.yaml")
+	configDir := fmt.Sprintf("%s%c%s", home, os.PathSeparator, ".c7n.yaml")
 
 	c.BaseURL = c.config.Server
-
 	strbytes := []byte(password)
 	password = base64.StdEncoding.EncodeToString(strbytes)
 
