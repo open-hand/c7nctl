@@ -11,7 +11,7 @@ import (
 )
 
 func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("base/v1/users/%d/organizations", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -33,7 +33,7 @@ func (c *C7NClient) ListOrganization(out io.Writer, userId int) {
 }
 
 func (c *C7NClient) SetOrganization(out io.Writer, userId int) (error error) {
-	req, err := c.newRequest("GET", fmt.Sprintf("iam/v1/users/%d/organizations", userId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("base/v1/users/%d/organizations", userId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err

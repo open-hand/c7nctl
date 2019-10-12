@@ -8,7 +8,7 @@ import (
 
 func (c *C7NClient) QuerySelf(out io.Writer) (error error, info model.UserInfo) {
 
-	req, err := c.newRequest("GET", "/iam/v1/users/self", nil, nil)
+	req, err := c.newRequest("GET", "/base/v1/users/self", nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
