@@ -29,7 +29,7 @@ func TestLocateChartPath(t *testing.T) {
 }
 
 func TestInstallRelease(t *testing.T) {
-	if utils.ConditionSkip(){
+	if !utils.ConditionSkip() {
 		return
 	}
 
@@ -38,7 +38,7 @@ func TestInstallRelease(t *testing.T) {
 	}
 	client.InitClient()
 
-	vals := []string{"pv.name=abc"}
+	vals := []string{"pv.name=abc", "pbc[0].abc[1].als.s=rerws.sfds"}
 
 	chartArgs := ChartArgs{
 		ReleaseName: "",
@@ -48,7 +48,7 @@ func TestInstallRelease(t *testing.T) {
 		Version:     testVersion,
 		ChartName:   testChart,
 	}
-	err := client.InstallRelease(vals, chartArgs)
+	err := client.InstallRelease(vals, "", chartArgs)
 	if err != nil {
 		t.Fatal(err)
 	}

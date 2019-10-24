@@ -13,7 +13,7 @@ type Slice struct {
 	End   int
 }
 
-func Seed(seed int64)  {
+func Seed(seed int64) {
 	rand.Seed(seed)
 }
 
@@ -27,7 +27,7 @@ func RangeIntInclude(include ...Slice) int {
 	}
 	s := rand.Intn(len(include))
 	e := include[s]
-	return RangeInt(e.Start,e.End)
+	return RangeInt(e.Start, e.End)
 }
 
 func String(length ...int) string {
@@ -35,9 +35,9 @@ func String(length ...int) string {
 	if len(length) > 0 {
 		randomLength = length[0]
 	}
-	
+
 	bytes := make([]byte, randomLength)
-	
+
 	for i := 0; i < randomLength; i++ {
 		bytes[i] = byte(97 + rand.Intn(25)) //A=65 and Z = 65+25
 	}

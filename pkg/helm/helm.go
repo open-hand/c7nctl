@@ -125,14 +125,20 @@ func (client *Client) InitClient() {
 
 }
 
-func (client *Client) InstallRelease(values []string, chartArgs ChartArgs) error {
+func (client *Client) InstallRelease(values []string, raw string, chartArgs ChartArgs) error {
 
 	cp, err := client.locateChartPath(chartArgs)
 	if err != nil {
 		return err
 	}
 
-	rawVals, err := prepareValues(values)
+	var rawVals []byte
+	if raw == "" {
+		rawVals, err = prepareValues(values)
+	} else {
+		rawVals = []byte(raw)
+	}
+	log.Debug(string(rawVals))
 
 	chartRequested, err := chartutil.Load(cp)
 

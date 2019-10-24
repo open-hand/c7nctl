@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	uc "github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/choerodon/c7nctl/pkg/helm"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
+	"github.com/vinkdong/gox/http/downloader"
 	"github.com/vinkdong/gox/log"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,6 +101,10 @@ func (infra *InfraResource) getUserConfig() *config.Resource {
 	return Ctx.UserConfig.GetResource(infra.Name)
 }
 
+func (infra *InfraResource) getUserValuesTpl() ([]byte, error) {
+	return Ctx.UserConfig.GetHelmValuesTpl(infra.Name)
+}
+
 func (infra *InfraResource) applyUserResource() error {
 	r := infra.getUserConfig()
 	if r == nil {
@@ -182,6 +188,28 @@ func (infra *InfraResource) GetRequire(app string) *InfraResource {
 		Values:    news.Values,
 	}
 	return i
+}
+
+// convert yml format values template to yaml raw data
+func (infra *InfraResource) ValuesRaw() string {
+	data, err := infra.getUserValuesTpl()
+
+	if err != nil {
+		log.Error(err)
+		log.Errorf("get user values for %s failed", infra.Name)
+		os.Exit(127)
+	}
+	if len(data) == 0 {
+		url := fmt.Sprintf("%s/%s/values/%s.yaml", consts.RemoteInstallResourceRootUrl, infra.PaaSVersion, infra.Name)
+		nData, statusCode, err := downloader.GetFileContent(url)
+		if statusCode == 200 && err == nil {
+			data = nData
+		}
+	}
+	if len(data) > 0 {
+		return infra.renderValue(string(data[:]))
+	}
+	return ""
 }
 
 // convert yml values to values list as xxx=yyy
@@ -283,7 +311,8 @@ func (infra *InfraResource) Install() error {
 	if infra.Timeout > 0 {
 		values = append(values, fmt.Sprintf("preJob.timeout=%d", infra.Timeout))
 	}
-	err := infra.Client.InstallRelease(values, chartArgs)
+	raw := infra.ValuesRaw()
+	err := infra.Client.InstallRelease(values, raw, chartArgs)
 
 	if err != nil {
 		return err
@@ -468,6 +497,19 @@ func (infra *InfraResource) GetResource(key string) *config.Resource {
 	Ctx.Metrics.ErrorMsg = append(Ctx.Metrics.ErrorMsg, errMsg)
 	Ctx.CheckExist(188)
 	return nil
+}
+
+func (infra *InfraResource) Call(key string, opts ...string) string {
+	for _, v := range infra.Home.Spec.Funcs {
+		if v.Name == key {
+			return infra.call(v, opts...)
+		}
+	}
+	return ""
+}
+
+func (infra *InfraResource) call(fn utils.Func, opts ...string) string {
+	return fn.Execute(infra, opts...)
 }
 
 func (infra *InfraResource) CheckInstall() error {

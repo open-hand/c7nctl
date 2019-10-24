@@ -52,6 +52,7 @@ type Context struct {
 	BackendTasks  []*BackendTask
 	Mux           sync.Mutex
 	Metrics       utils.Metrics
+	SkipInput     bool
 }
 
 type BackendTask struct {

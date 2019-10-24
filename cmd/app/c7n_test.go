@@ -28,8 +28,8 @@ func TestCheckResource(t *testing.T) {
 }
 
 func TestGetUserConfig(t *testing.T) {
-	getUserConfig("~/go/src/github.com/choerodon/c7nctl/install.yaml")
-	if UserConfig.Spec.Resources["mysql"].Host != "192.168.12.88" {
+	userConfig := getUserConfig("/Users/vink/resource/configs/c7ninstall/config.yml")
+	if userConfig.Spec.Resources["mysql"].Host != "192.168.12.88" {
 		t.Error("read user config error")
 	}
 }

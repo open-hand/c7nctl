@@ -78,7 +78,12 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 		os.Exit(123)
 	}
 	configFile, err := cmd.Flags().GetString("config-file")
+	// 读取用户定义的配置文件，如外部数据库地址等
 	UserConfig = getUserConfig(configFile)
+	if UserConfig == nil {
+		log.Info("need user config file")
+		os.Exit(127)
+	}
 
 	prefix, _ := cmd.Flags().GetString("prefix")
 
@@ -89,6 +94,7 @@ func GetInstall(cmd *cobra.Command, args []string) *install.Install {
 	installDef.Prefix = prefix
 
 	version, err := cmd.Flags().GetString("version")
+	installDef.PaaSVersion = version
 	if err != nil {
 		log.Error(err)
 		os.Exit(128)

@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"k8s.io/api/core/v1"
+	"os"
 )
 
 type Config struct {
@@ -46,6 +48,27 @@ func (c *Config) GetResource(key string) *Resource {
 	return nil
 }
 
+func (c *Config) GetHelmValuesTpl(key string) ([]byte, error) {
+	if c == nil {
+		return nil, nil
+	}
+	dir := c.Spec.HelmConfig.Values.Dir
+	if dir == "" {
+		dir = "values"
+	}
+
+	valuesFilepath := fmt.Sprintf("%s/%s.yaml", dir, key)
+
+	_, err := os.Stat(valuesFilepath)
+	if err == nil {
+		return ioutil.ReadFile(valuesFilepath)
+	}
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	return nil, err
+}
+
 type Metadata struct {
 	Name      string
 	Namespace string
@@ -54,6 +77,15 @@ type Metadata struct {
 type Spec struct {
 	Persistence Persistence
 	Resources   map[string]*Resource
+	HelmConfig  HelmConfig `yaml:"helm"`
+}
+
+type HelmConfig struct {
+	Values ValuesConfig `yaml:"values"`
+}
+
+type ValuesConfig struct {
+	Dir string `yaml:"dir"`
 }
 
 type Persistence struct {

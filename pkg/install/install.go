@@ -21,7 +21,10 @@ import (
 )
 
 type Install struct {
-	Version            string
+	// api 版本
+	Version string
+	// Choerodon 平台版本
+	PaaSVersion        string
 	Metadata           Metadata
 	Spec               Spec
 	Client             kubernetes.Interface
@@ -59,6 +62,7 @@ type InfraResource struct {
 	Timeout      int
 	Prefix       string
 	SkipInput    bool
+	PaaSVersion  string
 }
 
 type Health struct {
@@ -103,6 +107,7 @@ type HttpGetCheck struct {
 
 type Spec struct {
 	Basic       Basic
+	Funcs       []utils.Func
 	Resources   v1.ResourceRequirements
 	Infra       []*InfraResource
 	Framework   []*InfraResource
@@ -261,6 +266,7 @@ func (pi *PreInstall) ExecuteRequests(infra *InfraResource) error {
 type PreValueList []*PreValue
 
 func (pl *PreValueList) prepareValues() error {
+
 	for _, v := range *pl {
 		if err := v.renderValue(); err != nil {
 			return err
@@ -289,6 +295,7 @@ type PreValue struct {
 	Name  string
 	Value string
 	Check string
+	Input utils.Input
 }
 
 func (p *PreValue) RandomToken(length int) string {
@@ -300,28 +307,46 @@ func (p *PreValue) RandomLowCaseToken(length int) string {
 }
 
 func (p *PreValue) renderValue() error {
-	tpl, err := template.New(p.Name).Parse(p.Value)
-	if err != nil {
-		return err
+
+	var value string
+	if p.Input.Enabled && !Ctx.SkipInput {
+		log.Lock()
+		var err error
+		if p.Input.Password {
+			p.Input.Twice = true
+			value, err = utils.AcceptUserPassword(p.Input)
+		} else {
+			value, err = utils.AcceptUserInput(p.Input)
+		}
+		log.Unlock()
+		if err != nil {
+			log.Error(err)
+			os.Exit(128)
+		}
+	} else {
+		tpl, err := template.New(p.Name).Parse(p.Value)
+		if err != nil {
+			return err
+		}
+		var data bytes.Buffer
+		err = tpl.Execute(&data, p)
+		if err != nil {
+			return err
+		}
+		value = data.String()
 	}
-	var data bytes.Buffer
-	err = tpl.Execute(&data, p)
-	if err != nil {
-		return err
-	}
-	val := data.String()
-	log.Debugf("PreValue %s: %s, checking: %s", p.Name, val, p.Check)
 
 	switch p.Check {
 	case "clusterdomain":
 		//todo: add check domain
-		if err := Ctx.Slaver.CheckClusterDomain(val); err != nil {
-			log.Errorf("请检查您的域名: %s 已正确解析到集群", val)
+		log.Debugf("PreValue %s: %s, checking: %s", p.Name, value, p.Check)
+		if err := Ctx.Slaver.CheckClusterDomain(value); err != nil {
+			log.Errorf("请检查您的域名: %s 已正确解析到集群", value)
 			return err
 		}
 	}
 
-	p.Value = val
+	p.Value = value
 	return nil
 }
 
@@ -381,6 +406,7 @@ func (i *Install) Install(apps []*InfraResource) error {
 		infra.Home = i
 		infra.Timeout = i.Timeout
 		infra.Prefix = i.Prefix
+		infra.PaaSVersion = i.Version
 
 		// 准备pv和pvc
 		if err := infra.preparePersistence(i.Client, i.UserConfig, i.CommonLabels); err != nil {
@@ -545,6 +571,7 @@ func (i *Install) Run(args ...string) error {
 		CommonLabels: i.CommonLabels,
 		UserConfig:   i.UserConfig,
 		Metrics:      Ctx.Metrics,
+		SkipInput:    i.SkipInput,
 	}
 
 	stopCh := make(chan struct{})

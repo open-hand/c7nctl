@@ -2,12 +2,12 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"sync"
-	"io"
-	"time"
 	"runtime"
+	"sync"
+	"time"
 )
 
 const ClrEnd = "\x1b[0m"
@@ -177,11 +177,11 @@ func Debugf(format string, a ...interface{}) {
 	}
 }
 
-func Lock()  {
+func Lock() {
 	std.mu.Lock()
 }
 
-func Unlock()  {
+func Unlock() {
 	std.mu.Unlock()
 }
 

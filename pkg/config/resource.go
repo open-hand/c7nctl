@@ -2,20 +2,20 @@ package config
 
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/choerodon/c7nctl/pkg/helm"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
-	"net/http"
 	"os"
 )
 
 const (
-	remoteConfigUrlPrefix = "https://file.choerodon.com.cn/choerodon-install"
-	versionPath           = "/version.yml"
-	installConfigPath     = "/%s/install.yml"
-	upgradeConfigPath     = "/%s/upgrade.yml"
+	versionPath       = "/version.yml"
+	installConfigPath = "/%s/install.yml"
+	upgradeConfigPath = "/%s/upgrade.yml"
 )
 
 type ResourceDefinition struct {
@@ -71,25 +71,8 @@ func (r *ResourceDefinition) getVersions() Versions {
 }
 
 func (r *ResourceDefinition) requireRemoteResource(resourcePath string) []byte {
-	log.Infof("getting resource %s", resourcePath)
-	var (
-		data []byte
-		err  error
-	)
-	resp, err := http.Get(fmt.Sprintf("%s%s", remoteConfigUrlPrefix, resourcePath))
-	if err != nil {
-		log.Error(err)
-		os.Exit(127)
-	}
-	defer resp.Body.Close()
-
-	data, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Get resource %s failed", resourcePath)
-		log.Error(err)
-		os.Exit(127)
-	}
-	return data
+	url := fmt.Sprintf("%s%s", consts.RemoteInstallResourceRootUrl, resourcePath)
+	return utils.GetRemoteResource(url)
 }
 
 func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
