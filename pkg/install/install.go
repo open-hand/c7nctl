@@ -181,6 +181,7 @@ func (pi *PreInstall) ExecuteSql(infra *InfraResource, sqlType string) error {
 		log.Successf("task %s had executed", pi.Name)
 		return nil
 	}
+	log.Infof("executing %s , %s", infra.Name, pi.Name)
 
 	news = &News{
 		Name:     pi.Name,

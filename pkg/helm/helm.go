@@ -138,7 +138,7 @@ func (client *Client) InstallRelease(values []string, raw string, chartArgs Char
 	} else {
 		rawVals = []byte(raw)
 	}
-	log.Debug(string(rawVals))
+	log.Debug("\n" + string(rawVals))
 
 	chartRequested, err := chartutil.Load(cp)
 
