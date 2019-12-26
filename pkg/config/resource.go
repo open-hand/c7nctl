@@ -76,11 +76,11 @@ func (r *ResourceDefinition) requireRemoteResource(resourcePath string) []byte {
 }
 
 func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
-	// request network resource
-	currentVersion := r.getVersion(version)
 	var data []byte
 	var err error
 	if r.LocalFile == "" {
+		// request network resource
+		currentVersion := r.getVersion(version)
 		data = r.requireRemoteResource(fmt.Sprintf(installConfigPath, currentVersion.Version))
 	}
 	if r.LocalFile != "" {

@@ -32,20 +32,21 @@ import (
 )
 
 type Slaver struct {
-	Client       kubernetes.Interface
-	Version      string
-	Namespace    string
-	Name         string
-	CommonLabels map[string]string
-	Image        string
-	Ports        []core_v1.ContainerPort
-	Env          []core_v1.EnvVar
-	VolumeMounts []core_v1.VolumeMount
-	PodList      *core_v1.PodList
-	Address      string
-	GRpcAddress  string
-	PvcName      string
-	DataPath     string
+	Client          kubernetes.Interface
+	Version         string
+	Namespace       string
+	Name            string
+	CommonLabels    map[string]string
+	Image           string
+	Ports           []core_v1.ContainerPort
+	Env             []core_v1.EnvVar
+	VolumeMounts    []core_v1.VolumeMount
+	ImagePullPolicy core_v1.PullPolicy `yaml:"imagePullPolicy"`
+	PodList         *core_v1.PodList
+	Address         string
+	GRpcAddress     string
+	PvcName         string
+	DataPath        string
 }
 
 const IngressCheckPath = "/c7n/acme-challenge"
@@ -80,7 +81,7 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		Ports:           s.Ports,
 		Env:             s.Env,
 		VolumeMounts:    s.VolumeMounts,
-		ImagePullPolicy: "Always",
+		ImagePullPolicy: s.ImagePullPolicy,
 	}
 
 	volumeSource := core_v1.VolumeSource{

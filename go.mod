@@ -82,7 +82,7 @@ require (
 	github.com/spf13/pflag v1.0.3-0.20180815210406-947b89bd1b7d // indirect
 	github.com/spf13/viper v1.1.0
 	github.com/ugorji/go v1.1.1
-	github.com/vinkdong/gox v0.0.0-20191023073655-5e8e20da46b9
+	github.com/vinkdong/gox v0.0.0-20191206064300-c169912b750d
 	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e
 	golang.org/x/net v0.0.0-20180826012351-8a410e7b638d
 	google.golang.org/appengine v1.1.1-0.20180731164958-4216e58b9158 // indirect

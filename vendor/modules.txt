@@ -246,7 +246,7 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/ugorji/go v1.1.1
 github.com/ugorji/go/codec
-# github.com/vinkdong/gox v0.0.0-20191023073655-5e8e20da46b9
+# github.com/vinkdong/gox v0.0.0-20191206064300-c169912b750d
 github.com/vinkdong/gox/http/downloader
 github.com/vinkdong/gox/log
 github.com/vinkdong/gox/random

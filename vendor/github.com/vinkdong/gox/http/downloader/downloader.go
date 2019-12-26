@@ -13,8 +13,7 @@ func GetFileContent(url string) (data []byte, statusCode int, err error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Error(err)
-		os.Exit(127)
+		return nil, -1, err
 	}
 	defer resp.Body.Close()
 

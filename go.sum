@@ -169,6 +169,8 @@ github.com/vinkdong/gox v0.0.0-20181025034615-16e1d3493b42 h1:frPDHlqOVSTN3wr/Me
 github.com/vinkdong/gox v0.0.0-20181025034615-16e1d3493b42/go.mod h1:D9ESQLjCsJyEz/f6JzpRJ8TnHjhMmwi52mecSvzMPOQ=
 github.com/vinkdong/gox v0.0.0-20191023073655-5e8e20da46b9 h1:bI03tUPYOEqirQd9TzSUNAbwAqeXVfYB/0HYjrnqlWM=
 github.com/vinkdong/gox v0.0.0-20191023073655-5e8e20da46b9/go.mod h1:vu7Gr4sUfwq+0MEpUtUx3jxbiWtZqHTFhj+r2uzn1WM=
+github.com/vinkdong/gox v0.0.0-20191206064300-c169912b750d h1:/WQcscrVR0loeeijHET8fmCUgQUBl6oOtej3NtIUQQQ=
+github.com/vinkdong/gox v0.0.0-20191206064300-c169912b750d/go.mod h1:vu7Gr4sUfwq+0MEpUtUx3jxbiWtZqHTFhj+r2uzn1WM=
 golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e h1:IzypfodbhbnViNUO/MEh0FzCUooG97cIGfdggUrUSyU=
 golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/lint v0.0.0-20180702182130-06c8688daad7/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
