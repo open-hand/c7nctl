@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 var (
@@ -39,8 +40,7 @@ func New(namespace string, client kubernetes.Interface, config *rest.Config) (*k
 	if err != nil {
 		return nil, err
 	}
-	const tillerPort = 44134
-	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, tillerPort)
+	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, environment.DefaultTillerPort)
 	return t, t.ForwardPort()
 }
 
@@ -52,6 +52,21 @@ func GetTillerPodName(client corev1.PodsGetter, namespace string) (string, error
 		return "", err
 	}
 	return pod.ObjectMeta.GetName(), nil
+}
+
+// GetTillerPodImage fetches the image of tiller pod running in the given namespace.
+func GetTillerPodImage(client corev1.PodsGetter, namespace string) (string, error) {
+	selector := tillerPodLabels.AsSelector()
+	pod, err := getFirstRunningPod(client, namespace, selector)
+	if err != nil {
+		return "", err
+	}
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "tiller" {
+			return c.Image, nil
+		}
+	}
+	return "", fmt.Errorf("could not find a tiller pod")
 }
 
 func getFirstRunningPod(client corev1.PodsGetter, namespace string, selector labels.Selector) (*v1.Pod, error) {

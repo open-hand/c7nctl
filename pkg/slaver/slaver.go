@@ -13,6 +13,7 @@ import (
 	"github.com/vinkdong/gox/random"
 	"google.golang.org/grpc"
 	"io/ioutil"
+	v1 "k8s.io/api/apps/v1"
 	core_v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -61,8 +62,8 @@ type Dir struct {
 Type: httpGet or socket
 */
 
-func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
-	ds, err := s.Client.ExtensionsV1beta1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
+func (s *Slaver) CheckInstall() (*v1.DaemonSet, error) {
+	ds, err := s.Client.AppsV1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Infof("deploying daemonSet %s", s.Name)
@@ -73,7 +74,7 @@ func (s *Slaver) CheckInstall() (*v1beta1.DaemonSet, error) {
 	return ds, err
 }
 
-func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
+func (s *Slaver) Install() (*v1.DaemonSet, error) {
 
 	dsContainer := core_v1.Container{
 		Name:            s.Name,
@@ -114,21 +115,21 @@ func (s *Slaver) Install() (*v1beta1.DaemonSet, error) {
 		MatchLabels: s.CommonLabels,
 	}
 	s.CommonLabels["app"] = s.Name
-	ds := &v1beta1.DaemonSet{
+	ds := &v1.DaemonSet{
 		TypeMeta: meta_v1.TypeMeta{
 			Kind:       "DaemonSet",
-			APIVersion: "v1beta2",
+			APIVersion: "v1",
 		},
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:   s.Name,
 			Labels: s.CommonLabels,
 		},
-		Spec: v1beta1.DaemonSetSpec{
+		Spec: v1.DaemonSetSpec{
 			Template: tmp,
 			Selector: selector,
 		},
 	}
-	daemonSet, err := s.Client.ExtensionsV1beta1().DaemonSets(s.Namespace).Create(ds)
+	daemonSet, err := s.Client.AppsV1().DaemonSets(s.Namespace).Create(ds)
 
 	if err != nil {
 		return nil, err
