@@ -5,12 +5,10 @@ import (
 	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
-	"net/http"
 )
 
 func (c *C7NClient) GetEnvSyncStatus(envId int) (bool, error) {
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/envs/%d/status", c.config.User.ProjectId, envId), nil, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/envs/%d/status", c.currentContext.User.ProjectId, envId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -28,89 +26,44 @@ func (c *C7NClient) GetEnvSyncStatus(envId int) (bool, error) {
 
 }
 
-func (c *C7NClient) ListAuthEnvs(out io.Writer, projectId int) {
-	if projectId == 0 {
-		return
-	}
-	paras := make(map[string]interface{})
-	paras["active"] = "true"
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs", projectId), paras, nil)
-	if err != nil {
-		fmt.Printf("build request error")
-	}
-	var authEnvs = []model.AuthEnv{}
-	resp, err := c.do(req, &authEnvs)
-	if err != nil {
-		fmt.Printf("request err:%v", err)
-		return
-
-	}
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
-		return
-	}
-	envInfos := []model.EnvInfo{}
-	for _, devOpsEnv := range authEnvs {
-		if devOpsEnv.Failed || !devOpsEnv.Permission || !devOpsEnv.Connect {
-			continue
-		}
-		status, err := c.GetEnvSyncStatus(devOpsEnv.ID)
-		if err != nil {
-			continue
-
-		}
-
-		envInfo := model.EnvInfo{
-			Name:       devOpsEnv.Name,
-			Code:       devOpsEnv.Code,
-			Id:         devOpsEnv.ID,
-			SyncStatus: status,
-		}
-		envInfos = append(envInfos, envInfo)
-	}
-	model.PrintAuthEnvInfo(envInfos, out)
-
-}
-
 func (c *C7NClient) ListEnvs(out io.Writer, projectId int) {
 	if projectId == 0 {
 		return
 	}
-	paras := make(map[string]interface{})
-	paras["active"] = "true"
-	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/groups", projectId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/envs/env_tree_menu", projectId), nil, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
 	}
-	var devOpsEnvs = []model.DevOpsEnvs{}
-	_, err = c.do(req, &devOpsEnvs)
+	var devOpsEnvsInGroups []model.DevOpsEnvs
+	_, err = c.do(req, &devOpsEnvsInGroups)
 
 	if err != nil {
 		fmt.Printf("request err:%v", err)
 		return
 	}
 
-	envInfos := []model.EnvInfo{}
-	for _, devOpsEnv := range devOpsEnvs[0].DevopsEnviromentRepDTOs {
-		var status string
-		if devOpsEnv.Failed {
-			status = "Failed"
-		} else if devOpsEnv.Connect {
-			status = "Connected"
-		} else {
-			status = "Disconnected"
+	var envInfos []model.EnvInfo
+	for _, devopsEnvInGroup := range devOpsEnvsInGroups {
+		for _, devOpsEnv := range devopsEnvInGroup.DevopsEnvironmentRepDTOs {
+			var status string
+			if devOpsEnv.Failed {
+				status = "Failed"
+			} else if devOpsEnv.Connect {
+				status = "Connected"
+			} else {
+				status = "Disconnected"
+			}
+			envInfo := model.EnvInfo{
+				Id:      devOpsEnv.ID,
+				Name:    devOpsEnv.Name,
+				Status:  status,
+				Code:    devOpsEnv.Code,
+				Cluster: devOpsEnv.ClusterName,
+				Group:   devopsEnvInGroup.DevopsEnvGroupName,
+			}
+			envInfos = append(envInfos, envInfo)
 		}
-		envInfo := model.EnvInfo{
-			Name:    devOpsEnv.Name,
-			Status:  status,
-			Code:    devOpsEnv.Code,
-			Cluster: devOpsEnv.ClusterName,
-			Group:   devOpsEnvs[0].DevopsEnvGroupName,
-		}
-		envInfos = append(envInfos, envInfo)
 	}
 	model.PrintEnvInfo(envInfos, out)
 

@@ -6,81 +6,72 @@ import (
 	"io"
 )
 
-type DevopsEnvInstance struct {
-	DevopsEnvPreviewApp []DevopsEnvPreviewApp `json:"devopsEnvPreviewAppDTOS"`
+type Instances struct {
+	Pages int                      `json:"pages"`
+	Size  int                      `json:"size"`
+	Total int                      `json:"total"`
+	List  []ApplicationInstanceDTO `json:"list"`
 }
 
 type InstanceValues struct {
 	Values string `json:"yaml"`
 }
 
-type DevopsEnvPreviewApp struct {
-	AppName                 string                   `json:"appName"`
-	AppCode                 string                   `json:"appCode"`
-	ProjectID               int                      `json:"projectId"`
-	ApplicationInstanceDTOS []ApplicationInstanceDTO `json:"applicationInstanceDTOS"`
-}
-
 type ApplicationInstanceDTO struct {
 	ID                  int    `json:"id"`
-	AppID               int    `json:"appId"`
-	EnvID               int    `json:"envId"`
-	AppVersionID        int    `json:"appVersionId"`
 	Code                string `json:"code"`
-	AppName             string `json:"appName"`
-	AppVersion          string `json:"appVersion"`
-	EnvCode             string `json:"envCode"`
-	EnvName             string `json:"envName"`
 	Status              string `json:"status"`
 	PodCount            int    `json:"podCount"`
 	PodRunningCount     int    `json:"podRunningCount"`
-	CommandStatus       string `json:"commandStatus"`
-	CommandType         string `json:"commandType"`
+	AppServiceId        int    `json:"appServiceId"`
+	AppServiceName      string `json:"appServiceName"`
+	AppServiceVersionId int    `json:"AppServiceVersionId"`
+	VersionName         string `json:"VersionName"`
+	ObjectVersionNumber int    `json:"objectVersionNumber"`
+	Connect             bool   `json:"connect"`
 	CommandVersion      string `json:"commandVersion"`
 	CommandVersionID    int    `json:"commandVersionId"`
+	CommandType         string `json:"commandType"`
+	CommandStatus       string `json:"commandStatus"`
 	Error               string `json:"error"`
-	ObjectVersionNumber int    `json:"objectVersionNumber"`
 	ProjectID           int    `json:"projectId"`
-	Connect             bool   `json:"connect"`
+	ClusterId           int    `json:"clusterId"`
 }
 
 type InstancePostInfo struct {
-	AppVersionId  int    `json:"appVersionId"`
-	EnvironmentId int    `json:"environmentId"`
-	AppId         int    `json:"appId"`
-	InstanceName  string `json:"instanceName"`
-	Values        string `json:"values"`
-	Type          string `json:"type"`
-	IsNotChange   bool   `json:"isNotChange"`
+	AppServiceId        int    `json:"appServiceId"`
+	AppServiceVersionId int    `json:"appServiceVersionId"`
+	EnvironmentId       int    `json:"environmentId"`
+	InstanceName        string `json:"instanceName"`
+	Type                string `json:"type"`
+	Values              string `json:"values"`
 }
 
-type EnvInstanceInfo struct {
-	AppName         string
-	Id              int
-	AppCode         string
-	InstanceCode    string
-	Version         string
-	Status          string
-	PodPreviewCount string
+type InstanceInfo struct {
+	Id             int
+	Code           string
+	VersionName    string
+	AppServiceName string
+	Status         string
+	Pod            string
 }
 
-func PrintEnvInstanceInfo(contents []EnvInstanceInfo, out io.Writer) {
+func PrintEnvInstanceInfo(contents []InstanceInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id", "Application", "Code", "Status", "Pods")
+	table.AddRow("Id", "ApplicationName", "InstanceCode", "Status", "Pods")
 	for _, r := range contents {
-		app := fmt.Sprintf("%s(%s)", r.AppName, r.AppCode)
-		table.AddRow(r.Id, app, r.InstanceCode, r.Status, r.PodPreviewCount)
+		table.AddRow(r.Id, r.AppServiceName, r.Code, r.Status, r.Pod)
 	}
 	fmt.Fprintf(out, table.String())
 }
 
-func PrintCreateInstanceInfo(contents []EnvInstanceInfo, out io.Writer) {
+func PrintCreateInstanceInfo(contents []InstanceInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.AddRow("Code", "Status")
 	for _, r := range contents {
-		table.AddRow(r.InstanceCode, r.Status)
+		table.AddRow(r.Code, r.Status)
 	}
 	fmt.Fprintf(out, table.String())
 }

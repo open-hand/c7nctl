@@ -7,24 +7,17 @@ import (
 )
 
 type Clusters struct {
-	TotalPages       int       `json:"totalPages"`
-	TotalElements    int       `json:"totalElements"`
-	NumberOfElements int       `json:"numberOfElements"`
-	Size             int       `json:"size"`
-	Number           int       `json:"number"`
-	Content          []Cluster `json:"content"`
-	Empty            bool      `json:"empty"`
+	Pages int       `json:"pages"`
+	Size  int       `json:"size"`
+	Total int       `json:"total"`
+	List  []Cluster `json:"list"`
 }
 
 type Cluster struct {
 	ID                         int         `json:"id"`
 	Name                       string      `json:"name"`
-	SkipCheckProjectPermission bool        `json:"skipCheckProjectPermission"`
 	Code                       string      `json:"code"`
 	Connect                    bool        `json:"connect"`
-	Upgrade                    bool        `json:"upgrade"`
-	UpgradeMessage             interface{} `json:"upgradeMessage"`
-	Description                string      `json:"description"`
 }
 
 type Node struct {
@@ -48,13 +41,10 @@ type Node struct {
 }
 
 type Nodes struct {
-	TotalPages       int    `json:"totalPages"`
-	TotalElements    int    `json:"totalElements"`
-	NumberOfElements int    `json:"numberOfElements"`
-	Size             int    `json:"size"`
-	Number           int    `json:"number"`
-	Content          []Node `json:"content"`
-	Empty            bool   `json:"empty"`
+	Pages int       `json:"pages"`
+	Size  int       `json:"size"`
+	Total int       `json:"total"`
+	List  []Node `json:"list"`
 }
 
 type NodeInfo struct {
@@ -71,7 +61,6 @@ type NodeInfo struct {
 type ClusterInfo struct {
 	Name        string
 	Code        string
-	Description string
 	Status      string
 }
 
@@ -85,9 +74,9 @@ type ClusterPostInfo struct {
 func PrintClusterInfo(clusterInfos []ClusterInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Name", "Code", "Description", "Status")
+	table.AddRow("Name", "Code", "Status")
 	for _, r := range clusterInfos {
-		table.AddRow(r.Name, r.Code, r.Description, r.Status)
+		table.AddRow(r.Name, r.Code, r.Status)
 	}
 	fmt.Fprintf(out, table.String())
 }

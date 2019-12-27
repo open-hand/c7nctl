@@ -17,41 +17,61 @@ package cmd
 import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"os"
 )
 
-var instanceId int
 var appCode string
+var generic string
 
 func init() {
 	rootCmd.AddCommand(getCmd)
 	getCmd.AddCommand(envCmd)
-	getCmd.AddCommand(authEnvCmd)
 	getCmd.AddCommand(instanceCmd)
-	getCmd.AddCommand(instanceConfig)
 	getCmd.AddCommand(proCmd)
 	getCmd.AddCommand(orgCmd)
 	getCmd.AddCommand(serviceCmd)
-	getCmd.AddCommand(instanceResources)
 	getCmd.AddCommand(ingressCmd)
 	getCmd.AddCommand(appVersionCmd)
-	getCmd.AddCommand(appTemplateCmd)
 	getCmd.AddCommand(appCmd)
 	getCmd.AddCommand(clusterNodeCmd)
 	getCmd.AddCommand(clusterCmd)
+	getCmd.AddCommand(valueCmd)
+	getCmd.AddCommand(certCmd)
+	getCmd.AddCommand(configMapCmd)
+	getCmd.AddCommand(secretCmd)
+	getCmd.AddCommand(customCmd)
+	getCmd.AddCommand(pvcCmd)
+	getCmd.AddCommand(pvCmd)
 
-	appVersionCmd.Flags().StringVarP(&appCode, "appCode", "a", "", "app code")
-	instanceCmd.Flags().StringVarP(&envCode, "env", "", "", "env code")
-	serviceCmd.Flags().StringVarP(&envCode, "env", "", "", "env code")
-	ingressCmd.Flags().StringVarP(&envCode, "env", "", "", "env code")
+	appVersionCmd.Flags().StringVarP(&appCode, "appCode", "c", "", "app code")
+	instanceCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
 	instanceCmd.Flags().StringVarP(&clusterCode, "cluster", "", "", "cluster code")
-	serviceCmd.Flags().StringVarP(&clusterCode, "cluster", "", "", "cluster code")
-	ingressCmd.Flags().StringVarP(&clusterCode, "cluster", "", "", "cluster code")
-	clusterNodeCmd.Flags().StringVarP(&clusterCode, "clusterCode", "c", "", "cluster id")
-	instanceConfig.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
-	instanceResources.Flags().IntVar(&instanceId, "instance-id", 0, "instance id")
+	valueCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	serviceCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	ingressCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	ingressCmd.Flags().StringVarP(&clusterCode, "cluster", "c", "", "cluster code")
+	clusterNodeCmd.Flags().StringVarP(&clusterCode, "clusterCode", "c", "", "cluster code")
+	certCmd.Flags().StringVarP(&generic, "generic", "g", "n", "whether to list generic certification,\"y\" means generic certification,\"n\" means not generic certification")
+	certCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	configMapCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	secretCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	customCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+	pvcCmd.Flags().StringVarP(&envCode, "env", "e", "", "env code")
+
+	instanceCmd.MarkFlagRequired("env")
 	clusterNodeCmd.MarkFlagRequired("clusterCode")
 	appVersionCmd.MarkFlagRequired("appCode")
+	configMapCmd.MarkFlagRequired("env")
+	valueCmd.MarkFlagRequired("env")
+	certCmd.MarkFlagRequired("env")
+	ingressCmd.MarkFlagRequired("env")
+	customCmd.MarkFlagRequired("env")
+	secretCmd.MarkFlagRequired("env")
+	serviceCmd.MarkFlagRequired("env")
+	pvcCmd.MarkFlagRequired("env")
+
 }
 
 // getCmd represents the get command
@@ -60,7 +80,7 @@ var getCmd = &cobra.Command{
 	Short: "The command to get choerodon resource",
 	Long:  `The command to get choerodon resource.such as organization, project, app, instance.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
@@ -76,28 +96,25 @@ var getCmd = &cobra.Command{
 
 // get env command
 var envCmd = &cobra.Command{
-	Use:   "envs",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-	and usage of using your command. For example:
-	Cobra is a CLI library for Go that empowers applications.
-	This application`,
+	Use:   "env",
+	Short: "Get env",
+	Long:  "Get env",
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
@@ -108,87 +125,50 @@ var envCmd = &cobra.Command{
 // get orginazation command
 var orgCmd = &cobra.Command{
 	Use:   "org",
-	Short: "get organization",
-	Long:  `list the organizations `,
+	Short: "Get organization",
+	Long:  `List the organizations `,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		c7nclient.Client.ListOrganization(cmd.OutOrStdout(), userinfo.ID)
+		c7nclient.Client.ListOrganization(cmd.OutOrStdout(), userInfo.ID)
 	},
 }
 
 // get project command
 var proCmd = &cobra.Command{
 	Use:   "proj",
-	Short: "get project",
-	Long:  `list the projects `,
+	Short: "Get project",
+	Long:  `List the projects `,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		c7nclient.Client.ListProject(cmd.OutOrStdout(), userinfo.ID)
-	},
-}
-
-// get auth env  command
-var authEnvCmd = &cobra.Command{
-	Use:   "authEnv",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
-			return
-		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
-		if err != nil {
-			return
-		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
-		if err != nil {
-			return
-		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
-		if err != nil {
-			return
-		}
-		c7nclient.Client.ListAuthEnvs(cmd.OutOrStdout(), pro.ID)
+		c7nclient.Client.ListProject(cmd.OutOrStdout(), userInfo.ID)
 	},
 }
 
 // get instance command
 var instanceCmd = &cobra.Command{
 	Use:   "instance",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Get an instance",
+	Long:  `Get an instance in a specific environment`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
@@ -214,74 +194,42 @@ to quickly create a Cobra application.`,
 	},
 }
 
-// get instance config  command
-var instanceConfig = &cobra.Command{
-	Use:   "instance-config",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+// get deploy value
+var valueCmd = &cobra.Command{
+	Use:   "value",
+	Short: "Get deploy value",
+	Long:  `Get deploy value in a specific environment`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		c7nclient.Client.InstanceConfig(cmd.OutOrStdout(), instanceId)
-	},
-}
-
-// get instance resource command
-var instanceResources = &cobra.Command{
-	Use:   "instance-resources",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
-			return
-		}
-		c7nclient.Client.InstanceResources(cmd.OutOrStdout(), instanceId) // get app templates command
-
-	},
-}
-
-// get application template command
-var appTemplateCmd = &cobra.Command{
-	Use:   "app-template",
-	Short: "Get AppTemplate",
-	Long:  `Get Devops App Templates List`,
-	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
-			return
-		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
-		c7nclient.Client.ListAppTemplates(cmd.OutOrStdout(), organizationId)
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		home, err := homedir.Dir()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		valueDir := home + "/c7nctl/value/"
+		DirectoryCheck(valueDir)
+		c7nclient.Client.ListValue(cmd.OutOrStdout(), env.ID, valueDir)
 	},
 }
 
@@ -291,21 +239,21 @@ var appCmd = &cobra.Command{
 	Short: "Get Application",
 	Long:  `Get Devops Application List`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
@@ -319,21 +267,21 @@ var appVersionCmd = &cobra.Command{
 	Short: "Get Application version",
 	Long:  `Get Devops Application Version List`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
@@ -347,25 +295,30 @@ var clusterCmd = &cobra.Command{
 	Short: "Get Clusters",
 	Long:  `Get Clusters`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		c7nclient.Client.ListClusters(cmd.OutOrStdout(), organizationId)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListClusters(cmd.OutOrStdout(), pro.ID)
 	},
 }
 
@@ -375,70 +328,270 @@ var clusterNodeCmd = &cobra.Command{
 	Short: "Get Cluster Nodes",
 	Long:  `Get Cluster Nodes`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), organizationId, clusterCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
-		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), organizationId, cluster.ID)
+		err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), pro.ID, clusterCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListClusterNode(cmd.OutOrStdout(), pro.ID, cluster.ID)
 	},
 }
 
-// getCmd represents the get command
+// get service
 var serviceCmd = &cobra.Command{
 	Use:   "service",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "get service",
+	Long:  "Get service value in a specific environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
 			return
 		}
-		//c7nclient.Client.ListService(cmd.OutOrStdout(), envId)
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListService(cmd.OutOrStdout(), env.ID)
 	},
 }
 
-// getCmd represents the get command
+// get ingress
 var ingressCmd = &cobra.Command{
 	Use:   "ingress",
-	Short: "get env pipeline",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Get ingress",
+	Long:  "Get ingress in a specific environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
 			return
 		}
-		//c7nclient.Client.ListIngress(cmd.OutOrStdout(), envId)
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListIngress(cmd.OutOrStdout(), env.ID)
 	},
 }
+
+var certCmd = &cobra.Command{
+	Use:   "cert",
+	Short: "Get certification",
+	Long:  "Get cert in a specific environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		if generic == "y" {
+			c7nclient.Client.ListGenericCert(cmd.OutOrStdout(), pro.ID)
+		} else {
+			c7nclient.Client.ListCert(cmd.OutOrStdout(), pro.ID, env.ID)
+		}
+	},
+}
+
+var configMapCmd = &cobra.Command{
+	Use:   "cm",
+	Short: "Get configMap",
+	Long:  "Get configMap in a specific environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListConfigMap(cmd.OutOrStdout(), pro.ID, env.ID)
+	},
+}
+
+var secretCmd = &cobra.Command{
+	Use:   "secret",
+	Short: "Get secret",
+	Long:  "Get secret in a specific environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListSecret(cmd.OutOrStdout(), pro.ID, env.ID)
+	},
+}
+var customCmd = &cobra.Command{
+	Use:   "custom",
+	Short: "Get custom resource",
+	Long:  "Get custom resource in a specific environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListCustom(cmd.OutOrStdout(), pro.ID, env.ID)
+	},}
+
+var pvcCmd = &cobra.Command{
+	Use:   "pvc",
+	Short: "Get pvc",
+	Long:  "Get pvc in a specific environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListPvc(cmd.OutOrStdout(), pro.ID, env.ID)
+	},}
+
+var pvCmd = &cobra.Command{
+	Use:   "pv",
+	Short: "Get pv",
+	Long:  "Get pv",
+	Run: func(cmd *cobra.Command, args []string) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		err := c7nclient.Client.CheckIsLogin()
+		if err != nil {
+			return
+		}
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+		c7nclient.Client.ListPv(cmd.OutOrStdout(), pro.ID)
+	},}

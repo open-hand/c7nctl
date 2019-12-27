@@ -20,7 +20,7 @@ const grantType = "password"
 
 func (c *C7NClient) Login(out io.Writer) {
 
-	if c.config.User.Token != "" {
+	if c.currentContext.User.Token != "" {
 		fmt.Println("you have login, you can use logout when you want to login of other user or other env")
 		return
 	}
@@ -45,7 +45,7 @@ func (c *C7NClient) Login(out io.Writer) {
 	home, err := homedir.Dir()
 	configDir := fmt.Sprintf("%s%c%s", home, os.PathSeparator, ".c7n.yaml")
 
-	c.BaseURL = c.config.Server
+	c.BaseURL = c.currentContext.Server
 	strbytes := []byte(password)
 	password = base64.StdEncoding.EncodeToString(strbytes)
 
@@ -67,8 +67,8 @@ func (c *C7NClient) Login(out io.Writer) {
 		fmt.Println("username or password is error!")
 		os.Exit(1)
 	}
-	c.config.User.Token = token.AccessToken
-	c.config.User.UserName = username
+	c.currentContext.User.Token = token.AccessToken
+	c.currentContext.User.UserName = username
 	err, user := c.QuerySelf(out)
 	if err != nil {
 		fmt.Println("query self error")
@@ -86,13 +86,13 @@ func (c *C7NClient) Login(out io.Writer) {
 	}
 	organizations := viper.Get("orgs")
 	organization := organizations.([]model.Organization)[0]
-	c.config.User.OrganizationId = organization.ID
-	c.config.User.OrganizationCode = organization.Code
+	c.currentContext.User.OrganizationId = organization.ID
+	c.currentContext.User.OrganizationCode = organization.Code
 	projects := viper.Get("pros")
 	for _, pro := range projects.([]model.Project) {
 		if pro.OrganizationID == organization.ID {
-			c.config.User.ProjectId = pro.ID
-			c.config.User.ProjectCode = pro.Code
+			c.currentContext.User.ProjectId = pro.ID
+			c.currentContext.User.ProjectCode = pro.Code
 			break
 		}
 	}
@@ -102,7 +102,7 @@ func (c *C7NClient) Login(out io.Writer) {
 
 	for i, context := range allConfig.Contexts {
 		if context.Name == allConfig.CurrentContext {
-			allConfig.Contexts[i] = *c.config
+			allConfig.Contexts[i] = *c.currentContext
 		}
 	}
 

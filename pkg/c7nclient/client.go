@@ -11,23 +11,26 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 var Client C7NClient
 
 type C7NClient struct {
-	BaseURL    string
-	httpClient *http.Client
-	token      string
-	config     *C7NContext
+	BaseURL        string
+	httpClient     *http.Client
+	token          string
+	currentContext *C7NContext
+	platformConfig *C7NConfig
 }
 
-func InitClient(config *C7NContext) {
+func InitClient(config *C7NContext, platformConfig *C7NConfig) {
 	Client = C7NClient{
-		BaseURL:    config.Server,
-		httpClient: &http.Client{},
-		token:      config.User.Token,
-		config:     config,
+		BaseURL:        config.Server,
+		httpClient:     &http.Client{},
+		token:          config.User.Token,
+		currentContext: config,
+		platformConfig: platformConfig,
 	}
 }
 
@@ -58,7 +61,30 @@ func (c *C7NClient) newRequest(method, path string, paras map[string]interface{}
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "bearer "+c.config.User.Token)
+	req.Header.Set("Authorization", "bearer "+c.currentContext.User.Token)
+	return req, nil
+}
+
+func (c *C7NClient) newRequestWithFormData(method, path string, paras map[string]interface{}, data *url.Values) (*http.Request, error) {
+	rel := &url.URL{Path: path}
+	base, _ := url.Parse(c.BaseURL)
+	u := base.ResolveReference(rel)
+	req, err := http.NewRequest("POST", u.String(), strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	if paras != nil {
+		for key, value := range paras {
+			q.Add(key, fmt.Sprintf("%v", value))
+		}
+	}
+	req.URL.RawQuery = q.Encode()
+	if data != nil {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "bearer "+c.currentContext.User.Token)
 	return req, nil
 }
 
@@ -146,13 +172,37 @@ func (c *C7NClient) getTime(time float64) string {
 	}
 }
 
+func (c *C7NClient) getStatus(commandStatus string) string {
+	switch commandStatus {
+	case "failed":
+		return "失败"
+	case "success":
+		return "成功"
+	case "operating":
+		return "处理中"
+	case "doing":
+		return "处理中"
+	default:
+		return "未知"
+	}
+}
+
 func (c *C7NClient) CheckIsLogin() error {
-	if c.config.User.Token == "" {
+	if c.currentContext.User.Token == "" {
 		return errors.New("You should to login, please use c7n login!")
 	}
 	return nil
 }
 
 func (c *C7NClient) printContextInfo() {
-	fmt.Printf("organization: %s project: %s", c.config.User.OrganizationCode, c.config.User.ProjectCode)
+	fmt.Printf("organization: %s project: %s", c.currentContext.User.OrganizationCode, c.currentContext.User.ProjectCode)
+}
+
+func mapToFormData(s map[string]string) string {
+	keyValueTemplate := "%s=%s"
+	keyValues := []string{}
+	for key, value := range s {
+		keyValues = append(keyValues, fmt.Sprintf(keyValueTemplate, key, value))
+	}
+	return strings.Join(keyValues, "&")
 }

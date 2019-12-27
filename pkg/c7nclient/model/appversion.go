@@ -7,40 +7,31 @@ import (
 )
 
 type AppVersions struct {
-	TotalPages       int          `json:"totalPages"`
-	TotalElements    int          `json:"totalElements"`
-	NumberOfElements int          `json:"numberOfElements"`
-	Size             int          `json:"size"`
-	Number           int          `json:"number"`
-	Content          []AppVersion `json:"content"`
-	Empty            bool         `json:"empty"`
+	Pages int          `json:"pages"`
+	Size  int          `json:"size"`
+	Total int          `json:"total"`
+	List  []AppVersion `json:"list"`
 }
 
 type AppVersion struct {
-	ID           int         `json:"id"`
-	Version      string      `json:"version"`
-	Commit       string      `json:"commit"`
-	AppName      string      `json:"appName"`
-	AppCode      string      `json:"appCode"`
-	AppID        int         `json:"appId"`
-	AppStatus    bool        `json:"appStatus"`
-	CreationDate string      `json:"creationDate"`
-	Permission   interface{} `json:"permission"`
+	ID           int    `json:"id"`
+	Version      string `json:"version"`
+	AppServiceId int    `json:"appServiceId"`
+	CreationDate string `json:"creationDate"`
 }
 
 type AppVersionInfo struct {
+	Id           int
 	Version      string
-	AppName      string
-	AppCode      string
 	CreationDate string
 }
 
 func PrintAppVersionInfo(appVersionInfos []AppVersionInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Version", "AppName", "AppCode", "CreationDate")
+	table.AddRow("VersionId", "Version", "CreationDate")
 	for _, r := range appVersionInfos {
-		table.AddRow(r.Version, r.AppName, r.AppCode, r.CreationDate)
+		table.AddRow(r.Id, r.Version, r.CreationDate)
 	}
 	fmt.Fprintf(out, table.String())
 }

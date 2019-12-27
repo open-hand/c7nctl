@@ -24,11 +24,13 @@ func (c *C7NClient) ListProject(out io.Writer, userId int) {
 	}
 	proInfos := []model.ProjectInfo{}
 	for _, pro := range pros {
-		proInfo := model.ProjectInfo{
-			Name: pro.Name,
-			Code: pro.Code,
+		if pro.OrganizationID == c.currentContext.User.OrganizationId {
+			proInfo := model.ProjectInfo{
+				Name: pro.Name,
+				Code: pro.Code,
+			}
+			proInfos = append(proInfos, proInfo)
 		}
-		proInfos = append(proInfos, proInfo)
 	}
 	model.PrintProInfo(proInfos, out)
 }
@@ -54,9 +56,16 @@ func (c *C7NClient) UseProject(out io.Writer, proCode string) {
 	var index int
 	for _, pro := range pros.([]model.Project) {
 		if pro.Code == proCode {
-			c.config.User.ProjectId = pro.ID
-			c.config.User.ProjectCode = proCode
-			bytes, _ := yaml.Marshal(c.config)
+			for index, context := range c.platformConfig.Contexts {
+				if pro.OrganizationID == context.User.OrganizationId && context.Name == c.platformConfig.CurrentContext {
+					c.currentContext.User.ProjectId = pro.ID
+					c.currentContext.User.ProjectCode = proCode
+					c.platformConfig.Contexts[index].User.ProjectId = pro.ID
+					c.platformConfig.Contexts[index].User.ProjectCode = proCode
+				}
+			}
+
+			bytes, _ := yaml.Marshal(c.platformConfig)
 			if ioutil.WriteFile(viper.ConfigFileUsed(), bytes, 0644) != nil {
 				fmt.Println("modify config file failed")
 			}
@@ -73,8 +82,8 @@ func (c *C7NClient) UseProject(out io.Writer, proCode string) {
 func (c *C7NClient) GetProject(out io.Writer, userId int, proCode string) (error error, project model.Project) {
 	if proCode == "" {
 		pro := model.Project{}
-		pro.ID = c.config.User.ProjectId
-		pro.OrganizationID = c.config.User.OrganizationId
+		pro.ID = c.currentContext.User.ProjectId
+		pro.OrganizationID = c.currentContext.User.OrganizationId
 		return nil, pro
 	} else {
 		pros := viper.Get("pros")

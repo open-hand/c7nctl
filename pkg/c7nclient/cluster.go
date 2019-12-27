@@ -9,28 +9,28 @@ import (
 	"time"
 )
 
-const baseFormat = "2006-01-01 00:00:00"
+const baseFormat = "2006-01-02 15:04:05"
 
-func (c *C7NClient) ListClusters(out io.Writer, organizationId int) {
-	if organizationId == 0 {
+func (c *C7NClient) ListClusters(out io.Writer, projectId int) {
+	if projectId == 0 {
 		return
 	}
 	paras := make(map[string]interface{})
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_cluster", organizationId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/clusters/tree_menu", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
 	}
-	var clusters = model.Clusters{}
+	var clusters []model.Cluster
 	_, err = c.do(req, &clusters)
 	if err != nil {
 		fmt.Printf("request err:%v", err)
 		return
 	}
-	clusterInfos := []model.ClusterInfo{}
-	for _, cluster := range clusters.Content {
+	var clusterInfos []model.ClusterInfo
+	for _, cluster := range clusters {
 		var status string
 		if cluster.Connect {
 			status = "已连接"
@@ -38,10 +38,9 @@ func (c *C7NClient) ListClusters(out io.Writer, organizationId int) {
 			status = "未连接"
 		}
 		clusterInfo := model.ClusterInfo{
-			Name:        cluster.Name,
-			Code:        cluster.Code,
-			Description: cluster.Description,
-			Status:      status,
+			Name:   cluster.Name,
+			Code:   cluster.Code,
+			Status: status,
 		}
 		clusterInfos = append(clusterInfos, clusterInfo)
 	}
@@ -49,13 +48,13 @@ func (c *C7NClient) ListClusters(out io.Writer, organizationId int) {
 
 }
 
-func (c *C7NClient) GetCluster(out io.Writer, organizationId int, clusterCode string) (error error, result model.Cluster) {
-	if organizationId == 0 {
-		return errors.New("the organization is not found"), model.Cluster{}
+func (c *C7NClient) GetCluster(out io.Writer, projectId int, clusterCode string) (error error, result model.Cluster) {
+	if projectId == 0 {
+		return errors.New("the project is not found"), model.Cluster{}
 	}
 	paras := make(map[string]interface{})
 	paras["code"] = clusterCode
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/query_by_code", organizationId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/clusters/query_by_code", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -68,15 +67,15 @@ func (c *C7NClient) GetCluster(out io.Writer, organizationId int, clusterCode st
 	return nil, cluster
 }
 
-func (c *C7NClient) ListClusterNode(out io.Writer, organizationId int, clusterId int) {
-	if organizationId == 0 {
+func (c *C7NClient) ListClusterNode(out io.Writer, projectId int, clusterId int) {
+	if projectId == 0 {
 		return
 	}
 	paras := make(map[string]interface{})
 	paras["cluster_id"] = strconv.Itoa(clusterId)
 	paras["page"] = "0"
 	paras["size"] = "10"
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/organizations/%d/clusters/page_nodes", organizationId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("/devops/v1/projects/%d/clusters/page_nodes", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -87,10 +86,11 @@ func (c *C7NClient) ListClusterNode(out io.Writer, organizationId int, clusterId
 		fmt.Printf("request err:%v", err)
 		return
 	}
+	now := time.Now()
+	loc, _ := time.LoadLocation("Local")
 	nodeInfos := []model.NodeInfo{}
-	for _, node := range nodes.Content {
-		now := time.Now()
-		creationTime, _ := time.Parse(baseFormat, node.CreateTime)
+	for _, node := range nodes.List {
+		creationTime, _ := time.ParseInLocation(baseFormat, node.CreateTime, loc)
 		nodeInfo := model.NodeInfo{
 			Status:        node.Status,
 			NodeName:      node.NodeName,
@@ -107,8 +107,8 @@ func (c *C7NClient) ListClusterNode(out io.Writer, organizationId int, clusterId
 
 }
 
-func (c *C7NClient) CreateCluster(out io.Writer, organizationId int, clusterPostInfo *model.ClusterPostInfo) {
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/organizations/%d/clusters", organizationId), nil, clusterPostInfo)
+func (c *C7NClient) CreateCluster(out io.Writer, projectId int, clusterPostInfo *model.ClusterPostInfo) {
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/clusters", projectId), nil, clusterPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
