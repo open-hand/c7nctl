@@ -312,9 +312,6 @@ func (infra *InfraResource) Install() error {
 		values = append(values, fmt.Sprintf("preJob.timeout=%d", infra.Timeout))
 	}
 	raw := infra.ValuesRaw()
-	if infra.Timeout > 0 {
-		raw = raw + "\n"
-	}
 	err := infra.Client.InstallRelease(values, raw, chartArgs)
 
 	if err != nil {
