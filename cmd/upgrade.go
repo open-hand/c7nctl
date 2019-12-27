@@ -17,9 +17,8 @@ package cmd
 import (
 	"github.com/choerodon/c7nctl/cmd/app"
 	"github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/vinkdong/gox/log"
-
 	"github.com/spf13/cobra"
+	"github.com/vinkdong/gox/log"
 )
 
 // upgradeCmd represents the upgrade command

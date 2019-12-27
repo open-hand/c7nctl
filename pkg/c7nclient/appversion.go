@@ -19,11 +19,11 @@ func (c *C7NClient) ListAppVersions(out io.Writer, appCode *string, projectId in
 			fmt.Println("the project do not hava the application!")
 			return
 		}
-		paras["appId"] = strconv.Itoa(app.ID)
+		paras["app_service_id"] = strconv.Itoa(app.ID)
 	}
-	paras["page"] = "0"
-	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/app_versions/list_by_options", c.config.User.ProjectId), paras, nil)
+	paras["do_page"] = "false"
+	paras["deploy_only"] = "true"
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_service_versions/page_by_options", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
@@ -34,10 +34,9 @@ func (c *C7NClient) ListAppVersions(out io.Writer, appCode *string, projectId in
 		return
 	}
 	appVersionInfos := []model.AppVersionInfo{}
-	for _, appVersion := range appVersions.Content {
+	for _, appVersion := range appVersions.List {
 		appVersionInfo := model.AppVersionInfo{
-			AppName:      appVersion.AppName,
-			AppCode:      appVersion.AppCode,
+			Id:           appVersion.ID,
 			Version:      appVersion.Version,
 			CreationDate: appVersion.CreationDate,
 		}
@@ -59,7 +58,7 @@ func (c *C7NClient) GetAppVersion(out io.Writer, projectId int, version string, 
 	paras := make(map[string]interface{})
 	paras["version"] = version
 	paras["appId"] = strconv.Itoa(appId)
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_versions/query_by_version", c.config.User.ProjectId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_versions/query_by_version", c.currentContext.User.ProjectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err, nil

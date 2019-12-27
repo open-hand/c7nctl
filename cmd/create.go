@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
@@ -24,28 +25,33 @@ import (
 	"io/ioutil"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
-var appTemplateName string
-var appTemplateCode string
-var appTemplateDescription string
 var clusterName string
 var clusterCode string
 var clusterDescription string
-var copyFrom string
 var appName string
 var appType string
-var appTemplate string
 var envCode string
 var envName string
 var envDescription string
-var content string
+var file string
+var devopsEnvGroupId int
+var templateAppServiceId int
+var templateAppServiceVersionId int
+var appServiceId int
+var appServiceVersionId int
+var instanceName string
+var valueFile string
+var configMapDescription string
+var secretDescription string
 
 func init() {
 	rootCmd.AddCommand(createCmd)
-	createCmd.AddCommand(createAppTemplateCmd)
 	createCmd.AddCommand(createClusterCmd)
 	createCmd.AddCommand(createAppCmd)
 	createCmd.AddCommand(createEnvCmd)
@@ -55,60 +61,78 @@ func init() {
 	createCmd.AddCommand(createCertCmd)
 	createCmd.AddCommand(createConfigMapCmd)
 	createCmd.AddCommand(createSecretCmd)
+	createCmd.AddCommand(createCustomCmd)
+	createCmd.AddCommand(createPvcCmd)
+	createCmd.AddCommand(createPvCmd)
 
-	createAppTemplateCmd.Flags().StringVar(&appTemplateName, "name", "", "appTemplate name")
-	createAppTemplateCmd.Flags().StringVar(&appTemplateCode, "code", "", "appTemplate code")
-	createAppTemplateCmd.Flags().StringVar(&appTemplateDescription, "description", "", "appTemplate description")
-	createAppTemplateCmd.Flags().StringVar(&copyFrom, "copyFrom", "", "appTemplate copy from")
 	createClusterCmd.Flags().StringVar(&clusterName, "name", "", "cluster name")
 	createClusterCmd.Flags().StringVar(&clusterCode, "code", "", "cluster code")
 	createClusterCmd.Flags().StringVar(&clusterDescription, "description", "", "cluster description")
 	createAppCmd.Flags().StringVar(&appName, "name", "", "app name")
 	createAppCmd.Flags().StringVar(&appCode, "code", "", "app code")
 	createAppCmd.Flags().StringVar(&appType, "type", "", "the value can be normal or test")
-	createAppCmd.Flags().StringVar(&appTemplate, "appTemplate", "", "the appTemplate code you want to use")
+	createAppCmd.Flags().IntVar(&templateAppServiceId, "templateAppServiceId", 0, "the templateAppServiceId")
+	createAppCmd.Flags().IntVar(&templateAppServiceVersionId, "templateAppServiceVersionId", 0, "the templateAppServiceVersionId")
 	createEnvCmd.Flags().StringVar(&envName, "name", "", "env name")
 	createEnvCmd.Flags().StringVar(&envCode, "code", "", "env code")
-	createEnvCmd.Flags().StringVar(&envDescription, "description", "", "env Description ")
-	createEnvCmd.Flags().StringVar(&clusterCode, "cluster", "", "the cluster code you want to use")
-	createInstanceCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createInstanceCmd.Flags().StringVar(&content, "content", "", "the instance  yaml file")
-	createServiceCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createServiceCmd.Flags().StringVar(&content, "content", "", "the service yaml file")
-	createIngressCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createIngressCmd.Flags().StringVar(&content, "content", "", "the ingress yaml file")
-	createCertCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createCertCmd.Flags().StringVar(&content, "content", "", "the cert yaml file")
-	createConfigMapCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createConfigMapCmd.Flags().StringVar(&content, "content", "", "the configMap yaml file")
-	createSecretCmd.Flags().StringVar(&envCode, "env", "", "the envCode you want to deploy")
-	createSecretCmd.Flags().StringVar(&content, "content", "", "the secret yaml file")
-	createAppTemplateCmd.MarkFlagRequired("name")
-	createAppTemplateCmd.MarkFlagRequired("code")
-	createAppTemplateCmd.MarkFlagRequired("description")
+	createEnvCmd.Flags().StringVarP(&envDescription, "description", "d", "", "env Description ")
+	createEnvCmd.Flags().StringVarP(&clusterCode, "cluster", "c", "", "the cluster code you want to use")
+	createConfigMapCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createConfigMapCmd.Flags().StringVarP(&file, "file", "f", "", "the cert yaml file")
+	createConfigMapCmd.Flags().StringVarP(&configMapDescription, "description", "d", "", "configMap description")
+	createInstanceCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createInstanceCmd.Flags().IntVarP(&appServiceId, "appServiceId", "a", 0, "the appService's id you want to deploy")
+	createInstanceCmd.Flags().IntVarP(&appServiceVersionId, "appServiceVersionId", "v", 0, "the appServiceVersion's id you want to deploy")
+	createInstanceCmd.Flags().StringVarP(&instanceName, "instanceName", "n", "", "the instance name you want to set")
+	createInstanceCmd.Flags().StringVarP(&valueFile, "valueFile", "f", "", "the deploy value's file")
+	createServiceCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createServiceCmd.Flags().StringVarP(&file, "file", "f", "", "the service yaml file")
+	createIngressCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createIngressCmd.Flags().StringVarP(&file, "file", "f", "", "the ingress yaml file")
+	createCertCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createCertCmd.Flags().StringVarP(&file, "file", "f", "", "the cert yaml file")
+	createSecretCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createSecretCmd.Flags().StringVarP(&file, "file", "f", "", "the secret yaml file")
+	createSecretCmd.Flags().StringVarP(&secretDescription, "description", "d", "", "secret description")
+	createCustomCmd.Flags().StringVarP(&envCode, "env", "e", "", "the envCode you want to deploy")
+	createCustomCmd.Flags().StringVarP(&file, "file", "f", "", "the custom yaml file")
+	createPvcCmd.Flags().StringVarP(&file, "file", "f", "", "the pvc yaml file")
+	createPvcCmd.Flags().StringVarP(&envCode, "envCode", "e", "", "the envCode you want to deploy")
+	createPvcCmd.Flags().StringVarP(&clusterCode, "clusterCode", "c", "", "the clusterCode you want to deploy")
+	createPvCmd.Flags().StringVarP(&file, "file", "f", "", "the pv yaml file")
+	createPvCmd.Flags().StringVarP(&clusterCode, "clusterCode", "c", "", "the clusterCode you want to deploy")
+
 	createClusterCmd.MarkFlagRequired("name")
 	createClusterCmd.MarkFlagRequired("code")
 	createClusterCmd.MarkFlagRequired("description")
 	createAppCmd.MarkFlagRequired("name")
 	createAppCmd.MarkFlagRequired("code")
 	createAppCmd.MarkFlagRequired("type")
-	createAppCmd.MarkFlagRequired("appTemplate")
 	createEnvCmd.MarkFlagRequired("cluster")
-	createEnvCmd.MarkFlagRequired("description")
 	createEnvCmd.MarkFlagRequired("code")
 	createEnvCmd.MarkFlagRequired("name")
 	createInstanceCmd.MarkFlagRequired("env")
-	createInstanceCmd.MarkFlagRequired("content")
+	createInstanceCmd.MarkFlagRequired("appServiceId")
+	createInstanceCmd.MarkFlagRequired("appServiceVersionId")
+	createInstanceCmd.MarkFlagRequired("instanceName")
+	createInstanceCmd.MarkFlagRequired("valueFile")
 	createServiceCmd.MarkFlagRequired("env")
-	createServiceCmd.MarkFlagRequired("content")
+	createServiceCmd.MarkFlagRequired("file")
 	createIngressCmd.MarkFlagRequired("env")
-	createIngressCmd.MarkFlagRequired("content")
+	createIngressCmd.MarkFlagRequired("file")
 	createCertCmd.MarkFlagRequired("env")
-	createCertCmd.MarkFlagRequired("content")
+	createCertCmd.MarkFlagRequired("file")
 	createConfigMapCmd.MarkFlagRequired("env")
-	createConfigMapCmd.MarkFlagRequired("content")
+	createConfigMapCmd.MarkFlagRequired("file")
 	createSecretCmd.MarkFlagRequired("env")
-	createSecretCmd.MarkFlagRequired("content")
+	createSecretCmd.MarkFlagRequired("file")
+	createCustomCmd.MarkFlagRequired("file")
+	createCustomCmd.MarkFlagRequired("env")
+	createPvcCmd.MarkFlagRequired("file")
+	createPvcCmd.MarkFlagRequired("clusterCode")
+	createPvcCmd.MarkFlagRequired("envCode")
+	createPvCmd.MarkFlagRequired("file")
+	createPvCmd.MarkFlagRequired("clusterCode")
 }
 
 // getCmd represents the get command
@@ -117,7 +141,7 @@ var createCmd = &cobra.Command{
 	Short: "The command to create choerodon resource",
 	Long:  `The command to create choerodon resource.such as organization, project, app, instance.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
@@ -131,70 +155,36 @@ var createCmd = &cobra.Command{
 	},
 }
 
-// create apptemplate command
-var createAppTemplateCmd = &cobra.Command{
-	Use:   "app-template",
-	Short: "create application template",
-	Long:  `you can use this command to create application template `,
-	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
-		error := c7nclient.Client.CheckIsLogin()
-		if error != nil {
-			fmt.Println(error)
-			return
-		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
-		if err != nil {
-			return
-		}
-		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
-		if err != nil {
-			return
-		}
-		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
-		if err != nil {
-			return
-		}
-		var appTemplateId int
-		if copyFrom != "" {
-			err, appTemplateInfo := c7nclient.Client.GetAppTemplate(cmd.OutOrStdout(), organizationId, copyFrom)
-			if err != nil {
-				return
-			}
-			appTemplateId = appTemplateInfo.ID
-		}
-		appTemplatePostInfo := model.AppTemplatePostInfo{appTemplateName, appTemplateCode, appTemplateDescription, appTemplateId}
-
-		c7nclient.Client.CreateAppTemplate(cmd.OutOrStdout(), organizationId, &appTemplatePostInfo)
-	},
-}
-
 // create cluster command
 var createClusterCmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "create cluster",
 	Long:  `you can use this command to create cluster `,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetOrganization(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, organizationId := c7nclient.Client.GetOrganization(cmd.OutOrStdout(), userinfo.ID, orgCode)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
 		clusterPostInfo := model.ClusterPostInfo{clusterName, clusterCode, clusterDescription, true}
-		c7nclient.Client.CreateCluster(cmd.OutOrStdout(), organizationId, &clusterPostInfo)
+		c7nclient.Client.CreateCluster(cmd.OutOrStdout(), pro.ID, &clusterPostInfo)
 	},
 }
 
@@ -204,29 +194,25 @@ var createAppCmd = &cobra.Command{
 	Short: "create app",
 	Long:  `you can use this command to create app `,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
-		err, apptemplate := c7nclient.Client.GetAppTemplate(cmd.OutOrStdout(), pro.OrganizationID, appTemplate)
-		if err != nil {
-			return
-		}
-		appPostInfo := model.AppPostInfo{appName, appCode, appType, apptemplate.ID, true}
+		appPostInfo := model.AppPostInfo{appName, appCode, appType, templateAppServiceId, templateAppServiceVersionId}
 		c7nclient.Client.CreateApp(cmd.OutOrStdout(), pro.ID, &appPostInfo)
 	},
 }
@@ -237,25 +223,25 @@ var createEnvCmd = &cobra.Command{
 	Short: "create env",
 	Long:  `you can use this command to create env `,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
 			return
 		}
-		err, userinfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
 			return
 		}
-		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userinfo.ID)
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
-		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userinfo.ID, proCode)
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
 		if err != nil {
 			return
 		}
-		err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), pro.OrganizationID, clusterCode)
+		err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), pro.ID, clusterCode)
 		if err != nil {
 			return
 		}
@@ -270,20 +256,17 @@ var createInstanceCmd = &cobra.Command{
 	Long:  `you can use this command to create instance `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
-
-		if _, err := os.Stat(content); os.IsNotExist(err) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+		if _, err := os.Stat(valueFile); os.IsNotExist(err) {
 			fmt.Println(err)
 			return
 		}
-		b, err := ioutil.ReadFile(content)
-		release := model.Release{}
-		yaml.Unmarshal(b, &release)
+		value, err := ioutil.ReadFile(valueFile)
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
 		if err != nil {
-			fmt.Print(err)
 			return
 		}
-		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -291,19 +274,12 @@ var createInstanceCmd = &cobra.Command{
 		if err != nil {
 			return
 		}
-		err, app := c7nclient.Client.GetApp(release.Spec.ChartName, pro.ID)
-		if err != nil {
-			return
-		}
+
 		err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
 		if err != nil {
 			return
 		}
-		err, version := c7nclient.Client.GetAppVersion(cmd.OutOrStdout(), pro.ID, release.Spec.ChartVersion, app.ID)
-		if err != nil {
-			return
-		}
-		instancePostInfo := model.InstancePostInfo{version.ID, env.ID, app.ID, release.Metadata.Name, release.Spec.Values, "create", false}
+		instancePostInfo := model.InstancePostInfo{appServiceId, appServiceVersionId, env.ID, instanceName, "create", string(value)}
 		c7nclient.Client.CreateInstance(cmd.OutOrStdout(), pro.ID, &instancePostInfo)
 	},
 }
@@ -314,9 +290,13 @@ var createServiceCmd = &cobra.Command{
 	Long:  `you can use this command to create service `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 
 		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -341,9 +321,13 @@ var createIngressCmd = &cobra.Command{
 	Long:  `you can use this command to create ingress `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 
 		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -368,9 +352,13 @@ var createCertCmd = &cobra.Command{
 	Long:  `you can use this command to create certification `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 
 		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -378,25 +366,31 @@ var createCertCmd = &cobra.Command{
 		if err != nil {
 			return
 		}
-		certPostInfo := model.CertificationPostInfo{}
 
-		err = initCert(cmd, &pro, &certPostInfo)
+		data := url.Values{}
+
+		err = initCert(cmd, &pro, &data)
 		if err != nil {
 			return
 		}
-		c7nclient.Client.CreateCert(cmd.OutOrStdout(), pro.ID, &certPostInfo)
+
+		c7nclient.Client.CreateCert(cmd.OutOrStdout(), 999, &data)
 	},
 }
 
 var createConfigMapCmd = &cobra.Command{
-	Use:   "configMap",
+	Use:   "cm",
 	Short: "create configMap",
 	Long:  `you can use this command to create configMap`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 
 		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -406,7 +400,7 @@ var createConfigMapCmd = &cobra.Command{
 		}
 		configMapPostInfo := model.ConfigMapPostInfo{}
 
-		err = initConfigMap(cmd, &pro, &configMapPostInfo)
+		err = initConfigMap(cmd, &pro, configMapDescription, &configMapPostInfo)
 		if err != nil {
 			return
 		}
@@ -420,9 +414,13 @@ var createSecretCmd = &cobra.Command{
 	Long:  `you can use this command to create secret`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 
 		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
 		if err != nil {
 			return
 		}
@@ -432,7 +430,7 @@ var createSecretCmd = &cobra.Command{
 		}
 		secretPostInfo := model.SecretPostInfo{}
 
-		err = initSecret(cmd, &pro, &secretPostInfo)
+		err = initSecret(cmd, &pro, secretDescription, &secretPostInfo)
 		if err != nil {
 			return
 		}
@@ -440,13 +438,108 @@ var createSecretCmd = &cobra.Command{
 	},
 }
 
-func initService(cmd *cobra.Command, pro *model.Project, servicePostInfo *model.ServicePostInfo) (error error) {
+var createCustomCmd = &cobra.Command{
+	Use:   "custom",
+	Short: "create custom resource",
+	Long:  `you can use this command to create custom resource`,
+	Run: func(cmd *cobra.Command, args []string) {
 
-	if _, err := os.Stat(content); os.IsNotExist(err) {
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+
+		data := url.Values{}
+
+		err = initCustom(cmd, &pro, &data)
+		if err != nil {
+			return
+		}
+
+		c7nclient.Client.CreateCustom(cmd.OutOrStdout(), pro.ID, &data)
+	},
+}
+
+var createPvcCmd = &cobra.Command{
+	Use:   "pvc",
+	Short: "create pvc",
+	Long:  `you can use this command to create pvc`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+
+		pvcPostInfo := model.PvcPostInfo{}
+
+		err = initPvc(cmd, &pro, &pvcPostInfo)
+		if err != nil {
+			return
+		}
+
+		c7nclient.Client.CreatePvc(cmd.OutOrStdout(), pro.ID, &pvcPostInfo)
+	},
+}
+
+var createPvCmd = &cobra.Command{
+	Use:   "pv",
+	Short: "create pv",
+	Long:  `you can use this command to create pv`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
+
+		err, userInfo := c7nclient.Client.QuerySelf(cmd.OutOrStdout())
+		if err != nil {
+			return
+		}
+		err = c7nclient.Client.SetProject(cmd.OutOrStdout(), userInfo.ID)
+		if err != nil {
+			return
+		}
+		err, pro := c7nclient.Client.GetProject(cmd.OutOrStdout(), userInfo.ID, proCode)
+		if err != nil {
+			return
+		}
+
+		pvPostInfo := model.PvPostInfo{}
+
+		err = initPv(cmd, &pro, &pvPostInfo)
+		if err != nil {
+			return
+		}
+
+		c7nclient.Client.CreatePv(cmd.OutOrStdout(), pro.ID, &pvPostInfo)
+	},
+}
+
+func initService(cmd *cobra.Command, pro *model.Project, servicePostInfo *model.ServicePostInfo) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(err)
 		return err
 	}
-	b, err := ioutil.ReadFile(content)
+	b, err := ioutil.ReadFile(file)
 	results := strings.Split(string(b), "---")
 	var services []v1.Service
 	var endPoints []v1.Endpoints
@@ -509,7 +602,7 @@ func initService(cmd *cobra.Command, pro *model.Project, servicePostInfo *model.
 	instanceCode := annotations["choerodon.io/network-service-instances"]
 	if instanceCode != "" {
 		instances := strings.Split(instanceCode, "+")
-		servicePostInfo.AppInstance = instances
+		servicePostInfo.Instances = instances
 	}
 	var servicePorts []model.ServicePort
 	for _, port := range service.Spec.Ports {
@@ -539,17 +632,16 @@ func initService(cmd *cobra.Command, pro *model.Project, servicePostInfo *model.
 		servicePostInfo.ExternalIP = externalIps
 	}
 	servicePostInfo.Type = string(service.Spec.Type)
-	servicePostInfo.Label = service.Spec.Selector
+	servicePostInfo.Selectors = service.Spec.Selector
 	return nil
 }
 
 func initIngress(cmd *cobra.Command, pro *model.Project, ingressPostInfo *model.IngressPostInfo) (error error) {
-
-	if _, err := os.Stat(content); os.IsNotExist(err) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(err)
 		return err
 	}
-	b, err := ioutil.ReadFile(content)
+	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -564,7 +656,7 @@ func initIngress(cmd *cobra.Command, pro *model.Project, ingressPostInfo *model.
 	for _, httpIngressPath := range ingress.Spec.Rules[0].HTTP.Paths {
 		err, service := c7nclient.Client.GetService(cmd.OutOrStdout(), pro.ID, env.ID, httpIngressPath.Backend.ServiceName)
 		if err != nil {
-			return errors.New("the service in not exist!")
+			return errors.New(" the service in not exist!")
 		}
 		ingressPath := model.IngressPath{
 			Path:        httpIngressPath.Path,
@@ -590,13 +682,12 @@ func initIngress(cmd *cobra.Command, pro *model.Project, ingressPostInfo *model.
 	return nil
 }
 
-func initCert(cmd *cobra.Command, pro *model.Project, certificationPostInfo *model.CertificationPostInfo) (error error) {
-
-	if _, err := os.Stat(content); os.IsNotExist(err) {
+func initCert(cmd *cobra.Command, pro *model.Project, data *url.Values) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(err)
 		return err
 	}
-	b, err := ioutil.ReadFile(content)
+	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -606,25 +697,28 @@ func initCert(cmd *cobra.Command, pro *model.Project, certificationPostInfo *mod
 	if err != nil {
 		return err
 	}
-	certificationPostInfo.EnvID = env.ID
-	certificationPostInfo.CertName = certificate.Metadata.Name
-	certificationPostInfo.CertValue = certificate.Spec.ExistCert.Cert
-	certificationPostInfo.KeyValue = certificate.Spec.ExistCert.Key
-	certificationPostInfo.Domains = []string{certificate.Spec.CommonName}
-	certificationPostInfo.Type = "request"
-	if certificationPostInfo.CertValue != "" {
-		certificationPostInfo.Type = "upload"
+	(*data)["envId"] = []string{strconv.Itoa(env.ID)}
+	(*data)["certName"] = []string{certificate.Metadata.Name}
+	(*data)["certValue"] = []string{certificate.Spec.ExistCert.Cert}
+	(*data)["keyValue"] = []string{certificate.Spec.ExistCert.Key}
+	if len(certificate.Spec.DnsNames) != 0 {
+		(*data)["domains"] = []string{certificate.Spec.CommonName + "," + strings.Join(certificate.Spec.DnsNames, ",")}
+	} else {
+		(*data)["domains"] = []string{certificate.Spec.CommonName}
+	}
+	(*data)["type"] = []string{"request"}
+	if (*data)["certValue"][0] != "" {
+		(*data)["type"] = []string{"upload"}
 	}
 	return nil
 }
 
-func initConfigMap(cmd *cobra.Command, pro *model.Project, configMapPostInfo *model.ConfigMapPostInfo) (error error) {
-
-	if _, err := os.Stat(content); os.IsNotExist(err) {
+func initConfigMap(cmd *cobra.Command, pro *model.Project, description string, configMapPostInfo *model.ConfigMapPostInfo) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(err)
 		return err
 	}
-	b, err := ioutil.ReadFile(content)
+	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -637,18 +731,17 @@ func initConfigMap(cmd *cobra.Command, pro *model.Project, configMapPostInfo *mo
 	configMapPostInfo.EnvID = env.ID
 	configMapPostInfo.Type = "create"
 	configMapPostInfo.Name = configMap.Name
-	configMapPostInfo.Description = "This is a configMap"
+	configMapPostInfo.Description = description
 	configMapPostInfo.Value = configMap.Data
 	return nil
 }
 
-func initSecret(cmd *cobra.Command, pro *model.Project, secretPostInfo *model.SecretPostInfo) (error error) {
-
-	if _, err := os.Stat(content); os.IsNotExist(err) {
+func initSecret(cmd *cobra.Command, pro *model.Project, secretDescription string, secretPostInfo *model.SecretPostInfo) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(err)
 		return err
 	}
-	b, err := ioutil.ReadFile(content)
+	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -661,7 +754,129 @@ func initSecret(cmd *cobra.Command, pro *model.Project, secretPostInfo *model.Se
 	secretPostInfo.EnvID = env.ID
 	secretPostInfo.Type = "create"
 	secretPostInfo.Name = secret.Name
-	secretPostInfo.Description = "This is a secret"
+	secretPostInfo.Description = secretDescription
 	secretPostInfo.Value = secret.StringData
 	return nil
+}
+
+func initCustom(cmd *cobra.Command, pro *model.Project, data *url.Values) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		fmt.Println(err)
+		return err
+	}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+	if err != nil {
+		return err
+	}
+	(*data)["envId"] = []string{strconv.Itoa(env.ID)}
+	(*data)["type"] = []string{"create"}
+	(*data)["content"] = []string{string(b)}
+	return nil
+}
+
+func initPvc(cmd *cobra.Command, pro *model.Project, pvcPostInfo *model.PvcPostInfo) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		fmt.Println(err)
+		return err
+	}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	pvc := v1.PersistentVolumeClaim{}
+	yaml.Unmarshal(b, &pvc)
+	err, env := c7nclient.Client.GetEnv(cmd.OutOrStdout(), pro.ID, envCode)
+	if err != nil {
+		return nil
+	}
+	err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), pro.ID, clusterCode)
+	if err != nil {
+		return err
+	}
+
+	pvcPostInfo.EnvID = env.ID
+	pvcPostInfo.Name = pvc.Name
+	pvcPostInfo.PvName = pvc.Spec.VolumeName
+	pvcPostInfo.ClusterId = cluster.ID
+
+	quantity := pvc.Spec.Resources.Requests[v1.ResourceStorage]
+	size, err := quantity.Marshal()
+	if err != nil {
+		println(err)
+		return err
+	}
+	pvcPostInfo.RequestResource = strings.Replace(string(size), "\n", "", -1)
+
+	if len(pvc.Spec.AccessModes) != 1 {
+		return errors.New("only support one accessMode")
+	}
+	pvcPostInfo.AccessModes = string(pvc.Spec.AccessModes[0])
+	return nil
+}
+
+func initPv(cmd *cobra.Command, pro *model.Project, pvPostInfo *model.PvPostInfo) (error error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		fmt.Println(err)
+		return err
+	}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	pv := v1.PersistentVolume{}
+	_ = yaml.Unmarshal(b, &pv)
+	err, cluster := c7nclient.Client.GetCluster(cmd.OutOrStdout(), pro.ID, clusterCode)
+	if err != nil {
+		return err
+	}
+	pvPostInfo.Name = pv.ObjectMeta.Name
+	pvPostInfo.ClusterId = cluster.ID
+
+	quantity := pv.Spec.Capacity[v1.ResourceStorage]
+	size, err := quantity.Marshal()
+	if err != nil {
+		println(err)
+		return err
+	}
+	pvPostInfo.RequestResource = strings.Replace(string(size), "\n", "", -1)
+
+	if len(pv.Spec.AccessModes) != 1 {
+		return errors.New("only support one accessMode")
+	}
+	pvPostInfo.AccessModes = string(pv.Spec.AccessModes[0])
+	err = setValueConfig(pv.Spec.PersistentVolumeSource, pvPostInfo)
+	if err != nil {
+		return err
+	}
+	pvPostInfo.SkipCheckProjectPermission = true
+	return nil
+}
+
+func setValueConfig(persistentVolumeSource v1.PersistentVolumeSource, pvPostInfo *model.PvPostInfo) error {
+	if persistentVolumeSource.NFS != nil {
+		valueConfigBuf, err := json.Marshal(persistentVolumeSource.NFS)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		pvPostInfo.ValueConfig = string(valueConfigBuf)
+		pvPostInfo.Type = "NFS"
+		return nil
+	} else if persistentVolumeSource.HostPath != nil {
+		valueConfigBuf, err := json.Marshal(persistentVolumeSource.HostPath)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		pvPostInfo.ValueConfig = string(valueConfigBuf)
+		pvPostInfo.Type = "HostPath"
+		return nil
+	} else {
+		fmt.Println("Only support NFS and HostPath,please check it out")
+		return errors.New("type error")
+	}
 }

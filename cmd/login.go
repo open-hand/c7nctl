@@ -37,7 +37,7 @@ var loginCmd = &cobra.Command{
 	Short: "login to Choerodon",
 	Long:  `Login to Choerodon.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		c7nclient.Client.Login(cmd.OutOrStdout())
 
 	},
@@ -50,7 +50,7 @@ var logoutCmd = &cobra.Command{
 	Short: "The command to logout choerodon",
 	Long:  `you can use use command to logout choerodon , after you logout ,you can not use some c7n command,such as c7n create,c7n get.....`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		error := c7nclient.Client.CheckIsLogin()
 		if error != nil {
 			fmt.Println(error)
@@ -65,7 +65,7 @@ var contextCmd = &cobra.Command{
 	Short: "The command to switch context",
 	Long:  `you can use use command to switch context, after you swith ,the current context is changed!`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c7nclient.InitClient(&clientConfig)
+		c7nclient.InitClient(&clientConfig, &clientPlatformConfig)
 		c7nclient.Client.SwitchContext(cmd.OutOrStdout(), name)
 	},
 }

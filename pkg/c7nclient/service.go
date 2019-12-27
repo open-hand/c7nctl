@@ -10,30 +10,27 @@ import (
 
 func (c *C7NClient) ListService(out io.Writer, envId int) {
 
-	if c.config.User.ProjectId == -1 {
+	if c.currentContext.User.ProjectId == -1 {
 		fmt.Printf("Set project Id")
 		return
 	}
 	paras := make(map[string]interface{})
 	paras["page"] = 0
-	paras["size"] = 99
-	paras["sort"] = "id,desc"
-	body := make(map[string]interface{})
-	body["param"] = ""
-	body["searchParam"] = make(map[string]string)
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/service/%d/listByEnv", c.config.User.ProjectId, envId), paras, body)
+	paras["size"] = 10000
+	paras["env_id"] = envId
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/service/page_by_options", c.currentContext.User.ProjectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 	}
-	var resp = model.DevOpsServicePage{}
+	var resp = model.Services{}
 	_, err = c.do(req, &resp)
 	if err != nil {
 		fmt.Printf("request err:%v", err)
 		return
 
 	}
-	envInstances := []model.DevOpsServiceInfo{}
-	for _, service := range resp.Content {
+	devOpsServiceInfos := []model.DevOpsServiceInfo{}
+	for _, service := range resp.List {
 		serviceInfo := model.DevOpsServiceInfo{
 			Id:     service.ID,
 			Name:   service.Name,
@@ -41,9 +38,9 @@ func (c *C7NClient) ListService(out io.Writer, envId int) {
 			Status: service.Status,
 		}
 		var targetContent string
-		if len(service.Target.AppInstance) != 0 {
+		if len(service.Target.Instances) != 0 {
 			targetInstances := []string{}
-			for _, ins := range service.Target.AppInstance {
+			for _, ins := range service.Target.Instances {
 				targetInstances = append(targetInstances, ins.Code)
 			}
 			targetContent = strings.Join(targetInstances, ",")
@@ -56,12 +53,15 @@ func (c *C7NClient) ListService(out io.Writer, envId int) {
 			targetContent = strings.Join(targetLabels, ",")
 			serviceInfo.TargetType = "label"
 		} else {
+			for k, _ := range service.Target.EndPoints {
+				targetContent = k
+			}
 			serviceInfo.TargetType = "endpoint"
 		}
 		serviceInfo.Target = targetContent
-		envInstances = append(envInstances, serviceInfo)
+		devOpsServiceInfos = append(devOpsServiceInfos, serviceInfo)
 	}
-	model.PrintServiceInfo(envInstances, out)
+	model.PrintServiceInfo(devOpsServiceInfos, out)
 }
 
 func (c *C7NClient) GetService(out io.Writer, projectId int, envId int, name string) (error error, result *model.DevOpsService) {
@@ -72,7 +72,7 @@ func (c *C7NClient) GetService(out io.Writer, projectId int, envId int, name str
 		return errors.New("you do not have the permission of the env!"), nil
 	}
 	paras := make(map[string]interface{})
-	paras["envId"] = envId
+	paras["env_id"] = envId
 	paras["name"] = name
 	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/service/query_by_name", projectId), paras, nil)
 	if err != nil {

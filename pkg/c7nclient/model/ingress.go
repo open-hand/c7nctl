@@ -7,8 +7,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+type Ingresss struct {
+	Pages int             `json:"pages"`
+	Size  int             `json:"size"`
+	Total int             `json:"total"`
+	List  []DevopsIngress `json:"list"`
+}
+
 type DevopsIngress struct {
 	ID            int           `json:"id"`
+	AppServiceId  int           `json:"appServiceId"`
 	Domain        string        `json:"domain"`
 	Name          string        `json:"name"`
 	EnvID         int           `json:"envId"`
@@ -31,16 +39,6 @@ type IngressPath struct {
 	ServiceName   string             `json:"serviceName"`
 	ServiceStatus string             `json:"serviceStatus"`
 	ServicePort   intstr.IntOrString `json:"servicePort"`
-}
-
-type DevopsIngressPage struct {
-	TotalPages       int             `json:"totalPages"`
-	TotalElements    int             `json:"totalElements"`
-	NumberOfElements int             `json:"numberOfElements"`
-	Size             int             `json:"size"`
-	Number           int             `json:"number"`
-	Content          []DevopsIngress `json:"content"`
-	Empty            bool            `json:"empty"`
 }
 
 type IngressPostInfo struct {

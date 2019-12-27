@@ -115,3 +115,16 @@ func initConfig() {
 		}
 	}
 }
+
+func DirectoryCheck(dirName string) {
+	_, err := os.Stat(dirName)
+	if err == nil {
+		return
+	}
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dirName, os.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}

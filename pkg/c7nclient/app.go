@@ -11,9 +11,8 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 		return
 	}
 	paras := make(map[string]interface{})
-	paras["page"] = "0"
-	paras["size"] = "10"
-	req, err := c.newRequest("POST", fmt.Sprintf("devops/v1/projects/%d/apps/list_by_options", projectId), paras, nil)
+	paras["doPage"] = "false"
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_service/page_by_options", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -25,7 +24,7 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 		return
 	}
 	appInfos := []model.AppInfo{}
-	for _, app := range apps.Content {
+	for _, app := range apps.List {
 		var status string
 		var types string
 		if app.Synchro {
@@ -39,6 +38,7 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 			types = "测试应用"
 		}
 		appInfo := model.AppInfo{
+			Id:      app.ID,
 			Name:    app.Name,
 			Code:    app.Code,
 			RepoURL: app.RepoURL,
@@ -57,7 +57,7 @@ func (c *C7NClient) GetApp(appCode string, projectId int) (error error, result *
 	}
 	paras := make(map[string]interface{})
 	paras["code"] = appCode
-	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/apps/query_by_code", projectId), paras, nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("devops/v1/projects/%d/app_service/query_by_code", projectId), paras, nil)
 	if err != nil {
 		fmt.Printf("build request error")
 		return err, nil
@@ -75,15 +75,11 @@ func (c *C7NClient) CreateApp(out io.Writer, projectId int, appPostInfo *model.A
 	if projectId == 0 {
 		return
 	}
-	if appPostInfo.ApplicationTemplateId == 0 {
-		fmt.Printf("the app template you hava choose not exist!")
-		return
-	}
 	if appPostInfo.Type != "normal" && appPostInfo.Type != "test" {
 		fmt.Printf("the app type value should be normal or test!")
 		return
 	}
-	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/apps", projectId), nil, appPostInfo)
+	req, err := c.newRequest("POST", fmt.Sprintf("/devops/v1/projects/%d/app_service", projectId), nil, appPostInfo)
 	if err != nil {
 		fmt.Printf("build request error")
 
@@ -108,6 +104,7 @@ func (c *C7NClient) CreateApp(out io.Writer, projectId int, appPostInfo *model.A
 		types = "测试应用"
 	}
 	appInfo := model.AppInfo{
+		Id:      app.ID,
 		Name:    app.Name,
 		Code:    app.Code,
 		RepoURL: app.RepoURL,
