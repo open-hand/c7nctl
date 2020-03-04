@@ -44,6 +44,7 @@ type PvPostInfo struct {
 	Type                       string `json:"type"`
 	SkipCheckProjectPermission bool   `json:"skipCheckProjectPermission,bool"`
 	ValueConfig                string `json:"valueConfig"`
+	ProjectIds                 []int  `json:"projectIds"`
 }
 
 func PrintPvInfos(pvInfos []PvInfo, out io.Writer) {
