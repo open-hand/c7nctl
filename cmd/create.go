@@ -839,11 +839,14 @@ func initPv(cmd *cobra.Command, pro *model.Project, pvPostInfo *model.PvPostInfo
 	quantity := pv.Spec.Capacity[v1.ResourceStorage]
 	size, err := quantity.Marshal()
 	if err != nil {
-		println(err)
 		return err
 	}
-	pvPostInfo.RequestResource = strings.Replace(string(size), "\n", "", -1)
-
+	// 去除4号ascii字符
+	str := string(size)
+	str = strings.Replace(string(size), string(byte(4)), "", -1)
+	// 去除换行符
+	str = strings.Replace(str, "\n", "", -1)
+	pvPostInfo.RequestResource = str
 	if len(pv.Spec.AccessModes) != 1 {
 		return errors.New("only support one accessMode")
 	}
@@ -853,6 +856,7 @@ func initPv(cmd *cobra.Command, pro *model.Project, pvPostInfo *model.PvPostInfo
 		return err
 	}
 	pvPostInfo.SkipCheckProjectPermission = true
+	pvPostInfo.ProjectIds = []int{}
 	return nil
 }
 
