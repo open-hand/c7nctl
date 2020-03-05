@@ -27,6 +27,7 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -806,10 +807,13 @@ func initPvc(cmd *cobra.Command, pro *model.Project, pvcPostInfo *model.PvcPostI
 	quantity := pvc.Spec.Resources.Requests[v1.ResourceStorage]
 	size, err := quantity.Marshal()
 	if err != nil {
-		println(err)
 		return err
 	}
-	pvcPostInfo.RequestResource = strings.Replace(string(size), "\n", "", -1)
+
+	str := string(size)
+	r, _ := regexp.Compile("\\d*[MGT]i")
+	result := r.FindString(str)
+	pvcPostInfo.RequestResource = result
 
 	if len(pvc.Spec.AccessModes) != 1 {
 		return errors.New("only support one accessMode")
@@ -841,12 +845,10 @@ func initPv(cmd *cobra.Command, pro *model.Project, pvPostInfo *model.PvPostInfo
 	if err != nil {
 		return err
 	}
-	// 去除4号ascii字符
 	str := string(size)
-	str = strings.Replace(string(size), string(byte(4)), "", -1)
-	// 去除换行符
-	str = strings.Replace(str, "\n", "", -1)
-	pvPostInfo.RequestResource = str
+	r, _ := regexp.Compile("\\d*[MGT]i")
+	result := r.FindString(str)
+	pvPostInfo.RequestResource = result
 	if len(pv.Spec.AccessModes) != 1 {
 		return errors.New("only support one accessMode")
 	}
