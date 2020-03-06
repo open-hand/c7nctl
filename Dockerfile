@@ -2,7 +2,8 @@ FROM golang:1.13.8 as builder
 WORKDIR /go/src/github.com/choerodon/c7nctl
 ADD . .
 
-RUN go build .
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GO111MODULE=on go build -mod=vendor
+
 
 FROM vinkdong/helm:2.11.0
 
