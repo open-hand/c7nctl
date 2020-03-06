@@ -1,4 +1,4 @@
-FROM golang:1.13.5 as builder
+FROM golang:1.13.8 as builder
 WORKDIR /go/src/github.com/choerodon/c7nctl
 ADD . .
 
