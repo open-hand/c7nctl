@@ -10,6 +10,7 @@ require (
 	github.com/buger/jsonparser v0.0.0-20191204142016-1a29609e0929
 	github.com/ghodss/yaml v0.0.0-20180820084758-c7ce16629ff4
 	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415 // indirect
 	github.com/golang/protobuf v1.3.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-version v1.2.0
@@ -24,6 +25,7 @@ require (
 	github.com/pkg/errors v0.8.0
 	github.com/rubenv/sql-migrate v0.0.0-20191213152630-06338513c237 // indirect
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/ugorji/go/codec v1.1.7
 	github.com/vinkdong/gox v0.0.0-20191217071044-432e0b72e0f8

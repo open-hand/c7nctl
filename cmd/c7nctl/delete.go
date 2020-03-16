@@ -12,38 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package main
 
 import (
-	"github.com/choerodon/c7nctl/cmd/app"
+	"github.com/choerodon/c7nctl/cmd/c7nctl/app"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
+	"io"
 )
 
 // installCmd represents the install command
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "delete Choerodon",
-	Long:  `Delete Choerodon quickly.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if debug, _ := cmd.Flags().GetBool("debug"); debug {
-			log.EnableDebug()
-		}
-		err := app.Delete(cmd, args)
-		if err != nil {
-			log.Error(err)
-			log.Error("delete failed")
-		}
-		return nil
-	},
+func newDeleteCmd(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "delete Choerodon",
+		Long:  `Delete Choerodon quickly.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if debug, _ := cmd.Flags().GetBool("debug"); debug {
+				log.EnableDebug()
+			}
+			err := app.Delete(cmd, args)
+			if err != nil {
+				log.Error(err)
+				log.Error("delete failed")
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
+	cmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
+	cmd.Flags().Bool("debug", false, "enable debug output")
+	cmd.Flags().StringP("namespace", "n", "", "select namespace")
+
+	return cmd
 }
 
 func init() {
-	deleteCmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
-	deleteCmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
-	deleteCmd.Flags().Bool("debug", false, "enable debug output")
-	deleteCmd.Flags().StringP("namespace", "n", "", "select namespace")
-	rootCmd.AddCommand(deleteCmd)
 
 	// Here you will define your flags and configuration settings.
 
