@@ -1,0 +1,18 @@
+env:
+  open:
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
+    SERVICES_ATTACHMENT_URL: {{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_SCHEMA" }}://{{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_DOMAIN" }}/knowledgebase-service/
+    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
+    SPRING_DATASOURCE_PASSWORD: {{ .GetPreValue "DATABASE_PASSWORD" }}
+    SPRING_DATASOURCE_URL: {{ .GetPreValue "DATASOURCE_URL" }}
+    SPRING_DATASOURCE_USERNAME: {{ .GetPreValue "DATABASE_USERNAME" }}
+    ELASTICSEARCH_IP: {{ ( .GetResource "elasticsearch-kb").Host }}:{{ ( .GetResource "elasticsearch-kb").Port }}
+preJob:
+  timeout: 1800
+  preInitDB:
+    datasource:
+      url: {{ .GetPreValue "DATASOURCE_URL" }}
+      username: {{ .GetPreValue "DATABASE_USERNAME" }}
+      password: {{ .GetPreValue "DATABASE_PASSWORD" }}
+  preConfig:
+    updatePolicy: override  

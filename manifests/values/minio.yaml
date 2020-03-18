@@ -1,0 +1,10 @@
+accessKey: {{ .GetPreValue "MINIO_BASE_ACCESS_KEY" }}
+secretKey: {{ .GetPreValue "MINIO_BASE_SECRET_KEY" }}
+persistence:
+  enabled: true
+  existingClaim: {{ (index .Persistence 0).RefPvcName }}
+ingress:
+  enabled: true
+  path: /
+  hosts:
+  - {{ .GetPreValue "MINIO_BASE_DOMAIN" }}

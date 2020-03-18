@@ -1,0 +1,1037 @@
+version: "0.21"
+# this is a annotation
+metadata:
+  name: install
+spec:
+  resources:
+    requests: 
+      cpu: 3000m
+      memory: 30Gi
+  basic:
+    repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
+    slaver:
+      version: 0.1.0
+      name: c7n-slaver
+      image: registry.cn-hangzhou.aliyuncs.com/choerodon-tools/c7n-slaver:0.1.1
+      ports:
+      - containerPort: 9000
+        name: http
+        protocol: TCP
+      - containerPort: 9001
+        name: grpc
+        protocol: TCP
+      volumeMounts:
+      - name: data
+        mountPath: /data
+      dataPath: /data
+  funcs:
+  - name: GetManagerDatasource
+    template: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/manager_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+  - name: GetManagerDatabaseUsername
+    text: 'choerodon'
+  - name: GetManagerDatabasePassword
+    text: 'password'  
+  infra:
+  - name: postgresql
+    chart: postgresql
+    version: 3.18.4-1
+    resource:
+      port: 5432
+      host: '{{ .WithPrefix }}postgresql-postgresql'
+      password: '{{ .GetValue "postgresqlPassword"}}'
+      username: postgres
+    values:
+    - name: "image.tag"
+      value: "9.6.11"
+    - name: "persistence.enabled"
+      value: "true"
+    - name: "persistence.existingClaim"
+      value: "{{ (index .Persistence 0).RefPvcName }}"
+    - name: "postgresqlPassword"
+      value: "admin"
+      input:
+        enabled: true
+        password: true
+        regex: ".+"
+        tip: "请输入您要设置的Postgresql数据库密码(不能为纯数字):"
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+    persistence:
+    - name: postgresql
+      path: postgresql
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 20Gi
+      pvcEnabled: true
+      mountOptions:
+      - hard
+      - intr
+      - nfsvers=4.0
+    health:
+      # httpGet: 
+      # - name: base
+      #   host: mysql
+      #   port: 3306
+      #   path: /
+      socket:
+      - name: base
+        host: '{{ .Resource.Host }}'
+        port: 5432
+  - name: mysql
+    chart: mysql
+    version: 0.1.3
+    resource:
+      port: 3306
+      host: '{{ .WithPrefix }}mysql'
+      password: '{{ .GetValue "env.MYSQL_ROOT_PASSWORD"}}'
+      username: root
+    values:
+    - name: "image.tag"
+      value: "5.7.22"
+    - name: "persistence.enabled"
+      value: "true"
+    - name: "service.enabled"
+      value: "true"
+    - name: "config.lower_case_table_names"
+      value: "1"
+    - name: "config.character_set_server"
+      value: "utf8"
+    - name: "config.max_connections"
+      value: "500"
+    - name: "config.max_allowed_packet"
+      value: "32M"
+    - name: "persistence.existingClaim"
+      value: "{{ (index .Persistence 0).RefPvcName }}"
+    - name: "env.MYSQL_ROOT_PASSWORD"
+      value: "admin"
+      input:
+        enabled: true
+        regex: ".+"
+        password: true
+        tip: "请输入您要设置的mysql密码(不能为纯数字):"
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+    persistence:
+    - name: mysql
+      path: mysql
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 20Gi
+      pvcEnabled: true
+      mountOptions:
+      - hard
+      - nfsvers=4.0
+      - intr
+    health:
+      # httpGet: 
+      # - name: base
+      #   host: mysql
+      #   port: 3306
+      #   path: /
+      socket:
+      - name: base
+        host: '{{ .Resource.Host }}'
+        port: 3306
+  - name: redis
+    chart: redis
+    version: 0.2.4
+    resource:
+      host: '{{ .WithPrefix }}redis'
+      port: 6379
+    values:
+    - name: "service.enabled"
+      value: "true"
+  - name: gitlab
+    chart: gitlab
+    version: 0.5.3
+    requirements:
+    - postgresql
+    - redis
+    # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
+    resource: 
+      domain: '{{ ( .GetResource "gitlab").Domain }}'
+      schema: http
+    preValues:
+    - name: GITLAB_BASE_DOMAIN
+      value: '{{ ( .GetResource "gitlab").Domain }}'
+      check: clusterdomain
+    - name: GITLAB_BASE_SCHEMA
+      value: '{{ ( .GetResource "gitlab").Schema }}'
+      check: schema
+    # - name: GITLAB_TOKEN
+    #   value: '{{ ( .RandomToken 17) }}'
+    # check是安装前去校验一哈哈
+    preInstall:
+    - name: createdb
+      psql:
+        - CREATE DATABASE gitlabhq_production;
+      infraRef: postgresql
+    - name: createextension
+      psql:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      infraRef: postgresql
+      database: gitlabhq_production
+    values:
+    - name: "persistence.enabled"
+      value: "true"
+    - name: "persistence.existingClaim"
+      value: '{{ (index .Persistence 0).RefPvcName }}'
+    - name: "env.config.GITLAB_EXTERNAL_URL"
+      value: '{{ .GetPreValue "GITLAB_BASE_SCHEMA" }}://{{ .GetPreValue "GITLAB_BASE_DOMAIN" }}'
+    - name: "env.config.GITLAB_TIMEZONE"
+      value: "Beijing"
+    - name: "env.config.CHOERODON_OMNIAUTH_ENABLED"
+      value: "true"
+    - name: "env.config.OMNIAUTH_AUTO_SIGN_IN_WITH_PROVIDER"
+      value: "oauth2_generic"
+    - name: "env.config.OMNIAUTH_BLOCK_AUTO_CREATED_USERS"
+      value: "false"
+    - name: "env.config.CHOERODON_API_URL"
+      value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
+    - name: "env.config.CHOERODON_CLIENT_ID"
+      value: "gitlab"
+    - name: 'env.config.CHOERODON_CLIENT_SECRET'
+      value: "secret"
+    - name: "env.config.GITLAB_DEFAULT_CAN_CREATE_GROUP"
+      value: "true"
+    - name: "env.config.DB_ADAPTER"
+      value: "postgresql"
+    - name: "env.config.DB_HOST"
+      value: '{{ (.GetResource "postgresql").Host }}'
+    - name: "env.config.DB_PORT"
+      value: '{{ (.GetResource "postgresql").Port }}'
+    - name: "env.config.DB_USERNAME"
+      value: '{{ (.GetResource "postgresql").Username }}'
+    - name: "env.config.DB_PASSWORD"
+      value: '{{ (.GetResource "postgresql").Password }}'
+    - name: "env.config.DB_DATABASE"
+      value: "gitlabhq_production"
+    - name: "env.config.REDIS_HOST"
+      value: '{{ (.GetResource "redis").Host }}'
+    - name: "service.enabled"
+      value: "true"
+    - name: "service.ssh.nodePort"
+      value: "32222"
+    - name: "ingress.enabled"
+      value: "true"
+    - name: "env.config.SMTP_ENABLE"
+      value: "true"
+    - name: "env.config.SMTP_ADDRESS"
+      value: "smtp.mxhichina.com"
+    - name: "env.config.SMTP_PORT"
+      value: "465"
+    - name: "env.config.SMTP_USER_NAME"
+      value: "git.sys@example.com"
+    - name: "env.config.SMTP_PASSWORD"
+      value: "password"
+    - name: "env.config.SMTP_DOMAIN"
+      value: "smtp.mxhichina.com"
+    - name: "env.config.SMTP_AUTHENTICATION"
+      value: "login"
+    - name: "env.config.GITLAB_EMAIL_FROM"
+      value: "git.sys@example.com"
+    - name: "env.config.SMTP_ENABLE_STARTTLS_AUTO"
+      value: "true"
+    - name: "env.config.SMTP_TLS"
+      value: "true"    
+    persistence:
+    - name: gitlab
+      path: gitlab-data
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 20Gi
+      pvcEnabled: true
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .WithPrefix }}gitlab'
+        port: 80
+        path: /help
+    ## exec some command when install finished
+    afterInstall:
+    - name: create-gitlabadmin-binding
+      psql:
+      - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
+      infraRef: postgresql
+      database: gitlabhq_production
+    # - name: settoken
+    #   psql:
+    #   - |
+    #     insert into personal_access_tokens (user_id, token, name, expires_at, created_at, updated_at, scopes)
+    #     values (1, '{{ .GetPreValue "GITLAB_TOKEN" }}', 'c7n', '2099-12-31', '2019-05-22 17:12:09', '2019-05-22 17:12:09',
+    #     array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(13)));
+    #   infraRef: postgresql
+    #   database: gitlabhq_production
+  - name: minio
+    chart: minio
+    version: 5.0.4
+    resource:
+      host: minio
+      port: 9000
+    requirements:
+    preValues:
+    - name: MINIO_BASE_DOMAIN
+      value: '{{ ( .GetResource "minio").Domain }}'
+      check: clusterdomain
+    - name: MINIO_BASE_SCHEMA
+      value: '{{ ( .GetResource "minio").Schema }}'
+    - name: "MINIO_BASE_ACCESS_KEY"
+      value: "admin"
+      input:
+        enabled: true
+        regex: ".{3,}"
+        tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字):"
+        password: false
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+    - name: "MINIO_BASE_SECRET_KEY"
+      value: "choerodon"
+      input:
+        enabled: true
+        password: true
+        regex: ".{8,40}"
+        tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字):"
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+    values:
+    persistence:
+    # 创建pv时自动添加标签 app = infra.name
+    - name: minio
+      path: minio
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 20Gi
+      pvcEnabled: true
+   # install harbor
+  - name: harbor
+    chart: harbor
+    version: 1.2.3
+    resource:
+      host: harbor
+      port: 5000
+    requirements:
+    preValues:
+    - name: HARBOR_BASE_DOMAIN
+      value: '{{ ( .GetResource "harbor").Domain }}'
+      check: clusterdomain
+    - name: HARBOR_BASE_SCHEMA
+      value: '{{ ( .GetResource "harbor").Schema }}'
+    values:
+    - name: "externalURL"
+      value: '{{ .GetPreValue "HARBOR_BASE_SCHEMA" }}://{{ .GetPreValue "HARBOR_BASE_DOMAIN" }}'
+    - name: "expose.ingress.hosts.core"
+      value: '{{ .GetPreValue "HARBOR_BASE_DOMAIN" }}'
+    - name: "harborAdminPassword"
+      value: "Choerodon123"
+      input:
+        enabled: true
+        password: true
+        regex: ".{8,}"
+        tip: "请设置的Harbor管理员密码(8位以上、必须包含大小写及数字):"
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+        include:
+        - value: "[A-Z]+"
+          name: "必须包含大写"
+        - value: "[a-z]+"
+          name: "必须包含小写"
+        - value: "\\d+"
+          name: "必须包含数字"
+    - name: "persistence.persistentVolumeClaim.database.existingClaim"
+      value: '{{ (index .Persistence 0).RefPvcName }}'
+    - name: "persistence.persistentVolumeClaim.registry.existingClaim"
+      value: '{{ (index .Persistence 1).RefPvcName }}'
+    - name: "persistence.persistentVolumeClaim.redis.existingClaim"
+      value: '{{ (index .Persistence 2).RefPvcName }}'
+    - name: "persistence.persistentVolumeClaim.jobservice.existingClaim"
+      value: '{{ (index .Persistence 3).RefPvcName }}'
+    - name: "chartmuseum.enabled"
+      value: "false"
+    - name: "notary.enabled"
+      value: "false"
+    - name: "clair.enabled"
+      value: "false"
+    persistence:
+    # 创建pv时自动添加标签 app = infra.name
+    - name: harbordb
+      path: harbor/database
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 1Gi
+      pvcEnabled: true
+    - name: harborregistry
+      path: harbor/registry
+      mode: "755"
+      accessModes: 
+      - ReadWriteOnce
+      size: 20Gi
+      pvcEnabled: true
+    - name: harborredis
+      path: harbor/redis
+      mode: "755"
+      own: "1001:1001"
+      accessModes: 
+      - ReadWriteOnce
+      size: 1Gi
+      pvcEnabled: true
+    - name: harborjobservice
+      path: harbor/jobservice
+      mode: "755"
+      own: "1001:1001"
+      accessModes: 
+      - ReadWriteOnce
+      size: 1Gi
+      pvcEnabled: true
+  - name: chartmuseum
+    chart: chartmuseum
+    version: 2.6.0
+    resource:
+      host: chartmuseum
+      port: 80
+    requirements:
+    preValues:
+    - name: CHART_BASE_DOMAIN
+      value: '{{ ( .GetResource "chartmuseum").Domain }}'
+      check: clusterdomain
+    - name: CHART_BASE_SCHEMA
+      value: '{{ ( .GetResource "chartmuseum").Schema }}'
+    values:
+    persistence:
+    # 创建pv时自动添加标签 app = infra.name
+    - name: chart
+      path: chart
+      mode: "755"
+      accessModes: 
+      - ReadWriteMany
+      size: 20Gi
+      pvcEnabled: true
+  framework: 
+  - name: register-server
+    chart: go-register-server
+    version: "0.21.0"
+    resource:
+      host: 'register-server'
+      port: 8000
+      schema: http
+      url: "http://register-server:8000/eureka/"
+    values:
+    health:
+      httpGet: 
+      - name: health
+        host: register-server
+        port: 8000
+        path: /eureka/apps
+  - name: base-service
+    chart: base-service
+    version: "0.21.2"
+    resource:
+      host:
+    requirements:
+    - mysql
+    - register-server
+    preValues:
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/base_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    - name: GITLAB_URL
+      value: '{{ ( .GetResource "gitlab").Schema }}://{{ ( .GetResource "gitlab").Domain }}'
+    - name: API_GATEWAY_URL
+      value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS base_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON base_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    afterInstall:
+    - name: create-client
+      commands:
+      - 'use base_service'
+      - INSERT INTO base_service.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES('gitlab',1,'default','secret','default','password,implicit,client_credentials,authorization_code,refresh_token','{{ .GetPreValue "GITLAB_URL" }}',3600,3600,'{}','default',1,0,NOW(),0,NOW());
+      infraRef: mysql
+    values:
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8031
+        path: /actuator/health
+  - name: manager-service
+    chart: manager-service
+    version: "0.21.0"
+    resource:
+      port: 8964
+      schema: http
+    requirements:
+    - mysql
+    - register-server
+    - base-service
+    preValues:
+    - name: "DATASOURCE_URL"
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/manager_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: "DATABASE_USERNAME"
+      value: "choerodon"
+    - name: "DATABASE_PASSWORD"
+      value: "password"
+    - name: "API_GATEWAY_DOMAIN"
+      value: '{{ ( .GetResource "api-gateway").Domain }}'
+    - name: "DATABASE_NAME"
+      value: "manager_service"
+    - name: API_GATEWAY_URL
+      value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS '{{ .GetPreValue "DATABASE_USERNAME" }}'@'%' IDENTIFIED BY '{{ .GetPreValue "DATABASE_PASSWORD" }}';
+        - CREATE DATABASE IF NOT EXISTS {{ .GetPreValue "DATABASE_NAME" }} DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON {{ .GetPreValue "DATABASE_NAME" }}.* TO {{ .GetPreValue "DATABASE_USERNAME" }}@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8964
+        path: /actuator/health
+  - name: asgard-service
+    chart: asgard-service
+    version: "0.21.1"
+    resource:
+      host: asgard-service
+      port: 18081
+    requirements:
+    - mysql
+    - register-server
+    preValues:
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/asgard_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS asgard_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON asgard_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 18081
+        path: /actuator/health
+  - name: notify-service
+    chart: notify-service
+    version: "0.21.0"
+    resource:
+      host: 
+    requirements:
+    - mysql
+    - redis
+    - register-server
+    # - config-server
+    - manager-service
+    preValues:
+    - name: INGRESS_HOST
+      value: '{{ ( .GetResource "notify-service").Domain }}'
+      check: clusterdomain
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/notify_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS notify_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON notify_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 18086
+        path: /actuator/health
+  - name: api-gateway
+    chart: api-gateway
+    version: "0.21.0"
+    resource:
+      host:
+    requirements:
+    - mysql
+    - register-server
+    - manager-service
+    preValues:
+    - name: INGRESS_HOST
+      value: '{{ (.GetResource "api-gateway").Domain }}'
+      check: clusterdomain
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8081
+        path: /actuator/health
+  - name: oauth-server
+    chart: oauth-server
+    version: "0.21.0"
+    resource:
+      host: oauth-server
+      port: 8021
+    requirements:
+    - mysql
+    - register-server
+    - manager-service
+    preValues:
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/base_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8021
+        path: /actuator/health
+  - name: file-service
+    chart: file-service
+    version: "0.21.0"
+    resource: 
+      host: 
+    requirements: 
+    - mysql
+    - register-server
+    - manager-service
+    preValues:
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 9091
+        path: /actuator/health
+  devops: 
+  - name: devops-service
+    chart: devops-service
+    version: "0.21.0"
+    resource:
+      host: devops-service
+      port: 8061
+      schema: ws
+    requirements:
+    - mysql
+    - redis
+    - gitlab
+    - harbor
+    - chartmuseum
+    - register-server
+    - manager-service
+    - notify-service
+    preValues:
+    - name: DATABASE_NAME
+      value: "devops_service"
+    - name: INGRESS_HOST
+      value: '{{ ( .GetResource "devops-service").Domain }}'
+      check: clusterdomain
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/devops_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    - name: DEFAULT_GIT_PASSWORD
+      value: "password"
+      input:
+        enabled: true
+        password: true
+        regex: ".+"
+        tip: "请输入新用户默认Gitlab密码(不能为纯数字):"
+        exclude:
+        - value: "^\\d*$"
+          name: "不能为纯数字"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS devops_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON devops_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: devops-service
+        port: 8061
+        path: /actuator/health
+  - name: gitlab-service
+    chart: gitlab-service
+    version: "0.21.0"
+    resource:
+      host: gitlab-service
+      port: 8071
+      schema: http
+    requirements:
+    - mysql
+    - gitlab
+    - register-server
+    - manager-service
+    preValues:
+    - name: DATABASE_NAME
+      value: "gitlab_service"
+    - name: INGRESS_HOST
+      value: '{{ ( .GetResource "devops-service").Domain }}'
+      check: clusterdomain
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/gitlab_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    - name: GITLAB_OAUTH_TOKEN
+      input:
+        enabled: true
+        password: false
+        regex: ".+"
+        tip: "请输入Gitlab Access Token [如何获取: http://r.c7n.co/cNa01 ]:"
+        exclude:
+        - value: "^\\d*$"
+          name: "输入错误"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS gitlab_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON gitlab_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    afterInstall:
+    - name: enable_webhook
+      request:
+        header:
+        - name: "content-type"
+          value: "application/json"
+        - name: "private-token"
+          value: '{{ .GetPreValue "GITLAB_OAUTH_TOKEN" }}'
+        url: '{{ ( .GetInfra "gitlab" ).GetPreValue "GITLAB_BASE_SCHEMA" }}://{{ ( .GetInfra "gitlab" ).GetPreValue "GITLAB_BASE_DOMAIN" }}/api/v4/application/settings'
+        body: |
+          {
+                  "allow_local_requests_from_hooks_and_services": true
+          }
+        method: PUT
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8071
+        path: /actuator/health
+  - name: workflow-service
+    chart: workflow-service
+    version: "0.21.0"
+    resource:
+      host: workflow-service
+      port: 8066
+      schema: ws
+    requirements:
+    - mysql
+    - redis
+    - gitlab
+    - harbor
+    - chartmuseum
+    - register-server
+    # - config-server
+    - manager-service
+    - notify-service
+    preValues:
+    - name: DATABASE_NAME
+      value: "workflow_service"
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/workflow_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS workflow_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON workflow_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: workflow-service
+        port: 8066
+        path: /actuator/health 
+  agile:
+  - name: agile-service
+    chart: agile-service
+    version: "0.21.0"
+    resource:
+      host: agile-service
+      port: 8379
+      schema: http
+    requirements:
+    - mysql
+    - redis
+    - minio
+    - register-server
+    - manager-service
+    preValues:
+    - name: DATABASE_NAME
+      value: "agile_service"
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/agile_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS agile_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON agile_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: agile-service
+        port: 8079
+        path: /actuator/health
+  - name: test-manager-service
+    chart: test-manager-service
+    version: "0.21.1"
+    resource:
+      host: test-manager-service
+      port: 8394
+      schema: http
+    requirements:
+    - mysql
+    - redis
+    - register-server
+    - manager-service
+    preValues:
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/test_manager_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS test_manager_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-Xms1024M -Xmx1024M"
+    health:
+      httpGet: 
+      - name: health
+        host: test-manager-service
+        port: 8094
+        path: /actuator/health
+  - name: elasticsearch-kb
+    chart: elasticsearch-kb
+    version: 0.21.0
+    resource:
+      port: 9200
+      host: '{{ .WithPrefix }}elasticsearch-kb'
+    values:
+    health:
+      # httpGet: 
+      # - name: base
+      #   host: {{ .Resource.Host }}
+      #   port: 9200
+      #   path: /
+      socket:
+      - name: base
+        host: '{{ .Resource.Host }}'
+        port: 9200
+  - name: knowledgebase-service
+    chart: knowledgebase-service
+    version: 0.21.0
+    resource:
+      host: knowledgebase-service
+      port: 8280
+      schema: http
+    requirements:
+    - mysql
+    - redis
+    - minio
+    - register-server
+    - manager-service
+    preValues:
+    - name: DATASOURCE_URL
+      value: 'jdbc:mysql://{{ ( .GetResource "mysql").Host }}:{{ ( .GetResource "mysql").Port }}/knowledgebase_service?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai'
+    - name: DATABASE_USERNAME
+      value: "choerodon"
+    - name: DATABASE_PASSWORD
+      value: "password"
+    - name: DATABASE_NAME
+      value: "knowledgebase_service" 
+    preInstall:
+    - name: predb
+      commands:
+        - CREATE USER IF NOT EXISTS 'choerodon'@'%' IDENTIFIED BY 'password';
+        - CREATE DATABASE IF NOT EXISTS knowledgebase_service DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON knowledgebase_service.* TO choerodon@'%';
+        - FLUSH PRIVILEGES;
+      infraRef: mysql
+    values:
+    - name: "env.open.JAVA_OPTS"
+      value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+    health:
+      httpGet: 
+      - name: health
+        host: '{{ .GetPodIp }}'
+        port: 8280
+        path: /actuator/health
+  front:
+  - name: choerodon-front
+    chart: choerodon-front
+    version: "0.21.0"
+    resource:
+      host: 'choerodon-front'
+      port: 80
+      schema: http
+    requirements:
+    - mysql
+    preValues:
+    - name: INGRESS_DOMAIN
+      value: '{{ ( .GetResource "choerodon-front").Domain }}'
+      check: clusterdomain
+    - name: INGRESS_SCHEMA
+      value: '{{ ( .GetResource "choerodon-front").Schema }}'
+      check: schema
+    preInstall:
+    - name: predb
+      commands:
+        - USE base_service;
+        - |
+          INSERT INTO base_service.oauth_client (
+            name,organization_id,resource_ids,secret,scope,
+            authorized_grant_types,web_server_redirect_uri,
+            access_token_validity,refresh_token_validity,
+            additional_information,auto_approve,object_version_number,
+            created_by,creation_date,last_updated_by,last_update_date)
+          VALUES('choerodon',1,'default','secret','default',
+                'password,implicit,client_credentials,authorization_code,refresh_token',
+                '{{ .GetPreValue "INGRESS_SCHEMA" }}://{{ .GetPreValue "INGRESS_DOMAIN" }}',3600,3600,'{}','default',1,0,NOW(),0,NOW());
+      infraRef: mysql
+    values:
+  runner: 
+    name: gitlab-runner
+    chart: gitlab-runner
+    version: "0.2.4"
+    resource:
+      host: 
+    requirements:
+    - postgresql
+    - gitlab
+    preValues:
+    - name: GITLAB_RUNNER_TOKEN
+      value: '{{ ( .RandomLowCaseToken 30) }}'
+    values:
+    - name: "rbac.create"
+      value: "true"
+    - name: "env.concurrent"
+      value: "3"
+    - name: "env.gitlabUrl"
+      value: '{{ ( .GetResource "gitlab").Schema }}://{{ ( .GetResource "gitlab").Domain }}/'
+    - name: "env.runnerToken"
+      value: '{{ .GetPreValue "GITLAB_RUNNER_TOKEN"}}'
+    - name: "env.environment.CHOERODON_URL"
+      value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
+    - name: "env.persistence.{{ (index .Persistence 0).RefPvcName }}"
+      value: "/root/.m2"
+    - name: "env.persistence.{{ (index .Persistence 1).RefPvcName }}"
+      value: "/cache"
+    - name: "enabled_mount_host_docker_sock"
+      value: "true"
+    persistence:
+    - name: gitlab-runner-maven
+      path: gitlab-runner/maven
+      mode: "755"
+      accessModes: 
+      - ReadWriteMany
+      size: 20Gi
+      pvcEnabled: true
+      mountOptions:
+      - hard
+      - intr
+      - nfsvers=4.0
+    - name: gitlab-runner-cache
+      path: gitlab-runner/cache
+      mode: "755"
+      accessModes: 
+      - ReadWriteMany
+      size: 20Gi
+      pvcEnabled: true
+      mountOptions:
+      - hard
+      - intr
+      - nfsvers=4.0
+    preInstall:
+    - name: insertrunnertoken
+      psql:
+        - |
+          INSERT INTO
+            ci_runners
+            ( token, created_at, updated_at, description, is_shared, name, runner_type )
+          VALUES
+            ( '{{ .GetPreValue "GITLAB_RUNNER_TOKEN" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
+      infraRef: postgresql
+      database: gitlabhq_production
+

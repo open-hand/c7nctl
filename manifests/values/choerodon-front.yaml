@@ -1,0 +1,25 @@
+env:
+  open:
+    API_HOST: {{ (.GetResource "api-gateway").Schema }}://{{ (.GetResource "api-gateway").Domain }}
+    CLIENT_ID: choerodon
+    DEVOPS_HOST: ws://{{ (.GetResource "devops-service").Domain }}
+    FILE_SERVER: {{ ( .GetResource "minio").Schema }}://{{ ( .GetResource "minio").Domain }}
+    HEADER_TITLE_NAME: Choerodon
+    HTTP: http
+    WEBSOCKET_SERVER: ws://{{ ( .GetResource "notify-service").Domain }}
+ingress:
+  enabled: true
+  host: {{ .GetPreValue "INGRESS_DOMAIN" }}
+preJob:
+  timeout: 1800
+  preConfig:
+    db:
+      dbname: base_service
+      enabledelete: true
+      host: {{ ( .GetResource "mysql").Host }}
+      password: {{ ( .GetInfra "base-service" ).GetPreValue "DATABASE_PASSWORD" }}
+      port: 3306
+      upattrs: sort,parent_id
+      username: {{ ( .GetInfra "base-service" ).GetPreValue "DATABASE_USERNAME" }}
+service:
+  enabled: true

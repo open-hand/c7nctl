@@ -1,0 +1,18 @@
+env:
+  open:
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
+    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
+    SPRING_DATASOURCE_PASSWORD: {{ .GetPreValue "DATABASE_PASSWORD" }}
+    SPRING_DATASOURCE_URL: {{ .GetPreValue "DATASOURCE_URL" }}
+    SPRING_DATASOURCE_USERNAME: {{ .GetPreValue "DATABASE_USERNAME" }}
+    SPRING_REDIS_DATABASE: 9
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SERVICES_ATTACHMENT_URL: {{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_SCHEMA" }}://{{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_DOMAIN" }}
+preJob:
+  timeout: 1800
+  preInitDB:
+    datasource:
+      url: {{ .GetPreValue "DATASOURCE_URL" }}
+      username: {{ .GetPreValue "DATABASE_USERNAME" }}
+      password: {{ .GetPreValue "DATABASE_PASSWORD" }}
