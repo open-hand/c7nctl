@@ -47,3 +47,4 @@ resources:
     # cpu: 100m
     memory: 1Gi
 {{- end }}
+
