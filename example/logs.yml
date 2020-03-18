@@ -5,9 +5,9 @@ metadata:
   namespace: myns
 spec:
   containers:
-    - name: mycontainer
-      image: redis
-      volumeMounts:
+  - name: mycontainer
+    image: redis
+    volumeMounts:
     - name: foo
       mountPath: "/etc/foo"
       readOnly: true
