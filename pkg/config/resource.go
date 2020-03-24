@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	versionPath       = "/version.yml"
-	installConfigPath = "/%s/install.yml"
-	upgradeConfigPath = "/%s/upgrade.yml"
+	versionPath       = "version.yml"
+	installConfigPath = "install.yml"
+	upgradeConfigPath = "upgrade.yml"
 )
 
 type ResourceDefinition struct {
@@ -49,7 +49,7 @@ func (v *Versions) GetLastStable() Version {
 }
 
 func (r *ResourceDefinition) getVersion(version string) Version {
-	versions := r.getVersions()
+	versions := r.getVersions(version)
 	if version != "" {
 		for _, v := range versions.Versions {
 			if v.Version == version {
@@ -63,15 +63,15 @@ func (r *ResourceDefinition) getVersion(version string) Version {
 	return versions.GetLastStable()
 }
 
-func (r *ResourceDefinition) getVersions() Versions {
-	data := r.requireRemoteResource(versionPath)
+func (r *ResourceDefinition) getVersions(version string) Versions {
+	data := r.requireRemoteResource(versionPath, version)
 	versions := Versions{}
 	yaml_v2.Unmarshal(data, &versions)
 	return versions
 }
 
-func (r *ResourceDefinition) requireRemoteResource(resourcePath string) []byte {
-	url := fmt.Sprintf("%s%s", consts.RemoteInstallResourceRootUrl, resourcePath)
+func (r *ResourceDefinition) requireRemoteResource(resource string, version string) []byte {
+	url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, version, resource)
 	return utils.GetRemoteResource(url)
 }
 
@@ -81,7 +81,7 @@ func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
 	if r.LocalFile == "" {
 		// request network resource
 		currentVersion := r.getVersion(version)
-		data = r.requireRemoteResource(fmt.Sprintf(installConfigPath, currentVersion.Version))
+		data = r.requireRemoteResource(installConfigPath, currentVersion.Version)
 	}
 	if r.LocalFile != "" {
 		data, err = ioutil.ReadFile(r.LocalFile)
@@ -99,7 +99,7 @@ func (r *ResourceDefinition) GetUpgradeResourceDate(version string) ([]byte, err
 	var data []byte
 	var err error
 	if r.LocalFile == "" {
-		data = r.requireRemoteResource(fmt.Sprintf(upgradeConfigPath, currentVersion.Version))
+		data = r.requireRemoteResource(upgradeConfigPath, currentVersion.Version)
 	}
 	if r.LocalFile != "" {
 		data, err = ioutil.ReadFile(r.LocalFile)

@@ -1,0 +1,8 @@
+env:
+  open:
+    REGISTER_SERVICE_NAMESPACE: {{ .Namespace }}
+rbac:
+  create: true
+service:
+  enabled: true
+  name: register-server

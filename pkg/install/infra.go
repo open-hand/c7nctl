@@ -200,7 +200,7 @@ func (infra *InfraResource) ValuesRaw() string {
 		os.Exit(127)
 	}
 	if len(data) == 0 {
-		url := fmt.Sprintf("%s/%s/values/%s.yaml", consts.RemoteInstallResourceRootUrl, infra.PaaSVersion, infra.Name)
+		url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, infra.PaaSVersion, "values/"+infra.Name+".yaml")
 		nData, statusCode, err := downloader.GetFileContent(url)
 		if statusCode == 200 && err == nil {
 			data = nData

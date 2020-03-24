@@ -15,12 +15,15 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vinkdong/gox/log"
 	"os"
+	"regexp"
 )
 
 var cfgFile string
@@ -56,6 +59,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	initHosts()
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -127,4 +131,30 @@ func DirectoryCheck(dirName string) {
 			fmt.Println(err)
 		}
 	}
+}
+
+func initHosts() {
+	hosts := "/etc/hosts"
+	file, err := os.OpenFile(hosts, os.O_RDWR, 0644)
+	if err != nil {
+		log.Error(err)
+		os.Exit(0)
+	}
+	defer file.Close()
+
+	scan := bufio.NewScanner(file)
+	for scan.Scan() {
+		lineText := scan.Text()
+		if isMatch, _ := regexp.Match("^199.232.28.133\\sraw.githubusercontent.com", []byte(lineText)); isMatch {
+			log.Info("domain raw.githubusercontent.com existing in /etc/hosts")
+			return
+		}
+	}
+	// when raw.githubusercontent.com isn't in /etc/hosts, add it
+	writer := bufio.NewWriter(file)
+	if _, err = writer.WriteString("\n199.232.28.133\traw.githubusercontent.com\n"); err != nil {
+		log.Error(err)
+		os.Exit(0)
+	}
+	writer.Flush()
 }

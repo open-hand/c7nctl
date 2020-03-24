@@ -1,0 +1,27 @@
+versions:
+  - version: "0.21"
+    status: stable
+  - version: "0.20"
+    status: history
+  - version: "0.19"
+    status: history
+  - version: "0.18"
+    status: history
+  - version: "0.17"
+    status: history
+  - version: "0.16"
+    status: history
+  - version: "0.15"
+    status: history
+  - version: "0.14"
+    status: history
+  - version: "0.13"
+    status: history
+  - version: "0.12"
+    status: history
+  - version: "0.11"
+    status: history
+  - version: "0.10"
+    status: history
+  - version: "0.9"
+    status: history
