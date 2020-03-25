@@ -646,7 +646,7 @@ spec:
   devops: 
   - name: devops-service
     chart: devops-service
-    version: "0.21.0"
+    version: "0.21.1"
     resource:
       host: devops-service
       port: 8061
