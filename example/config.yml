@@ -1,6 +1,6 @@
 version: 0.21
 metadata:
-  name: install-choerodon
+  name: resource-choerodon
   namespace: c7n-system  # 指定命名空间安装choerodon
 spec:
   persistence:
@@ -8,32 +8,35 @@ spec:
   resources:
     mysql:
       external: false
-    gitlab:
-      domain: gitlab.example.choerodon.io
+    gitlab-ha:
+      domain: gitlab.dev.yidaqiang.com
       external: false
-      username: root     # gitlab 默认用户名为root，不能修改
+      #username: root     # gitlab 默认用户名为root，不能修改
       schema: http
     minio:
-      domain: minio.example.choerodon.io
+      domain: minio.dev.yidaqiang.com
       schema: http
     harbor:
-      domain: harbor.example.choerodon.io
+      domain: harbor.dev.yidaqiang.com
       schema: https
       username: admin    # harbor 默认用户名为admin，不能修改
     chartmuseum:
-      domain: chart.example.choerodon.io
+      domain: chart.dev.yidaqiang.com
       schema: http
     api-gateway:
-      domain: api.example.choerodon.io
+      domain: api.dev.yidaqiang.com
       schema: http
     notify-service:
-      domain: notify.example.choerodon.io
+      domain: notify.dev.yidaqiang.com
       schema: ws
     devops-service:
-      domain: devops.example.choerodon.io
+      domain: devops.dev.yidaqiang.com
       schema: ws
     choerodon-front:
-      domain: c7n.example.choerodon.io
+      domain: c7n.dev.yidaqiang.com
       schema: http
       username: admin   # 前端 默认用户名为admin，暂不能修改
       password: admin   # 前端 默认密码为admin，暂不能修改
+  helm:
+    values:
+      dir: manifests/values

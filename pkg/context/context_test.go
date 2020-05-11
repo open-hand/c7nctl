@@ -1,27 +1,32 @@
-package install
+package context
 
 import (
-	"fmt"
-	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/vinkdong/gox/log"
 	"testing"
 )
 
 func TestGetNewsData(t *testing.T) {
+
 	ctx := Context{
-		Client:    kube.GetClient(),
-		Namespace: "test",
+		KubeClient: client.GetKubeClient(),
+		Namespace:  "test",
 	}
 	log.Info(ctx.GetOrCreateConfigMapData(staticLogName, staticLogKey))
 }
 
+func TestContext_GetJobInfo(t *testing.T) {
+	mysql := Ctx.GetJobInfo("mysql")
+	t.Log(mysql)
+}
+
 func TestSaveNewsData(t *testing.T) {
 	ctx := Context{
-		Client:    kube.GetClient(),
-		Namespace: "test",
+		KubeClient: client.GetKubeClient(),
+		Namespace:  "test",
 	}
 
-	news := &News{
+	news := &JobInfo{
 		Name:      "testnews2",
 		Namespace: "test",
 		Type:      PvcType,
@@ -32,5 +37,4 @@ func TestSaveNewsData(t *testing.T) {
 }
 
 func TestRandomToken(t *testing.T) {
-	fmt.Println(RandomToken(17), RandomToken(12))
 }

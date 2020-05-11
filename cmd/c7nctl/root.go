@@ -16,45 +16,64 @@ package main
 
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
 )
 
-var globalUsage = `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+//TODO
+var globalUsage = `The Choerodon Command Tool Line
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`
+Usage:
+  c7nctl [command] [flags]
+
+Available Commands:
+  install	Install Choerodon in kubernetes with the given config
+  config	Configuration choerodon Component. eg: gitlab runner
+  upgrade	Upgrade Choerodon to newer version
+  backup	Backup data Of Choerodon
+  delete    Delete Choerodon or component.
+
+Flags:
+  -c, --config
+  -h, --help		help fro c7nctl
+
+Use "c7nctl [command] --help" for more information about a command.
+`
 
 var cfgFile string
 
-var clientPlatformConfig c7nclient.C7NConfig
-var clientConfig c7nclient.C7NContext
+// TODO move to Configuration
 
-func newRootCmd(out io.Writer, args []string) *cobra.Command {
+var (
+	clientPlatformConfig c7nclient.C7NConfig
+	clientConfig         c7nclient.C7NContext
+)
+
+func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "c7nctl",
-		Short: "The Choerodon manager command tools",
+		Short: "The Choerodon Command Tool Line",
 		Long:  globalUsage,
 		// Uncomment the following line if your bare application
 		// has an action associated with it:
+
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Help()
+			_ = cmd.Help()
 		},
 	}
 
 	flags := cmd.PersistentFlags()
-	settings.AddFlags(flags)
+	envSettings.AddFlags(flags)
 
 	// Add subcommand
 	cmd.AddCommand(newConfigCmd(out))
 	cmd.AddCommand(newCreateCmd(out))
 	cmd.AddCommand(newDeleteCmd(out))
 	cmd.AddCommand(newGetCmd(out))
-	cmd.AddCommand(newInstallCmd(out))
+	cmd.AddCommand(newInstallCmd(actionConfig, out, args))
 	cmd.AddCommand(newLoginCmd(out))
 	cmd.AddCommand(newLogoutCmd(out))
 	cmd.AddCommand(newContextCmd(out))

@@ -15,48 +15,42 @@
 package main
 
 import (
-	"github.com/choerodon/c7nctl/cmd/c7nctl/app"
 	"github.com/spf13/cobra"
-	"github.com/vinkdong/gox/log"
+	"github.com/spf13/pflag"
 	"io"
 )
 
-// installCmd represents the install command
+const deleteDesc = `Delete Choerodon quickly.`
+
+// installCmd represents the resource command
 func newDeleteCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "delete Choerodon",
-		Long:  `Delete Choerodon quickly.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if debug, _ := cmd.Flags().GetBool("debug"); debug {
-				log.EnableDebug()
-			}
-			err := app.Delete(cmd, args)
-			if err != nil {
-				log.Error(err)
-				log.Error("delete failed")
-			}
-			return nil
-		},
+		Long:  deleteDesc,
+		RunE:  runDelete,
 	}
 
-	cmd.Flags().StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
-	cmd.Flags().StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
-	cmd.Flags().Bool("debug", false, "enable debug output")
-	cmd.Flags().StringP("namespace", "n", "", "select namespace")
+	addDeleteFlags(cmd.Flags())
 
 	return cmd
 }
 
-func init() {
+func runDelete(cmd *cobra.Command, args []string) error {
+	/*	if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			log.EnableDebug()
+		}
+		err := app.Delete(cmd, args)
+		if err != nil {
+			log.Error(err)
+			log.Error("delete failed")
+		}*/
+	return nil
+}
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// installCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// installCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+func addDeleteFlags(fs *pflag.FlagSet) {
+	fs.StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
+	fs.StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
+	fs.Bool("debug", false, "enable debug output")
+	fs.StringP("namespace", "n", "", "select namespace")
 }

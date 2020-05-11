@@ -1,25 +1,6 @@
 package app
 
-import (
-	"encoding/json"
-	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/helm"
-	"github.com/choerodon/c7nctl/pkg/install"
-	kube2 "github.com/choerodon/c7nctl/pkg/kube"
-	"github.com/choerodon/c7nctl/pkg/upgrade"
-	"github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/spf13/cobra"
-	"github.com/vinkdong/gox/log"
-	yaml_v2 "gopkg.in/yaml.v2"
-	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
-	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/kube"
-	"os"
-)
-
-var (
+/*var (
 	tlsServerName string // overrides the server name used to verify the hostname on the returned certificates from the server.
 	tlsCaCertFile string // path to TLS CA certificate file
 	tlsCertFile   string // path to TLS certificate file
@@ -228,3 +209,4 @@ func Delete(cmd *cobra.Command, args []string) error {
 	// do delete
 	return err
 }
+*/

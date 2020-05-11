@@ -1,7 +1,8 @@
-package install
+package resource
 
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
@@ -29,12 +30,12 @@ type Persistence struct {
 	MountOptions []string
 }
 
-func (p *Persistence) PrepareNews() *News {
-	news := &News{
+func (p *Persistence) PrepareNews() *context.JobInfo {
+	news := &context.JobInfo{
 		Name:      p.Name,
 		Namespace: p.Namespace,
-		Type:      PvType,
-		Status:    SucceedStatus,
+		Type:      context.PvType,
+		Status:    context.SucceedStatus,
 		RefName:   p.RefPvName,
 	}
 	return news
@@ -45,7 +46,7 @@ func (p *Persistence) getPv() (hasFound bool, pv *v1.PersistentVolume) {
 	client := p.Client
 	pv, err := client.CoreV1().PersistentVolumes().Get(p.RefPvName, meta_v1.GetOptions{})
 	if err != nil {
-		if IsNotFound(err) {
+		if context.IsNotFound(err) {
 			return false, pv
 		}
 	}
@@ -57,7 +58,7 @@ func (p *Persistence) getPvc() (hasFound bool, pvc *v1.PersistentVolumeClaim) {
 	client := p.Client
 	pvc, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Get(p.RefPvcName, meta_v1.GetOptions{})
 	if err != nil {
-		if IsNotFound(err) {
+		if context.IsNotFound(err) {
 			return false, pvc
 		}
 	}
@@ -69,13 +70,13 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	if news := Ctx.GetSucceed(p.Name, PvType); news != nil {
+	if news := context.Ctx.GetSucceed(p.Name, context.PvType); news != nil {
 		log.Infof("using exist pv [%s]", news.RefName)
 		p.RefPvName = news.RefName
 		return nil
 	}
 
-	if Ctx.UserConfig.IgnorePv() {
+	if context.Ctx.UserConfig.IgnorePv() {
 		p.RefPvName = ""
 		log.Debug("ignore create pv because specify storage class and no other persistence config")
 		return nil
@@ -87,10 +88,10 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 		Path: p.Path,
 		Own:  p.Own,
 	}
-	if Ctx.Slaver == nil {
+	if context.Ctx.Slaver == nil {
 		goto checkpv
 	}
-	if err := Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
+	if err := context.Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
 		return err
 	}
 
@@ -106,7 +107,7 @@ func (p *Persistence) CheckOrCreatePvc() error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	if news := Ctx.GetSucceed(p.Name, PvcType); news != nil {
+	if news := context.Ctx.GetSucceed(p.Name, context.PvcType); news != nil {
 		p.RefPvcName = news.RefName
 		return nil
 	}
@@ -133,7 +134,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 
 	mountOptions := p.MountOptions
 
-	storageClassName := Ctx.UserConfig.GetStorageClassName()
+	storageClassName := context.Ctx.UserConfig.GetStorageClassName()
 
 	pv := &v1.PersistentVolume{
 		TypeMeta: meta_v1.TypeMeta{
@@ -154,11 +155,11 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 	}
 
 	news := p.PrepareNews()
-	defer Ctx.SaveNews(news)
+	defer context.Ctx.SaveNews(news)
 
 	_, err := client.CoreV1().PersistentVolumes().Create(pv)
 	if err != nil {
-		news.Status = FailedStatus
+		news.Status = context.FailedStatus
 		news.Reason = err.Error()
 		return err
 	}
@@ -178,7 +179,7 @@ func (p *Persistence) CreatePvc() error {
 		Requests: resList,
 	}
 
-	storageClassName := Ctx.UserConfig.GetStorageClassName()
+	storageClassName := context.Ctx.UserConfig.GetStorageClassName()
 
 	pvc := &v1.PersistentVolumeClaim{
 		TypeMeta: meta_v1.TypeMeta{
@@ -198,15 +199,15 @@ func (p *Persistence) CreatePvc() error {
 	}
 
 	news := p.PrepareNews()
-	news.Type = PvcType
+	news.Type = context.PvcType
 	news.RefName = p.RefPvcName
 
-	defer Ctx.SaveNews(news)
+	defer context.Ctx.SaveNews(news)
 
 	_, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Create(pvc)
 	if err != nil {
 		log.Error(err)
-		news.Status = FailedStatus
+		news.Status = context.FailedStatus
 		news.Reason = err.Error()
 		return err
 	}

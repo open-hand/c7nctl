@@ -15,10 +15,10 @@
 package main
 
 import (
-	"github.com/choerodon/c7nctl/cmd/c7nctl/app"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/gox/log"
+
 	"io"
 )
 
@@ -37,11 +37,11 @@ func newUpgradeCmd(out io.Writer) *cobra.Command {
 				log.EnableDebug()
 			}
 			utils.AskAgreeTerms()
-			err := app.Upgrade(cmd, args)
-			if err != nil {
-				log.Error(err)
-				log.Error("Upgrade failed")
-			}
+			/*			err := app.Upgrade(cmd, args)
+						if err != nil {
+							log.Error(err)
+							log.Error("Upgrade failed")
+						}*/
 			log.Success("Upgrade succeed")
 			return nil
 		},
@@ -51,11 +51,12 @@ func newUpgradeCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().String("version", "", "specify a version")
 
 	return cmd
+
 }
 
 func init() {
 
-	// Here you will define your flags and configuration settings.
+	// Here you will define your flags and configuration envSettings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

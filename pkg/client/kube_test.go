@@ -1,6 +1,7 @@
-package kube
+package client
 
 import (
+	"github.com/choerodon/c7nctl/pkg/kube"
 	"github.com/vinkdong/gox/log"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
@@ -17,7 +18,7 @@ func TestGetConfig(t *testing.T) {
 func TestGetClientset(t *testing.T) {
 	//config,_ := getConfig()
 	//_ ,client, _ := getClientset(config)
-	client := GetClient()
+	client := kube.GetClient()
 	_, err := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
 	//for _, v := range list.Items {
 	//	//fmt.Printf("node %s: %d \n",v.Name,v.Status.Capacity.Memory().Value())

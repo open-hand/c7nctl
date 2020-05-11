@@ -7,17 +7,66 @@ import (
 	"os"
 )
 
+const (
+	PersistenceStorageClassType = "storageClass"
+	PersistenceNfsType          = "nfs"
+	PersistenceHostPathType     = "hostPath"
+)
+
 type Config struct {
 	Version  string
 	Metadata Metadata
 	Spec     Spec
 }
 
-const (
-	PersistenceStorageClassType = "storageClass"
-	PersistenceNfsType          = "nfs"
-	PersistenceHostPathType     = "hostPath"
-)
+type Metadata struct {
+	Name      string
+	Namespace string `default:"c7n-system"`
+}
+
+type Spec struct {
+	Persistence Persistence
+	Resources   map[string]*Resource
+	HelmConfig  HelmConfig `yaml:"helm"`
+}
+
+type Resource struct {
+	Host        string
+	Port        int32
+	Username    string
+	Password    string
+	Schema      string
+	Domain      string
+	External    bool
+	Url         string
+	Persistence *Persistence `yaml:"persistence"`
+}
+
+type HelmConfig struct {
+	Values ValuesConfig `yaml:"values"`
+}
+
+type ValuesConfig struct {
+	Dir string `yaml:"dir"`
+}
+
+type Persistence struct {
+	Nfs              `yaml:"nfs"`
+	HostPath         `yaml:"hostPath"`
+	StorageClassName string `yaml:"storageClassName"`
+	Type             string
+	AccessModes      []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
+}
+
+type Nfs struct {
+	Server   string
+	RootPath string `yaml:"rootPath"`
+}
+
+type HostPath struct {
+	RootPath string `yaml:"rootPath"`
+	Path     string `yaml:"path"`
+}
 
 func (c *Config) GetStorageClassName() string {
 	return c.Spec.Persistence.StorageClassName
@@ -69,55 +118,6 @@ func (c *Config) GetHelmValuesTpl(key string) ([]byte, error) {
 	return nil, err
 }
 
-type Metadata struct {
-	Name      string
-	Namespace string
-}
-
-type Spec struct {
-	Persistence Persistence
-	Resources   map[string]*Resource
-	HelmConfig  HelmConfig `yaml:"helm"`
-}
-
-type HelmConfig struct {
-	Values ValuesConfig `yaml:"values"`
-}
-
-type ValuesConfig struct {
-	Dir string `yaml:"dir"`
-}
-
-type Persistence struct {
-	Nfs              `yaml:"nfs"`
-	HostPath         `yaml:"hostPath"`
-	StorageClassName string `yaml:"storageClassName"`
-	Type             string
-	AccessModes      []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
-}
-
-type Nfs struct {
-	Server   string
-	RootPath string `yaml:"rootPath"`
-}
-
-type HostPath struct {
-	RootPath string `yaml:"rootPath"`
-	Path     string `yaml:"path"`
-}
-
-type Resource struct {
-	Host        string
-	Port        int32
-	Username    string
-	Password    string
-	Schema      string
-	Domain      string
-	External    bool
-	Url         string
-	Persistence *Persistence `yaml:"persistence"`
-}
-
 func (p *Persistence) GetStorageType() string {
 	if p.StorageClassName != "" {
 		p.Type = "storageClass"
@@ -157,7 +157,6 @@ func (p *Persistence) prepareNfsPVS(subPath string) v1.PersistentVolumeSource {
 }
 
 func (p *Persistence) prepareHostPathPVS(subPath string) v1.PersistentVolumeSource {
-
 	path := fmt.Sprintf("%s/%s", p.HostPath.RootPath, subPath)
 	if p.HostPath.Path != "" {
 		path = p.HostPath.Path

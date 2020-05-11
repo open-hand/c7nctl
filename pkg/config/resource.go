@@ -1,14 +1,11 @@
 package config
 
 import (
-	"fmt"
-	"github.com/choerodon/c7nctl/pkg/consts"
-	"github.com/choerodon/c7nctl/pkg/helm"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/helm/pkg/helm"
 	"os"
 )
 
@@ -28,6 +25,7 @@ type ResourceDefinition struct {
 	HelmClient   *helm.Client
 	CommonLabels map[string]string
 	Timeout      int
+	Namespace    string
 }
 
 type Versions struct {
@@ -71,22 +69,20 @@ func (r *ResourceDefinition) getVersions(version string) Versions {
 }
 
 func (r *ResourceDefinition) requireRemoteResource(resource string, version string) []byte {
-	url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, version, resource)
-	return utils.GetRemoteResource(url)
+	/*url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, version, resource)
+	return utils.GetRemoteResource(url)*/
+	return nil
 }
 
-func (r *ResourceDefinition) GetResourceDate(version string) ([]byte, error) {
-	var data []byte
-	var err error
-	if r.LocalFile == "" {
+func (r *ResourceDefinition) GetResourceData(resourceFile string, version string) (data []byte, err error) {
+	if resourceFile == "" {
 		// request network resource
 		currentVersion := r.getVersion(version)
 		data = r.requireRemoteResource(installConfigPath, currentVersion.Version)
-	}
-	if r.LocalFile != "" {
-		data, err = ioutil.ReadFile(r.LocalFile)
+	} else if resourceFile != "" {
+		data, err = ioutil.ReadFile(resourceFile)
 		if err != nil {
-			log.Error("read install file error")
+			log.Error("read resource file error")
 			os.Exit(127)
 		}
 	}
@@ -104,7 +100,7 @@ func (r *ResourceDefinition) GetUpgradeResourceDate(version string) ([]byte, err
 	if r.LocalFile != "" {
 		data, err = ioutil.ReadFile(r.LocalFile)
 		if err != nil {
-			log.Error("read install file error")
+			log.Error("read resource file error")
 			os.Exit(127)
 		}
 	}

@@ -15,11 +15,8 @@
 package main
 
 import (
-	"github.com/choerodon/c7nctl/cmd/c7nctl/app"
-	"github.com/choerodon/c7nctl/pkg/gitlab"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/vinkdong/gox/log"
 	"io"
 )
 
@@ -30,7 +27,7 @@ func newConfigCmd(out io.Writer) *cobra.Command {
 		Long:  `Config Choerodon quickly.`,
 	}
 	cmd.AddCommand(newGitlabCmd(out))
-	cmd.AddCommand(newGitlabRunnerCmd(out))
+
 	return cmd
 }
 
@@ -40,6 +37,7 @@ func newGitlabCmd(out io.Writer) *cobra.Command {
 		Short: "config gitlab",
 		Long:  `Config gitlab quickly.`,
 	}
+	cmd.AddCommand(newGitlabRunnerCmd(out))
 	return cmd
 }
 
@@ -58,25 +56,26 @@ func newGitlabRunnerCmd(out io.Writer) *cobra.Command {
 }
 
 func grcRun(cmd *cobra.Command, args []string) error {
-	if debug, _ := cmd.Flags().GetBool("debug"); debug {
-		log.EnableDebug()
-	}
-	installDef := app.GetInstall(cmd, args)
+	/*	if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			log.EnableDebug()
+		}
+		// TODO
+		installDef := app.GetInstall(nil, args)
 
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	runner := gitlab.Runner{
-		InstallDef: installDef,
-		Namespace:  ns,
-	}
-	err = runner.InstallRunner()
-	if err != nil {
-		log.Error("install gitlab runner failed")
-		return err
-	}
-	log.Success("config gitlab runner succeed")
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return err
+		}
+		runner := gitlab.Runner{
+			InstallDef: installDef,
+			Namespace:  ns,
+		}
+		err = runner.InstallRunner()
+		if err != nil {
+			log.Error("resource gitlab runner failed")
+			return err
+		}
+		log.Success("config gitlab runner succeed")*/
 	return nil
 }
 
@@ -84,7 +83,7 @@ func grcAddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
 	fs.StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
 	fs.Bool("debug", false, "enable debug output")
-	fs.StringP("namespace", "n", "c7n-system", "the namespace you install choerodon")
+	fs.StringP("namespace", "n", "c7n-system", "the namespace you resource choerodon")
 	fs.String("prefix", "", "add prefix to all helm release")
 	fs.String("version", "", "specify a version")
 	fs.Bool("skip-input", false, "use default username and password to avoid user input")

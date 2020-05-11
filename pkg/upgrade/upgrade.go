@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	c7n_helm "github.com/choerodon/c7nctl/pkg/helm"
-	"github.com/choerodon/c7nctl/pkg/install"
 	"github.com/choerodon/c7nctl/pkg/kube"
+	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
@@ -41,7 +41,7 @@ type Metadata struct {
 
 type Spec struct {
 	Basic     Basic
-	Install   []*install.InfraResource
+	Install   []*resource.Release
 	Uninstall []*Uninstall
 	Upgrade   []*Upgrade
 }
@@ -68,15 +68,15 @@ type ChangeKey struct {
 
 func (u *Upgrader) Init() {
 	helmClient := &c7n_helm.Client{
-		Tunnel:     kube.GetTunnel(),
-		KubeClient: kube.GetClient(),
+		TillerTunnel: kube.GetTunnel(),
+		KubeClient:   kube.GetClient(),
 	}
 	helmClient.InitClient()
 	u.HelmClient = helmClient
 }
 
 func (u *Upgrader) GetReleaseValues(upgrade *Upgrade) error {
-	ls, err := u.HelmClient.Client.ReleaseContent(upgrade.Name)
+	ls, err := u.HelmClient.HelmClient.ReleaseContent(upgrade.Name)
 	if err != nil {
 		return err
 	}

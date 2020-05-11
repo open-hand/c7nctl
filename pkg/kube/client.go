@@ -10,6 +10,7 @@ import (
 	"os"
 )
 
+// TODO remove
 func getConfig() (*rest.Config, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig

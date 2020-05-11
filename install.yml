@@ -1,6 +1,6 @@
 version: 0.5
 metadata:
-  name: install-all
+  name: resource-all
   namespace: c7n-system
 spec:
   persistence:

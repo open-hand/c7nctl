@@ -1,18 +1,17 @@
-package install
+package context
 
+import "C"
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/slaver"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
-	"github.com/vinkdong/gox/random"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -21,13 +20,23 @@ import (
 var Ctx Context
 
 const (
-	PvType        = "pv"
-	PvcType       = "pvc"
-	CRDType       = "crd"
-	ReleaseTYPE   = "helm"
-	TaskType      = "task"
+	PvType      = "pv"
+	PvcType     = "pvc"
+	CRDType     = "crd"
+	ReleaseTYPE = "helm"
+	TaskType    = "task"
+
+	// Release 安装成功
 	SucceedStatus = "succeed"
-	FailedStatus  = "failed"
+	// Release 安装失败
+	FailedStatus = "failed"
+	// Release 输入配置完成
+	InputtedStatus = "inputted"
+	// Release 未初始化
+	UninitializedStatus = "uninitialized"
+	// Release 配置宣传成功
+	RenderedStatus = "rendered"
+
 	// if have after process while wait
 	CreatedStatus      = "created"
 	staticLogName      = "c7n-logs"
@@ -36,51 +45,35 @@ const (
 	staticInstalledKey = "installed"
 	staticExecutedKey  = "execute"
 	SqlTask            = "sql"
-	HttpGetTask        = "htt" +
-		"" +
-		"" +
-		"pGet"
+	HttpGetTask        = "httpGet"
 )
 
 type Context struct {
-	Client        kubernetes.Interface
+	// client for Release
+	HelmClient *client.HelmClient
+	KubeClient *kubernetes.Interface
+	Slaver     *slaver.Slaver
+
+	// configration
+	UserConfig   *config.Config
+	BackendTasks []*BackendTask
+	JobInfo      map[string]JobInfo
+	Mux          sync.Mutex
+	Metrics      Metrics
+
 	Namespace     string
 	CommonLabels  map[string]string
 	SlaverAddress string
-	Slaver        *slaver.Slaver
-	UserConfig    *config.Config
-	BackendTasks  []*BackendTask
-	Mux           sync.Mutex
-	Metrics       utils.Metrics
 	SkipInput     bool
+	Prefix        string
+	RepoUrl       string
 }
 
-type BackendTask struct {
-	Name    string
-	Success bool
+func (ctx *Context) GetConfig() *config.Config {
+	return ctx.UserConfig
 }
 
-// i want use log but it make ...
-type News struct {
-	Name      string
-	Namespace string
-	RefName   string
-	Type      string
-	Status    string
-	Reason    string
-	Date      time.Time
-	Resource  config.Resource
-	Values    []ChartValue
-	PreValue  PreValueList
-	TaskType  string
-	Version   string
-	Prefix    string
-}
-
-type NewsResourceList struct {
-	News []News `yaml:"logs"`
-}
-
+// 当后台任务不存在时添加并返回 ture，否则之返回 false
 func (ctx *Context) AddBackendTask(task *BackendTask) bool {
 	for _, v := range ctx.BackendTasks {
 		if v.Name == task.Name {
@@ -91,25 +84,69 @@ func (ctx *Context) AddBackendTask(task *BackendTask) bool {
 	return true
 }
 
+func (ctx *Context) AddJobInfo(ji JobInfo) {
+	for _, jItem := range ctx.JobInfo {
+		if ji.Name == jItem.Name {
+			return
+		}
+	}
+
+	if tmpJob := ctx.JobInfo[ji.Name]; tmpJob.Name != "" {
+		log.Infof("JobInfo %s is already save to context\n", ji.Name)
+		return
+	}
+	ctx.JobInfo[ji.Name] = ji
+}
+
+// 保存 jobInfo 修改到 cm
+func (ctx *Context) UpdateJobInfo(ji JobInfo) {
+	ctx.JobInfo[ji.Name] = ji
+	// convert map to array
+	var jiArray []JobInfo
+	for _, ji := range ctx.JobInfo {
+		jiArray = append(jiArray, ji)
+	}
+	// 直接保存所有的 JobInfo
+	jiByte, err := yaml.Marshal(jiArray)
+	if err != nil {
+		log.Error(err)
+		// return err
+	}
+
+	ctx.saveConfigMapData(string(jiByte), staticLogName, staticLogKey)
+}
+
+func (ctx *Context) GetJobInfo(jobName string) JobInfo {
+	ctx.checkJobInfo()
+
+	// 不存在返回 nil
+	return ctx.JobInfo[jobName]
+}
+
+func (ctx *Context) checkJobInfo() {
+	if ctx.JobInfo == nil {
+		log.Error("Please load JobInfo from kubernetes config map")
+	}
+}
+
+// TODO remove goto
 func (ctx *Context) CheckExist(code int, errMsg ...string) {
 	if code == 0 {
 		ctx.Metrics.Status = "succeed"
 	} else {
 		ctx.Metrics.Status = "failed"
 	}
-	if !ctx.HasBackendTask() {
-		goto exit
-	}
-	log.Info("some backend task not finished yet wait it to be finished")
+
+	// 等待所有后台任务完成
 	for {
-		select {
-		case <-time.Tick(time.Second * 10):
-			if !ctx.HasBackendTask() {
-				goto exit
-			}
+		if !ctx.hasBackendTask() {
+			log.Info("some backend task not finished yet wait it to be finished")
+			break
+		} else {
+			time.Sleep(time.Second * 10)
 		}
 	}
-exit:
+
 	if len(errMsg) > 0 {
 		for _, err := range errMsg {
 			log.Error(err)
@@ -123,7 +160,7 @@ exit:
 	os.Exit(code)
 }
 
-func (ctx *Context) HasBackendTask() bool {
+func (ctx *Context) hasBackendTask() bool {
 	for _, v := range ctx.BackendTasks {
 		if v.Success == false {
 			log.Infof("%s has task not finish", v.Name)
@@ -133,26 +170,43 @@ func (ctx *Context) HasBackendTask() bool {
 	return false
 }
 
-func (ctx *Context) SaveNews(news *News) error {
+func (ctx *Context) LoadJobInfoFromCM() error {
+	insLogs := ctx.GetOrCreateConfigMapData(staticLogName, staticLogKey)
+
+	jil := []JobInfo{}
+	if err := yaml.Unmarshal([]byte(insLogs), &jil); err != nil {
+		log.Error(err)
+	}
+	for _, ji := range jil {
+		ctx.JobInfo[ji.Name] = ji
+	}
+	return nil
+}
+
+// 将 news 保存到
+func (ctx *Context) SaveNews(news *JobInfo) error {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
 	var key string
+
+	// task 添加到 task key 下，release 添加到configMap的 logs 下
 	if news.Type == TaskType {
 		key = staticTaskKey
 	} else {
 		key = staticLogKey
 	}
 	data := ctx.GetOrCreateConfigMapData(staticLogName, key)
-	nr := &NewsResourceList{}
-	if err := yaml.Unmarshal([]byte(data), nr); err != nil {
+
+	var jil []JobInfo
+	if err := yaml.Unmarshal([]byte(data), &jil); err != nil {
 		return err
 	}
 	news.Date = time.Now()
 	if news.RefName == "" {
 		news.RefName = news.Name
 	}
-	nr.News = append(nr.News, *news)
-	newData, err := yaml.Marshal(nr)
+	jil = append(jil, *news)
+	newData, err := yaml.Marshal(jil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -169,19 +223,19 @@ func (ctx *Context) SaveNews(news *News) error {
 func (ctx *Context) UpdateCreated(name, namespace string) error {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
-	nr := ctx.getSucceedData()
+	jil := ctx.getSucceedData()
 	isUpdate := false
-	for k, v := range nr.News {
+	for k, v := range jil {
 		if v.Name == name && v.Namespace == namespace && v.Status == CreatedStatus {
 			v.Status = SucceedStatus
-			nr.News[k] = v
+			jil[k] = v
 			isUpdate = true
 		}
 	}
 	if !isUpdate {
 		log.Infof("nothing update with app %s in ns: %s", name, namespace)
 	}
-	newData, err := yaml.Marshal(nr)
+	newData, err := yaml.Marshal(jil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -190,11 +244,11 @@ func (ctx *Context) UpdateCreated(name, namespace string) error {
 	return nil
 }
 
-func (ctx *Context) SaveSucceed(news *News) error {
+func (ctx *Context) SaveSucceed(news *JobInfo) error {
 	news.Date = time.Now()
-	nr := ctx.getSucceedData()
-	nr.News = append(nr.News, *news)
-	newData, err := yaml.Marshal(nr)
+	jil := ctx.getSucceedData()
+	jil = append(jil, *news)
+	newData, err := yaml.Marshal(jil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -208,9 +262,9 @@ func (ctx *Context) SaveSucceed(news *News) error {
 	return nil
 }
 
-func (ctx *Context) GetSucceed(name string, resourceType string) *News {
-	nr := ctx.getSucceedData()
-	for _, v := range nr.News {
+func (ctx *Context) GetSucceed(name string, resourceType string) *JobInfo {
+	jil := ctx.getSucceedData()
+	for _, v := range jil {
 		if v.Name == name && v.Type == resourceType {
 			// todo: make sure gc effort
 			p := v
@@ -220,9 +274,9 @@ func (ctx *Context) GetSucceed(name string, resourceType string) *News {
 	return nil
 }
 
-func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *News {
-	nr := ctx.getSucceedData(staticTaskKey)
-	for _, v := range nr.News {
+func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *JobInfo {
+	jil := ctx.getSucceedData(staticTaskKey)
+	for _, v := range jil {
 		if v.Name == taskName && v.RefName == appName && v.TaskType == taskType && v.Status == SucceedStatus {
 			// todo: make sure gc effort
 			p := v
@@ -235,9 +289,9 @@ func (ctx *Context) GetSucceedTask(taskName, appName string, taskType string) *N
 func (ctx *Context) DeleteSucceedTask(appName string) error {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
-	nr := ctx.getSucceedData(staticExecutedKey)
-	leftNews := make([]News, 0)
-	for _, v := range nr.News {
+	jil := ctx.getSucceedData(staticExecutedKey)
+	leftNews := make([]JobInfo, 0)
+	for _, v := range jil {
 		if v.RefName == appName {
 			// todo: make sure gc effort
 		} else {
@@ -257,9 +311,9 @@ func (ctx *Context) DeleteSucceedTask(appName string) error {
 func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
-	nr := ctx.getSucceedData()
+	jil := ctx.getSucceedData()
 	index := -1
-	for k, v := range nr.News {
+	for k, v := range jil {
 		if v.Name == name && v.Namespace == namespace && v.Type == resourceType {
 			index = k
 		}
@@ -269,8 +323,8 @@ func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
 		log.Infof("nothing delete with app %s in ns: %s", name, namespace)
 		return nil
 	}
-	nr.News = append(nr.News[:index], nr.News[index+1:]...)
-	newData, err := yaml.Marshal(nr)
+	jil = append(jil[:index], jil[index+1:]...)
+	newData, err := yaml.Marshal(jil)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -280,33 +334,29 @@ func (ctx *Context) DeleteSucceed(name, namespace, resourceType string) error {
 	return nil
 }
 
-func (ctx *Context) getSucceedData(key ...string) *NewsResourceList {
+func (ctx *Context) getSucceedData(key ...string) []JobInfo {
 	cmKey := staticInstalledKey
 	if len(key) > 0 {
 		cmKey = key[0]
 	}
 	data := ctx.GetOrCreateConfigMapData(staticLogName, cmKey)
-	nr := &NewsResourceList{}
-	yaml.Unmarshal([]byte(data), nr)
-	return nr
+	jil := []JobInfo{}
+	_ = yaml.Unmarshal([]byte(data), &jil)
+	return jil
 }
 
 func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
-	if ctx.Client == nil {
-		log.Error("Get k8s client failed")
-		os.Exit(127)
-	}
-	cm, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
+	cm, err := (*ctx.KubeClient).CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating logs to cluster")
-			cm = ctx.createNewsData()
+			cm = ctx.createInstallLogsCM()
 		}
 	}
 	return cm.Data[cmKey]
 }
 
-func (ctx *Context) createNewsData() *v1.ConfigMap {
+func (ctx *Context) createInstallLogsCM() *v1.ConfigMap {
 	ctx.Mux.Lock()
 	defer ctx.Mux.Unlock()
 	data := make(map[string]string)
@@ -323,7 +373,7 @@ func (ctx *Context) createNewsData() *v1.ConfigMap {
 		},
 		Data: data,
 	}
-	configMap, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Create(cm)
+	configMap, err := (*ctx.KubeClient).CoreV1().ConfigMaps(ctx.Namespace).Create(cm)
 	if err != nil {
 		ctx.CheckExist(128, err.Error())
 	}
@@ -331,10 +381,10 @@ func (ctx *Context) createNewsData() *v1.ConfigMap {
 }
 
 func (ctx *Context) saveConfigMapData(data, cmName, cmKey string) *v1.ConfigMap {
-
-	cm, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
+	kubeClient := *ctx.KubeClient
+	cm, err := kubeClient.CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	cm.Data[cmKey] = data
-	configMap, err := ctx.Client.CoreV1().ConfigMaps(ctx.Namespace).Update(cm)
+	configMap, err := kubeClient.CoreV1().ConfigMaps(ctx.Namespace).Update(cm)
 	if err != nil {
 		log.Error(err)
 		os.Exit(122)
@@ -353,37 +403,4 @@ func IsNotFound(err error) bool {
 type Exclude struct {
 	Start int
 	End   int
-}
-
-func RandomInt(min, max int, exclude ...Exclude) {
-	randInt := min + rand.Intn(max)
-	for _, e := range exclude {
-		if randInt >= e.Start && randInt <= e.End {
-			randInt += 1
-		}
-	}
-}
-
-func RandomToken(length int) string {
-	bytes := make([]byte, length)
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < length; i++ {
-		random.Seed(time.Now().UnixNano())
-		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
-			random.Slice{Start: 65, End: 90}, random.Slice{Start: 97, End: 122})
-		bytes[i] = byte(op) //A=65 and Z = 65+25
-	}
-	return string(bytes)
-}
-
-func GenerateRunnerToken(length int) string {
-	bytes := make([]byte, length)
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < length; i++ {
-		random.Seed(time.Now().UnixNano())
-		op := random.RangeIntInclude(random.Slice{Start: 48, End: 57},
-			random.Slice{Start: 97, End: 122})
-		bytes[i] = byte(op) //A=65 and Z = 65+25
-	}
-	return string(bytes)
 }

@@ -1,0 +1,34 @@
+core:
+  env:
+    GITLAB_HOST: {{ (.GetResource "gitlab-ha").Domain }}
+    OAUTH_ENABLED: true
+    OAUTH_AUTO_SIGN_IN_WITH_PROVIDER: "oauth2_generic"
+    OAUTH_ALLOW_SSO: "'oauth2_generic'"
+    OAUTH_BLOCK_AUTO_CREATED_USERS: false
+    OAUTH_GENERIC_API_KEY: "gitlab"
+    OAUTH_GENERIC_APP_SECRET: "secret"
+    OAUTH_GENERIC_SITE: {{ (.GetResource "api-gateway").Schema }}://{{ (.GetResource "api-gateway").Domain }}
+    OAUTH_GENERIC_USER_INFO_URL: "/oauth/api/user"
+    OAUTH_GENERIC_AUTHORIZE_URL: "/oauth/oauth/authorize"
+    OAUTH_GENERIC_TOKEN_URL: "/oauth/oauth/token"
+    OAUTH_GENERIC_ROOT_PATH: "'userAuthentication','principal'"
+    OAUTH_GENERIC_ID_PATH: "'userAuthentication','principal','userId'"
+    OAUTH_GENERIC_USER_NICKNAME: "choerodon"
+    OAUTH_GENERIC_USER_NAME: "choerodon"
+imagePullPolicy: IfNotPresent
+redis:
+  internal:
+    password: {{ generateAlphaNum 10 }}
+database:
+  internal:
+    size: 20Gi
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    core:
+      storageClass: {{ getStorageClass }}
+    redis:
+      storageClass: {{ getStorageClass }}
+    database:
+      storageClass: {{ getStorageClass }}
+

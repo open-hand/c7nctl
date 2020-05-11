@@ -15,6 +15,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/cli"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ import (
 )
 
 var (
-	settings = cli.New()
+	envSettings = cli.New()
 )
 
 func init() {
@@ -33,19 +34,20 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd(os.Stdout, os.Args[1:])
+	actionConfig := action.NewCfg()
+
+	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	cobra.OnInitialize(initConfig)
 	if err := cmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if settings.CfgFile != "" {
+	if envSettings.CfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(settings.CfgFile)
+		viper.SetConfigFile(envSettings.CfgFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()

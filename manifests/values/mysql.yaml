@@ -1,0 +1,12 @@
+config:
+  character_set_server: utf8mb4
+  collation_server: utf8mb4_general_ci
+  lower_case_table_names: 1
+  max_allowed_packet: 32M
+  max_connections: 1500
+persistence:
+  enabled: true
+  storageClass: {{ getStorageClass }}
+  size: 20Gi
+service:
+  enabled: ture

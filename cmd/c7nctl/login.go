@@ -23,7 +23,7 @@ import (
 
 var name string
 
-// installCmd represents the install command
+// installCmd represents the resource command
 func newLoginCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",

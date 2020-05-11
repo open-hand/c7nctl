@@ -7,12 +7,8 @@ import (
 	"os"
 )
 
-func GetRemoteResource(resourceUrl string) []byte {
+func GetRemoteResource(resourceUrl string) (data []byte) {
 	log.Infof("getting resource %s", resourceUrl)
-	var (
-		data []byte
-		err  error
-	)
 
 	resp, err := http.Get(resourceUrl)
 	if err != nil {
