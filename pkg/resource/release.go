@@ -508,7 +508,7 @@ func (rls *Release) Run() error {
 		log.Successf("using exist release %s", news.RefName)
 		if news.Status != context.SucceedStatus {
 			//rls.PreValues = news.PreValue
-			rls.CheckExecuteAfterTasks()
+			rls.ExecuteAfterTasks()
 		}
 		return nil
 	}
@@ -589,23 +589,23 @@ func (rls *Release) Install() error {
 
 	// 更新 jobinfo 状态
 	if len(rls.AfterInstall) > 0 {
-		ji.Status = context.CreatedStatus
-		rls.CheckExecuteAfterTasks()
-	} else {
-		ji.Status = context.SucceedStatus
+		_ = rls.ExecuteAfterTasks()
 	}
+	ji.Status = context.SucceedStatus
 	context.Ctx.UpdateJobInfo(ji)
 	return nil
 }
 
-func (rls *Release) CheckExecuteAfterTasks() error {
-	task := &context.BackendTask{
-		Success: false,
-		Name:    rls.Name,
+//
+func (rls *Release) ExecuteAfterTasks() error {
+	checkReleasePodRunning(rls.Name)
+
+	log.Successf("%s: started, will execute required commands and requests", rls.Name)
+	err := rls.executeExternalFunc(rls.AfterInstall)
+	if err != nil {
+		log.Error(err)
+		return err
 	}
-	context.Ctx.AddBackendTask(task)
-	// 却笑阿斯顿发射的
-	go rls.executeAfterTasks(task)
 	return nil
 }
 
@@ -666,8 +666,10 @@ func (rls *Release) catchPodLogs(labelSelector string, client kubernetes.Interfa
 // 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
 // TODO 所有组件设置统一的label
 func checkReleasePodRunning(rls string) {
+
 	clientset := *context.Ctx.KubeClient
 	namespace := context.Ctx.Namespace
+	time.Sleep(time.Second * 5)
 
 	for {
 		pods1, err := clientset.CoreV1().Pods(namespace).List(meta_v1.ListOptions{LabelSelector: fmt.Sprintf("choerodon.io/release=%s", rls)})
@@ -692,7 +694,7 @@ func checkReleasePodRunning(rls string) {
 			log.Infof("%s's pods is running", rls)
 			break
 		} else {
-			time.Sleep(time.Second * 2)
+			time.Sleep(time.Second * 4)
 		}
 	}
 }

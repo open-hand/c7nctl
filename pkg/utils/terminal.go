@@ -82,7 +82,6 @@ start:
 		}
 	}
 
-	fmt.Println("waiting...")
 	return string(bytePassword[:]), nil
 }
 

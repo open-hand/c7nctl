@@ -301,7 +301,7 @@ func (i *InstallDefinition) CheckInstall(infra *Release) error {
 		log.Successf("using exist release %s", news.RefName)
 		if news.Status != context.SucceedStatus {
 			//infra.PreValues = news.PreValue
-			infra.CheckExecuteAfterTasks()
+			infra.ExecuteAfterTasks()
 		}
 		return nil
 	}

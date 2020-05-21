@@ -24,14 +24,6 @@ spec:
       - name: data
         mountPath: /data
       dataPath: /data
-  # TODO remove unused funcs
-  funcs:
-  - name: GetManagerDatasource
-    template: '{{ getDatabaseUrl "manager-service" }}'
-  - name: GetManagerDatabaseUsername
-    text: "choerodon"
-  - name: GetManagerDatabasePassword
-    text: "password"
   release:
   - name: mysql
     chart: mysql
@@ -53,16 +45,6 @@ spec:
         exclude:
         - value: "^\\d*$"
           name: "不能为纯数字"
-    health:
-      # httpGet: 
-      # - name: base
-      #   host: mysql
-      #   port: 3306
-      #   path: /
-      socket:
-      - name: base
-        host: '{{ getReleaseName "mysql" }}'
-        port: 3306
   - name: redis
     chart: redis
     version: 0.2.5
@@ -73,17 +55,17 @@ spec:
     values:
     - name: "service.enabled"
       value: "true"
-  - name: gitlab-ha
+  - name: gitlab
     chart: gitlab-ha
     version: 0.2.0
     # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
     resource: 
       schema: http
       # 如下是自引用的 postgres 配置
-      host: '{{ getReleaseName "gitlab-ha" }}-gitlab-database'
+      host: '{{ getReleaseName "gitlab" }}-gitlab-database'
       port: 5432
       username: "gitlab"
-      password: '{{ getReleaseValue "gitlab-ha" "database.internal.password"}}'
+      password: '{{ getReleaseValue "gitlab" "database.internal.password"}}'
     values:
       - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
         value: '{{ generateAlphaNum 64 }}'
@@ -92,25 +74,18 @@ spec:
       - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
         value: '{{ generateAlphaNum 64 }}'
       - name: "expose.ingress.host"
-        value: '{{ ( getResource "gitlab-ha").Domain }}'
+        value: '{{ ( getResource "gitlab").Domain }}'
         check: clusterdomain
       - name: "database.internal.password"
         value: '{{ generateAlphaNum 10 }}'
-    health:
-      httpGet:
-      - name: health
-        host: "gitlab-ha-gitlab-core"
-        port: 80
-        path: /help
     ## exec some command when resource finished
     afterInstall:
     - name: create-gitlabadmin-binding
       psql:
       - CREATE EXTENSION IF NOT EXISTS pg_trgm;
       - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
-      infraRef: gitlab-ha
-      database:
-        -
+      infraRef: gitlab
+      database: gitlabhq_production
   - name: minio
     chart: minio
     version: 5.0.4
@@ -143,15 +118,6 @@ spec:
         exclude:
         - value: "^\\d*$"
           name: "不能为纯数字"
-    persistence:
-    # 创建pv时自动添加标签 app = infra.name
-    - name: minio
-      path: minio
-      mode: "755"
-      accessModes: 
-      - ReadWriteOnce
-      size: 20Gi
-      pvcEnabled: true
    # resource harbor
   - name: harbor
     chart: harbor
@@ -182,38 +148,6 @@ spec:
     - name: "expose.ingress.hosts.core"
       value: '{{ ( getResource "harbor" ).Domain }}'
       check: clusterdomain
-    persistence:
-    # 创建pv时自动添加标签 app = infra.name
-    - name: harbordb
-      path: harbor/database
-      mode: "755"
-      accessModes: 
-      - ReadWriteOnce
-      size: 1Gi
-      pvcEnabled: true
-    - name: harborregistry
-      path: harbor/registry
-      mode: "755"
-      accessModes: 
-      - ReadWriteOnce
-      size: 20Gi
-      pvcEnabled: true
-    - name: harborredis
-      path: harbor/redis
-      mode: "755"
-      own: "1001:1001"
-      accessModes: 
-      - ReadWriteOnce
-      size: 1Gi
-      pvcEnabled: true
-    - name: harborjobservice
-      path: harbor/jobservice
-      mode: "755"
-      own: "1001:1001"
-      accessModes: 
-      - ReadWriteOnce
-      size: 1Gi
-      pvcEnabled: true
   - name: chartmuseum
     chart: chartmuseum
     version: 2.6.0
@@ -226,15 +160,6 @@ spec:
     - name: "ingress.hosts[0].name"
       value: '{{ ( getResource "chartmuseum" ).Domain }}'
       check: clusterdomain
-    persistence:
-    # 创建pv时自动添加标签 app = infra.name
-    - name: chart
-      path: chart
-      mode: "755"
-      accessModes:
-      - ReadWriteMany
-      size: 20Gi
-      pvcEnabled: true
   - name: register-server
     chart: go-register-server
     version: "0.21.0"
@@ -245,12 +170,6 @@ spec:
       schema: http
       url: "http://register-server:8000/eureka/"
     values:
-    health:
-      httpGet: 
-      - name: health
-        host: register-server
-        port: 8000
-        path: /eureka/apps
   - name: base-service
     chart: base-service
     version: "0.21.5"
@@ -279,15 +198,9 @@ spec:
         web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
         object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
         "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
-        "{{ ( getResource "gitlab-ha" ).Schema }}://{{ ( getResource "gitlab-ha" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
+        "{{ ( getResource "gitlab" ).Schema }}://{{ ( getResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
       infraRef: mysql
     values:
-    health:
-      httpGet:
-      - name: health
-        host: '{{ getReleaseName "base-service" }}'
-        port: 8031
-        path: /actuator/health
   - name: manager-service
     chart: manager-service
     version: "0.21.0"
@@ -308,12 +221,6 @@ spec:
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-    health:
-      httpGet:
-      - name: health
-        host: '{{ getReleaseName "manager-service" }}'
-        port: 8964
-        path: /actuator/health
   - name: asgard-service
     chart: asgard-service
     version: "0.21.1"
@@ -334,12 +241,6 @@ spec:
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "asgard-service" }}'
-        port: 18081
-        path: /actuator/health
   - name: notify-service
     chart: notify-service
     version: "0.21.0"
@@ -363,12 +264,6 @@ spec:
     - name: "ingress.host"
       value: '{{ ( getResource "notify-service" ).Domain }}'
       check: clusterdomain
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "notify-service" }}'
-        port: 18086
-        path: /actuator/health
   - name: api-gateway
     chart: api-gateway
     version: "0.21.0"
@@ -386,12 +281,6 @@ spec:
     - name: "ingress.host"
       value: '{{ (getResource "api-gateway" ).Domain }}'
       check: clusterdomain
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "api-gateway" }}'
-        port: 8081
-        path: /actuator/health
   - name: oauth-server
     chart: oauth-server
     version: "0.21.0"
@@ -406,12 +295,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "oauth-server" }}'
-        port: 8021
-        path: /actuator/health
   - name: file-service
     chart: file-service
     version: "0.21.0"
@@ -426,12 +309,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "file-service" }}'
-        port: 9091
-        path: /actuator/health
   - name: devops-service
     chart: devops-service
     version: "0.21.1"
@@ -442,7 +319,7 @@ spec:
     requirements:
     - mysql
     - redis
-    - gitlab-ha
+    - gitlab
     - harbor
     - chartmuseum
     - register-server
@@ -472,12 +349,6 @@ spec:
         exclude:
           - value: "^\\d*$"
             name: "不能为纯数字"
-    health:
-      httpGet: 
-      - name: health
-        host: devops-service
-        port: 8061
-        path: /actuator/health
   - name: gitlab-service
     chart: gitlab-service
     version: "0.21.0"
@@ -487,7 +358,7 @@ spec:
       schema: http
     requirements:
     - mysql
-    - gitlab-ha
+    - gitlab
     - register-server
     - manager-service
     preInstall:
@@ -502,9 +373,9 @@ spec:
       psql:
       - |
         insert into personal_access_tokens (user_id, token_digest, name, expires_at, created_at, updated_at, scopes)
-        values (1, "{{ encryptGitlabAccessToken }}", "c7n", "2099-12-31", "2020-04-28 00:00:00", "2019-04-28 00:00:00",
-        array_to_string(ARRAY ["---","- api","- read_user","- sudo","- read_repository"], chr(13)));
-      infraRef: gitlab-ha
+        values (1, '{{ encryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
+        array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10)));
+      infraRef: gitlab
       database: gitlabhq_production
     afterInstall:
     - name: enable_webhook
@@ -514,8 +385,8 @@ spec:
           value: "application/json"
         # TODO get GITLAB_OAUTH_TOKEN
         - name: "private-token"
-          value: '{{ getReleaseValue "gitlab-service" "GITLAB_PRIVATETOKEN" }}'
-        url: '{{(getResource "gitlab-ha").Schema }}://{{(getResource "gitlab-ha").Domain}}/api/v4/application/settings'
+          value: '{{ getReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN" }}'
+        url: '{{(getResource "gitlab").Schema }}://{{(getResource "gitlab").Domain}}/api/v4/application/settings'
         body: |
           {
                   "allow_local_requests_from_hooks_and_services": true
@@ -524,14 +395,8 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    - name: "GITLAB_PRIVATETOKEN"
+    - name: "env.open.GITLAB_PRIVATETOKEN"
       value: "{{ generateAlphaNum 20 }}"
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "gitlab-service" }}'
-        port: 8071
-        path: /actuator/health
   - name: workflow-service
     chart: workflow-service
     version: "0.21.0"
@@ -542,7 +407,7 @@ spec:
     requirements:
     - mysql
     - redis
-    - gitlab-ha
+    - gitlab
     - harbor
     - chartmuseum
     - register-server
@@ -560,12 +425,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    health:
-      httpGet: 
-      - name: health
-        host: workflow-service
-        port: 8066
-        path: /actuator/health 
   - name: agile-service
     chart: agile-service
     version: "0.21.0"
@@ -590,12 +449,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    health:
-      httpGet: 
-      - name: health
-        host: agile-service
-        port: 8079
-        path: /actuator/health
   - name: test-manager-service
     chart: test-manager-service
     version: "0.21.1"
@@ -619,12 +472,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
-    health:
-      httpGet: 
-      - name: health
-        host: test-manager-service
-        port: 8094
-        path: /actuator/health
   - name: elasticsearch-kb
     chart: elasticsearch-kb
     version: 0.21.0
@@ -661,12 +508,6 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-    health:
-      httpGet: 
-      - name: health
-        host: '{{ getReleaseName "knowledgebase-service" }}'
-        port: 8280
-        path: /actuator/health
   - name: choerodon-front
     chart: choerodon-front
     version: "0.21.2"
@@ -712,7 +553,7 @@ spec:
       host: 
     requirements:
     - postgresql
-    - gitlab-ha
+    - gitlab
     preValues:
     - name: GITLAB_RUNNER_TOKEN
       value: "{{ ( randomLowCaseToken 30) }}"
@@ -722,7 +563,7 @@ spec:
     - name: "env.concurrent"
       value: "3"
     - name: "env.gitlabUrl"
-      value: '{{ ( getResource "gitlab-ha" ).Schema }}://{{ ( getResource "gitlab-ha" ).Domain }}/'
+      value: '{{ ( getResource "gitlab" ).Schema }}://{{ ( getResource "gitlab" ).Domain }}/'
     #  TODO
     - name: "env.runnerToken"
       value: "{{ ( generateAlphaNum 30) }}"
@@ -766,6 +607,6 @@ spec:
             ci_runners
             ( token, created_at, updated_at, description, is_shared, name, runner_type )
           VALUES
-            ( '{{ getReleaseValue "env.runnerToken" }}', NOW(), NOW(), "c7n-default", true,"gitlab-runner", 1 )
-      infraRef: gitlab-ha
+            ( '{{ getReleaseValue "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
+      infraRef: gitlab
       database: gitlabhq_production

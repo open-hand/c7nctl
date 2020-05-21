@@ -30,7 +30,7 @@ Usage:
   c7nctl [command] [flags]
 
 Available Commands:
-  install	Install Choerodon in kubernetes with the given config
+  install	InstallC7n Choerodon in kubernetes with the given config
   config	Configuration choerodon Component. eg: gitlab runner
   upgrade	Upgrade Choerodon to newer version
   backup	Backup data Of Choerodon

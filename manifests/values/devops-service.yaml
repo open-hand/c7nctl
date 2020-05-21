@@ -8,11 +8,11 @@ env:
     SERVICES_GATEWAY_URL: {{ ( getResource "api-gateway").Schema }}://{{ (getResource "api-gateway").Domain }}
     # TODO add get values method
     SERVICES_GITLAB_PASSWORD: "password"
-    SERVICES_GITLAB_SSHURL: {{ ( getResource "gitlab-ha").Domain }}:32222
-    SERVICES_GITLAB_URL: {{ ( getResource "gitlab-ha").Schema }}://{{ ( getResource "gitlab-ha").Domain }}
+    SERVICES_GITLAB_SSHURL: {{ ( getResource "gitlab").Domain }}:32222
+    SERVICES_GITLAB_URL: {{ ( getResource "gitlab").Schema }}://{{ ( getResource "gitlab").Domain }}
     SERVICES_HARBOR_BASEURL: {{ ( getResource "harbor").Schema }}://{{ ( getResource "harbor").Domain }}
-    SERVICES_HARBOR_PASSWORD: {{ ( getResource "harbor" ).Password }}
-    SERVICES_HELM_URL: {{ ( getResource "gitlab-ha").Schema }}://{{ ( getResource "gitlab-ha").Domain }}
+    SERVICES_HARBOR_PASSWORD: {{ getReleaseValue "harbor" "harborAdminPassword" }}
+    SERVICES_HELM_URL: {{ ( getResource "gitlab").Schema }}://{{ ( getResource "gitlab").Domain }}
     SPRING_CLOUD_CONFIG_URI: {{ ( getResource "register-server").Schema }}://{{ ( getResource "register-server").Host }}:{{ ( getResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
     SPRING_DATASOURCE_URL: {{ getDatabaseUrl "devops_service" }}

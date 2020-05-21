@@ -24,7 +24,7 @@ const (
 	C7nLabelValue  = "c7n-installer"
 )
 
-type Install struct {
+type InstallC7n struct {
 	cfg *Configuration
 	// api versions
 	Version string
@@ -43,11 +43,11 @@ type Install struct {
 	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
-func NewInstall(cfg *Configuration) *Install {
-	return &Install{cfg: cfg}
+func NewInstall(cfg *Configuration) *InstallC7n {
+	return &InstallC7n{cfg: cfg}
 }
 
-func (i *Install) Run() error {
+func (i *InstallC7n) Run() error {
 	// 当 version 没有设置时，从 git repo 获取最新版本
 	i.Version = c7n_utils.GetVersion(i.Version)
 
@@ -237,7 +237,7 @@ func mergerResource(r *resource.Release) {
 }
 
 // 为了避免循环依赖，从 install_definition.go 移到这里
-func (i *Install) getInstallDef(uc *config.Config) *resource.InstallDefinition {
+func (i *InstallC7n) getInstallDef(uc *config.Config) *resource.InstallDefinition {
 	var rd []byte
 	if i.ResourceFile != "" {
 		rd = c7n_utils.GetResourceFile(false, i.Version, i.ResourceFile)
@@ -314,7 +314,7 @@ func cleanJobs() error {
 	return nil
 }
 
-func initContext(i *Install, userConfig *config.Config) {
+func initContext(i *InstallC7n, userConfig *config.Config) {
 	commonLabels := map[string]string{
 		C7nLabelKey: C7nLabelValue,
 	}

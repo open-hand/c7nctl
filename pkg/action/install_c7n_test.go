@@ -16,7 +16,7 @@ func TestGetInstallDef(t *testing.T) {
 	install.getInstallDef(userConf)
 }
 
-func initInstall() *Install {
+func initInstall() *InstallC7n {
 	cfg := NewCfg()
 	setSettings(cfg.HelmClient.Settings())
 	_ = cfg.HelmClient.SetupConnection()

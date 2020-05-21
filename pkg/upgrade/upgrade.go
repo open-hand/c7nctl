@@ -3,11 +3,10 @@ package upgrade
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
-	c7n_helm "github.com/choerodon/c7nctl/pkg/helm"
-	"github.com/choerodon/c7nctl/pkg/kube"
+	c7n_helm "github.com/choerodon/c7nctl/pkg/client"
+	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/ghodss/yaml"
 	"github.com/vinkdong/gox/log"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/typed/batch/v1"
@@ -16,7 +15,7 @@ import (
 )
 
 type Upgrader struct {
-	HelmClient *c7n_helm.Client
+	HelmClient *c7n_helm.HelmClient
 	Version    string
 	Metadata   Metadata
 	Spec       Spec
@@ -58,7 +57,7 @@ type Basic struct {
 type SetKey struct {
 	Name  string
 	Value string
-	Input utils.Input
+	Input context.Input
 }
 
 type ChangeKey struct {
@@ -67,56 +66,57 @@ type ChangeKey struct {
 }
 
 func (u *Upgrader) Init() {
-	helmClient := &c7n_helm.Client{
-		TillerTunnel: kube.GetTunnel(),
-		KubeClient:   kube.GetClient(),
-	}
-	helmClient.InitClient()
-	u.HelmClient = helmClient
+	/*	helmClient := &c7n_helm.Client{
+			TillerTunnel: kube.GetTunnel(),
+			KubeClient:   kube.GetClient(),
+		}
+		helmClient.InitClient()
+		u.HelmClient = helmClient*/
 }
 
 func (u *Upgrader) GetReleaseValues(upgrade *Upgrade) error {
-	ls, err := u.HelmClient.HelmClient.ReleaseContent(upgrade.Name)
-	if err != nil {
-		return err
-	}
-	config := ls.GetRelease().GetConfig()
-	upgrade.InstalledVersion = ls.GetRelease().GetChart().GetMetadata().GetVersion()
-	upgrade.Namespace = ls.GetRelease().GetNamespace()
-	log.Debugf("Get raw values:\n%s", config.GetRaw())
-	bytes, err := yaml.YAMLToJSON([]byte(config.GetRaw()))
-	if err != nil {
-		return err
-	}
-	upgrade.Values = bytes
+	/*	ls, err := u.HelmClient.HelmClient.ReleaseContent(upgrade.Name)
+		if err != nil {
+			return err
+		}
+		config := ls.GetRelease().GetConfig()
+		upgrade.InstalledVersion = ls.GetRelease().GetChart().GetMetadata().GetVersion()
+		upgrade.Namespace = ls.GetRelease().GetNamespace()
+		log.Debugf("Get raw values:\n%s", config.GetRaw())
+		bytes, err := yaml.YAMLToJSON([]byte(config.GetRaw()))
+		if err != nil {
+			return err
+		}
+		upgrade.Values = bytes*/
 	return nil
 }
 
 func upgradeRelease(u *Upgrader, upgrade *Upgrade) error {
 	if len(upgrade.Values) != 0 {
-		// 解析变量
-		e := upgradeValues(upgrade)
-		if e != nil {
-			log.Error(e)
-			return e
-		}
-		raw, err := yaml.JSONToYAML(upgrade.Values)
-		log.Debugf("After rendering values:\n%s", string(raw))
-		if err != nil {
-			return err
-		}
-		chartArgs := c7n_helm.ChartArgs{
-			ReleaseName: upgrade.Name,
-			RepoUrl:     u.Spec.Basic.RepoURL,
-			Verify:      false,
-			Version:     upgrade.Version,
-			ChartName:   upgrade.Chart,
-		}
-		log.Infof("Upgrade %s to %s version,please waiting.", upgrade.Name, upgrade.Version)
-		return u.HelmClient.UpgradeRelease(
-			raw,
-			chartArgs,
-		)
+		/*
+			// 解析变量
+			e := upgradeValues(upgrade)
+			if e != nil {
+				log.Error(e)
+				return e
+			}
+			raw, err := yaml.JSONToYAML(upgrade.Values)
+			log.Debugf("After rendering values:\n%s", string(raw))
+			if err != nil {
+				return err
+			}
+			chartArgs := c7n_helm.ChartArgs{
+				ReleaseName: upgrade.Name,
+				RepoUrl:     u.Spec.Basic.RepoURL,
+				Verify:      false,
+				Version:     upgrade.Version,
+				ChartName:   upgrade.Chart,
+			}
+			log.Infof("Upgrade %s to %s version,please waiting.", upgrade.Name, upgrade.Version)
+			return u.HelmClient.UpgradeRelease(
+				raw,
+				chartArgs,
+			)*/
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func upgradeValues(upgrade *Upgrade) error {
 		value, e := getValueByKey(upgrade.Values, v.Old)
 		if e != nil {
 			log.Errorf("Key: %s not found", v.Old)
-			value, e = utils.AcceptUserInput(utils.Input{
+			value, e = utils.AcceptUserInput(context.Input{
 				Tip:   fmt.Sprintf("Please value for Key: %s\n", v.New),
 				Regex: ".+",
 			})
@@ -224,7 +224,7 @@ func (u *Upgrader) preUpgrade() error {
 					v.Name, constraintVersion, v.InstalledVersion)
 			}
 			if v.Namespace != namespace {
-				jobInterface := u.HelmClient.KubeClient.BatchV1().Jobs(v.Namespace)
+				/*jobInterface := u.HelmClient.KubeClient.BatchV1().Jobs(v.Namespace)
 				jobList, err := jobInterface.List(meta_v1.ListOptions{})
 				if err != nil {
 					return err
@@ -242,7 +242,7 @@ func (u *Upgrader) preUpgrade() error {
 					}
 				}
 				checkJobDeleted(jobInterface)
-				namespace = v.Namespace
+				namespace = v.Namespace*/
 			}
 		} else {
 			log.Infof("Get Release %s error,Skip it. %s", v.Name, err)

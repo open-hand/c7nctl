@@ -8,32 +8,32 @@ spec:
   resources:
     mysql:
       external: false
-    gitlab-ha:
-      domain: gitlab.dev.yidaqiang.com
+    gitlab:
+      domain: gitlab.test.yidaqiang.com
       external: false
       #username: root     # gitlab 默认用户名为root，不能修改
       schema: http
     minio:
-      domain: minio.dev.yidaqiang.com
+      domain: minio.test.yidaqiang.com
       schema: http
     harbor:
-      domain: harbor.dev.yidaqiang.com
+      domain: harbor.test.yidaqiang.com
       schema: https
       username: admin    # harbor 默认用户名为admin，不能修改
     chartmuseum:
-      domain: chart.dev.yidaqiang.com
+      domain: chart.test.yidaqiang.com
       schema: http
     api-gateway:
-      domain: api.dev.yidaqiang.com
+      domain: api.test.yidaqiang.com
       schema: http
     notify-service:
-      domain: notify.dev.yidaqiang.com
+      domain: notify.test.yidaqiang.com
       schema: ws
     devops-service:
-      domain: devops.dev.yidaqiang.com
+      domain: devops.test.yidaqiang.com
       schema: ws
     choerodon-front:
-      domain: c7n.dev.yidaqiang.com
+      domain: c7n.test.yidaqiang.com
       schema: http
       username: admin   # 前端 默认用户名为admin，暂不能修改
       password: admin   # 前端 默认密码为admin，暂不能修改

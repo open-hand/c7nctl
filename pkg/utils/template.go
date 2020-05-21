@@ -154,8 +154,8 @@ func generateAlphaNum(length int) string {
 }
 
 func encryptGitlabAccessToken() string {
-	token := getReleaseValue("gitlab-service", "GITLAB_PRIVATETOKEN")
-	dbKeyBase := getReleaseValue("gitlab-ha", "core.env.GITLAB_SECRETS_DB_KEY_BASE")
+	token := getReleaseValue("gitlab-service", "env.open.GITLAB_PRIVATETOKEN")
+	dbKeyBase := getReleaseValue("gitlab", "core.env.GITLAB_SECRETS_DB_KEY_BASE")
 	str := fmt.Sprintf("%s%s", token, dbKeyBase[:32])
 
 	hash := sha256.New()

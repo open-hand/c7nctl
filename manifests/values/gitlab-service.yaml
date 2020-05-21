@@ -2,7 +2,7 @@ env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( getResource "register-server").Url }}
     # TODO gitlab token get
-    GITLAB_URL: {{ ( getResource "gitlab-ha").Schema }}://{{ ( getResource "gitlab-ha").Domain }}
+    GITLAB_URL: {{ ( getResource "gitlab").Schema }}://{{ ( getResource "gitlab").Domain }}
     SPRING_CLOUD_CONFIG_URI: {{ (getResource "register-server").Schema }}://{{ (getResource "register-server").Host }}:{{ (getResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
     SPRING_DATASOURCE_URL: {{ getDatabaseUrl "gitlab_service" }}
