@@ -49,6 +49,7 @@ type Spec struct {
 	Resources v1.ResourceRequirements
 	Release   []*Release
 	Runner    *Release `json:"runner"`
+	Component []*Release
 }
 
 type Basic struct {

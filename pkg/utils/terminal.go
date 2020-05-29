@@ -29,6 +29,28 @@ func AskAgreeTerms() {
 	}
 }
 
+func AcceptArrayUserInput(input context.Input) ([]string, error) {
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Println(input.Tip)
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		strs := strings.Fields(text)
+		isMatch := true
+		for _, s := range strs {
+			if !CheckMatch(s, input) {
+				isMatch = false
+				break
+			}
+		}
+		if isMatch {
+			return strs, nil
+		}
+	}
+}
+
 func AcceptUserInput(input context.Input) (string, error) {
 	if input.Password {
 		return AcceptUserPassword(input)

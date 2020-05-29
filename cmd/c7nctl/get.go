@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
+	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"io"
@@ -222,7 +223,7 @@ func newGetValueCmd(out io.Writer) *cobra.Command {
 				os.Exit(1)
 			}
 			valueDir := home + "/c7nctl/value/"
-			DirectoryCheck(valueDir)
+			c7n_utils.DirectoryCheck(valueDir)
 			c7nclient.Client.ListValue(cmd.OutOrStdout(), env.ID, valueDir)
 		},
 	}

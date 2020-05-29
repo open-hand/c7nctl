@@ -1,4 +1,4 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2018 choerodon <EMAIL ADDRESS>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,27 @@
 package main
 
 import (
-	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
+	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/choerodon/c7nctl/pkg/cli"
-	"github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log"
 	"os"
 )
 
 var (
+	clientPlatformConfig c7nclient.C7NConfig
+	clientConfig         c7nclient.C7NContext
+
 	envSettings = cli.New()
+	cmdLog      = &log.Entry{}
 )
 
 func init() {
-	log.SetPrefix("[c7nctl] ")
-	log.SetFlags(log.Lshortfile)
+	cmdLog = log.New().WithFields(log.Fields{
+		"pkg": "github.com/choerodon/c7nctl/cmd",
+	})
 }
 
 func main() {
@@ -41,51 +45,51 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+	defer viper.WriteConfig()
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	if envSettings.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
 	if envSettings.CfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(envSettings.CfgFile)
 	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		// Search config in home directory with name ".c7n" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".c7n")
+		// set default configuration is $HOME/.c7n/config.yml
+		viper.AddConfigPath("$HOME/.c7n")
+		viper.SetConfigType("yml")
+		viper.SetConfigName("config")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	// read in environment variables that match
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		//序列化配置文件为CONTEXT结构
+		// TODO new don's used config.yml. so only check it existing ?
 		if err := viper.Unmarshal(&clientPlatformConfig); err != nil {
-			fmt.Println(err)
+			cmdLog.Error(err)
 			os.Exit(1)
-		} else {
+		} /*else {
 			if clientPlatformConfig.CurrentContext == "" {
-				fmt.Println(" You have to define current context!")
+				cmdLog.Error(" You have to define current context!")
 				os.Exit(1)
 			}
 			for _, context := range clientPlatformConfig.Contexts {
 				if context.Name == clientPlatformConfig.CurrentContext {
 					if context.Server == "" {
-						fmt.Println(" You should define a server under the current context!")
+						cmdLog.Error(" You should define a server under the current context!")
 						os.Exit(1)
 					}
 					clientConfig = context
 				}
 			}
 			if clientConfig.Name == "" {
-				fmt.Println(" The current context is not exist!")
+				log.Info(" The current context is not exist!")
 				os.Exit(1)
 			}
-		}
+		}*/
 	}
 }

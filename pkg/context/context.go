@@ -55,7 +55,7 @@ type Context struct {
 	Slaver     *slaver.Slaver
 
 	// configration
-	UserConfig   *config.Config
+	UserConfig   *config.C7nConfig
 	BackendTasks []*BackendTask
 	JobInfo      map[string]JobInfo
 	Mux          sync.Mutex
@@ -69,7 +69,7 @@ type Context struct {
 	RepoUrl       string
 }
 
-func (ctx *Context) GetConfig() *config.Config {
+func (ctx *Context) GetConfig() *config.C7nConfig {
 	return ctx.UserConfig
 }
 

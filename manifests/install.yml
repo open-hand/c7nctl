@@ -554,9 +554,6 @@ spec:
     requirements:
     - postgresql
     - gitlab
-    preValues:
-    - name: GITLAB_RUNNER_TOKEN
-      value: "{{ ( randomLowCaseToken 30) }}"
     values:
     - name: "rbac.create"
       value: "true"
@@ -570,9 +567,9 @@ spec:
     - name: "env.environment.CHOERODON_URL"
       value: '{{ ( getResource "api-gateway").Schema }}://{{ ( getResource "api-gateway").Domain }}'
       # TODO
-    - name: "env.persistence.maven_pvc"
+    - name: "env.persistence.gitlab-runner-maven"
       value: "/root/.m2"
-    - name: "env.persistence.cache_pvc"
+    - name: "env.persistence.gitlab-runner-cache"
       value: "/cache"
     - name: "enabled_mount_host_docker_sock"
       value: "true"
@@ -591,7 +588,7 @@ spec:
     - name: gitlab-runner-cache
       path: gitlab-runner/cache
       mode: "755"
-      accessModes: 
+      accessModes:
       - ReadWriteMany
       size: 20Gi
       pvcEnabled: true
@@ -610,3 +607,110 @@ spec:
             ( '{{ getReleaseValue "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
       infraRef: gitlab
       database: gitlabhq_production
+  component:
+    - name: mysql
+      chart: mysql
+      version: 0.1.4
+      values:
+        - name: "env.MYSQL_ROOT_PASSWORD"
+          value: "admin"
+          input:
+            enabled: true
+            regex: ".+"
+            password: true
+            tip: "请输入您要设置的mysql密码(不能为纯数字):"
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.storageClass"
+          value: "nfs-provisioner"
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入mysql使用的storageClass:"
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.enabled"
+          value: "true"
+        - name: "persistence.size"
+          value: "20Gi"
+        - name: "config.character_set_server"
+          value: "utf8mb4"
+        - name: "config.collation_server"
+          value: "utf8mb4_general_ci"
+        - name: "config.lower_case_table_names"
+          value: "1"
+        - name: "config.max_allowed_packet"
+          value: "32M"
+        - name: "config.max_connections"
+          value: "1500"
+
+    - name: redis
+      chart: redis
+      version: 0.2.5
+      resource:
+        # svc name = release name
+        host: '{{ getReleaseName "redis" }}'
+        port: 6379
+      values:
+        - name: "service.enabled"
+          value: "true"
+    - name: minio
+      chart: minio
+      version: 5.0.4
+      resource:
+        host: minio
+        port: 9000
+        schema: http
+      requirements:
+      values:
+        - name: "ingress.hosts[0]"
+          value: "minio.example.choerodon.io"
+          input:
+            enabled: true
+            regex: ".+"
+            tip: "请输入 minio 的域名: "
+            password: false
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "accessKey"
+          value: "admin"
+          input:
+            enabled: true
+            regex: ".{3,}"
+            tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字): "
+            password: false
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "secretKey"
+          value: "choerodon"
+          input:
+            enabled: true
+            password: true
+            regex: ".{8,40}"
+            tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字): "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "mode"
+          value: "distributed"
+        - name: "persistence.enabled"
+          value: "true"
+        - name: "persistence.storageClass"
+          value: "nfs-provisioner"
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入mysql使用的storageClass: "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.size"
+          value: "50Gi"
+        - name: "ingress.enabled"
+          value: "true"

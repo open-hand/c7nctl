@@ -13,7 +13,7 @@ const (
 	PersistenceHostPathType     = "hostPath"
 )
 
-type Config struct {
+type C7nConfig struct {
 	Version  string
 	Metadata Metadata
 	Spec     Spec
@@ -68,11 +68,11 @@ type HostPath struct {
 	Path     string `yaml:"path"`
 }
 
-func (c *Config) GetStorageClassName() string {
+func (c *C7nConfig) GetStorageClassName() string {
 	return c.Spec.Persistence.StorageClassName
 }
 
-func (c *Config) IgnorePv() bool {
+func (c *C7nConfig) IgnorePv() bool {
 	if c.GetStorageClassName() == "" {
 		return false
 	}
@@ -84,7 +84,7 @@ func (c *Config) IgnorePv() bool {
 	return false
 }
 
-func (c *Config) GetResource(key string) *Resource {
+func (c *C7nConfig) GetResource(key string) *Resource {
 	if c == nil {
 		return nil
 	}
@@ -97,7 +97,7 @@ func (c *Config) GetResource(key string) *Resource {
 	return nil
 }
 
-func (c *Config) GetHelmValuesTpl(key string) ([]byte, error) {
+func (c *C7nConfig) GetHelmValuesTpl(key string) ([]byte, error) {
 	if c == nil {
 		return nil, nil
 	}

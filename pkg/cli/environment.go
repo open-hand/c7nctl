@@ -3,20 +3,17 @@ package cli
 import "github.com/spf13/pflag"
 
 type EnvSettings struct {
+	// choerodon configuration file
 	CfgFile string
-	OrgCode string
-	ProCode string
+	// log level, default is info
+	Debug bool
 }
 
 func New() *EnvSettings {
-	env := EnvSettings{}
-
-	return &env
+	return &EnvSettings{}
 }
 
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&s.CfgFile, "config", "", "config file (default is $HOME/.c7n.yaml)")
-	fs.StringVarP(&s.OrgCode, "orgCode", "o", "", "org code")
-	fs.StringVarP(&s.ProCode, "proCode", "p", "", "pro code")
-	// 去掉了 toggle
+	fs.StringVar(&s.CfgFile, "config", "", "Specify the choerodon configuration file (default is $HOME/.c7n/config.yml)")
+	fs.BoolVarP(&s.Debug, "debug", "d", false, "Set up the log level Whether it is debug")
 }

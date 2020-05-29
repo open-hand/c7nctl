@@ -10,8 +10,8 @@ import (
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	log "github.com/sirupsen/logrus"
 	"github.com/vinkdong/gox/http/downloader"
-	"github.com/vinkdong/gox/log"
 	core_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -104,7 +104,7 @@ func (pi *ReleaseJob) ExecuteSql(infra *Release, sqlType string) error {
 
 	news := context.Ctx.GetSucceedTask(pi.Name, infra.Name, context.SqlTask)
 	if news != nil {
-		log.Successf("task %s had executed", pi.Name)
+		log.Info("task %s had executed", pi.Name)
 		return nil
 	}
 	log.Infof("executing %s , %s", infra.Name, pi.Name)
@@ -172,7 +172,6 @@ func (p *PreValue) renderValue() error {
 
 	var value string
 	if p.Input.Enabled && !context.Ctx.SkipInput {
-		log.Lock()
 		var err error
 		if p.Input.Password {
 			p.Input.Twice = true
@@ -180,7 +179,6 @@ func (p *PreValue) renderValue() error {
 		} else {
 			value, err = utils.AcceptUserInput(p.Input)
 		}
-		log.Unlock()
 		if err != nil {
 			log.Error(err)
 			os.Exit(128)
@@ -235,7 +233,7 @@ func (pi *ReleaseJob) ExecuteRequests(infra *Release) error {
 	}
 	news := context.Ctx.GetSucceedTask(pi.Name, infra.Name, context.HttpGetTask)
 	if news != nil {
-		log.Successf("task %s had executed", pi.Name)
+		log.Info("task %s had executed", pi.Name)
 		return nil
 	}
 
@@ -505,7 +503,7 @@ func (rls *Release) Run() error {
 	news := context.Ctx.GetSucceed(rls.Name, context.ReleaseTYPE)
 
 	if news != nil {
-		log.Successf("using exist release %s", news.RefName)
+		log.Info("using exist release %s", news.RefName)
 		if news.Status != context.SucceedStatus {
 			//rls.PreValues = news.PreValue
 			rls.ExecuteAfterTasks()
@@ -596,11 +594,39 @@ func (rls *Release) Install() error {
 	return nil
 }
 
+func (rls *Release) InstallComponent() error {
+
+	values := rls.HelmValues()
+	releaseName := rls.Name
+	if rls.Prefix != "" {
+		releaseName = fmt.Sprintf("%s-%s", context.Ctx.Prefix, rls.Name)
+	}
+	chartArgs := client.ChartArgs{
+		ReleaseName: releaseName,
+		Namespace:   context.Ctx.Namespace,
+		RepoUrl:     context.Ctx.RepoUrl,
+		Verify:      false,
+		Version:     rls.Version,
+		ChartName:   rls.Chart,
+	}
+
+	log.Infof("installing %s", rls.Name)
+	for _, k := range values {
+		log.Debug(k)
+	}
+	if rls.Timeout > 0 {
+		values = append(values, fmt.Sprintf("preJob.timeout=%d", rls.Timeout))
+	}
+	// raw := rls.ValuesRaw()
+	err := context.Ctx.HelmClient.InstallRelease(values, "", chartArgs)
+	return err
+}
+
 //
 func (rls *Release) ExecuteAfterTasks() error {
 	checkReleasePodRunning(rls.Name)
 
-	log.Successf("%s: started, will execute required commands and requests", rls.Name)
+	log.Info("%s: started, will execute required commands and requests", rls.Name)
 	err := rls.executeExternalFunc(rls.AfterInstall)
 	if err != nil {
 		log.Error(err)
@@ -613,7 +639,7 @@ func (rls *Release) executeAfterTasks(task *context.BackendTask) error {
 	// TODO
 	checkReleasePodRunning(rls.Name)
 
-	log.Successf("%s: started, will execute required commands and requests", rls.Name)
+	log.Info("%s: started, will execute required commands and requests", rls.Name)
 	err := rls.executeExternalFunc(rls.AfterInstall)
 	if err != nil {
 		log.Error(err)

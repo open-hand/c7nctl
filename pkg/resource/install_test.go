@@ -43,7 +43,7 @@ func TestHelmValues(t *testing.T) {
 			Name: "test-name-1",
 		}
 		context.Ctx = context.Context{
-			UserConfig: &config.Config{
+			UserConfig: &config.C7n_Config{
 				Spec: config.Spec{
 					Persistence: config.Persistence{
 						StorageClassName: "",
@@ -63,7 +63,7 @@ func TestGetInfra(t *testing.T) {
 	}
 	resource["gitlab"] = gitlabResource
 
-	c := &config.Config{
+	c := &config.C7nConfig{
 		Spec: config.Spec{
 			Resources: resource,
 		},
@@ -86,7 +86,7 @@ func TestGetInfra(t *testing.T) {
 func TestCleanJobs(t *testing.T) {
 	/*	i := Install{
 			Client: kube.GetClient(),
-			UserConfig: &config.Config{
+			UserConfig: &config.C7n_Config{
 				Metadata: config.Metadata{
 					Namespace: "test",
 				},

@@ -41,6 +41,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer, args []string) *cob
 	cmd.AddCommand(
 		newInstallC7nCmd(cfg, out, args),
 		newInstallK8sCmd(out, args),
+		newInstallComponentCmd(cfg, args),
 	)
 
 	return cmd

@@ -6,7 +6,7 @@ import (
 	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/vinkdong/gox/log"
+	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
@@ -29,11 +29,12 @@ type InstallC7n struct {
 	// api versions
 	Version string
 	// Choerodon version
-	PassVersion        string
-	ConfigFile         string
+	PassVersion string
+	// choerodon install configuration
+	ConfigFile string
+	// install
 	ResourceFile       string
 	Prefix             string
-	Debug              bool
 	NoTimeout          bool
 	SkipInput          bool
 	Namespace          string
@@ -47,6 +48,7 @@ func NewInstall(cfg *Configuration) *InstallC7n {
 	return &InstallC7n{cfg: cfg}
 }
 
+//
 func (i *InstallC7n) Run() error {
 	// 当 version 没有设置时，从 git repo 获取最新版本
 	i.Version = c7n_utils.GetVersion(i.Version)
@@ -87,11 +89,6 @@ func (i *InstallC7n) Run() error {
 		renderRelease(rls)
 	}
 
-	// 清理历史的job
-	if err := cleanJobs(); err != nil {
-		return err
-	}
-
 	releaseGraph := resource.NewReleaseGraph(id)
 	installQueue := releaseGraph.TopoSortByKahn()
 
@@ -103,7 +100,48 @@ func (i *InstallC7n) Run() error {
 		}
 	}
 
+	// 清理历史的job
+	if err := cleanJobs(); err != nil {
+		return err
+	}
+
 	c7n_ctx.Ctx.CheckExist(0)
+	return nil
+}
+
+func (i *InstallC7n) InstallComponent(cname string) error {
+	i.Version = c7n_utils.GetVersion(i.Version)
+
+	id := i.getInstallDef(nil)
+	c7n_ctx.Ctx.HelmClient = i.cfg.HelmClient
+	c7n_ctx.Ctx.KubeClient = i.cfg.KubeClient
+	c7n_ctx.Ctx.Namespace = i.Namespace
+	c7n_ctx.Ctx.RepoUrl = DefaultRepoUrl
+
+	/*	stopCh := make(chan struct{})
+		// TODO move method PrepareSlaver()
+		s, err := id.PrepareSlaver(stopCh)
+		if err != nil {
+			return err
+		}
+
+		c7n_ctx.Ctx.Slaver = s
+		defer func() {
+			stopCh <- struct{}{}
+		}()*/
+
+	for _, rls := range id.Spec.Component {
+		if rls.Name == cname {
+			renderComponent(rls)
+
+			rls.Name = rls.Name + "-" + c7n_utils.RandomString(5)
+			if err := rls.InstallComponent(); err != nil {
+				return err
+			} else {
+				break
+			}
+		}
+	}
 	return nil
 }
 
@@ -151,6 +189,13 @@ func renderRelease(rls *resource.Release) {
 	}
 }
 
+func renderComponent(rls *resource.Release) {
+	renderValues(rls)
+	rlsByte, _ := yaml_v2.Marshal(rls)
+	renderedRls := c7n_utils.RenderRelease(rls.Name, string(rlsByte))
+	_ = yaml_v2.Unmarshal(renderedRls, rls)
+}
+
 func checkReleaseDomain(rls *resource.Release) error {
 	for _, v := range rls.Values {
 		if v.Check == "clusterdomain" {
@@ -175,7 +220,6 @@ func renderValues(rls *resource.Release) {
 	for idx, v := range rls.Values {
 		// 输入 value
 		if v.Input.Enabled && !c7n_ctx.Ctx.SkipInput {
-			log.Lock()
 			var err error
 			var value string
 			if v.Input.Password {
@@ -186,7 +230,6 @@ func renderValues(rls *resource.Release) {
 			}
 			// v.Values 是复制
 			rls.Values[idx].Value = value
-			log.Unlock()
 			if err != nil {
 				log.Error(err)
 				os.Exit(128)
@@ -237,7 +280,7 @@ func mergerResource(r *resource.Release) {
 }
 
 // 为了避免循环依赖，从 install_definition.go 移到这里
-func (i *InstallC7n) getInstallDef(uc *config.Config) *resource.InstallDefinition {
+func (i *InstallC7n) getInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
 	var rd []byte
 	if i.ResourceFile != "" {
 		rd = c7n_utils.GetResourceFile(false, i.Version, i.ResourceFile)
@@ -272,7 +315,7 @@ func (i *InstallC7n) getInstallDef(uc *config.Config) *resource.InstallDefinitio
 	return installDef
 }
 
-func getUserConfig(filePath string) *config.Config {
+func getUserConfig(filePath string) *config.C7nConfig {
 	if filePath == "" {
 		log.Debugf("no user config defined by `-c`")
 		return nil
@@ -282,7 +325,7 @@ func getUserConfig(filePath string) *config.Config {
 		log.Error(err)
 		os.Exit(124)
 	}
-	userConfig := &config.Config{}
+	userConfig := &config.C7nConfig{}
 	err = yaml_v2.Unmarshal(data, userConfig)
 	if err != nil {
 		log.Error(err)
@@ -307,14 +350,14 @@ func cleanJobs() error {
 			if err := jobInterface.Delete(job.Name, delOpts); err != nil {
 				return err
 			}
-			log.Successf("deleted job %s", job.Name)
+			log.Info("deleted job %s", job.Name)
 		}
 		log.Info(job.Name)
 	}
 	return nil
 }
 
-func initContext(i *InstallC7n, userConfig *config.Config) {
+func initContext(i *InstallC7n, userConfig *config.C7nConfig) {
 	commonLabels := map[string]string{
 		C7nLabelKey: C7nLabelValue,
 	}
@@ -335,8 +378,6 @@ func initContext(i *InstallC7n, userConfig *config.Config) {
 		// TODO 根据 install.yaml 配置
 		RepoUrl: DefaultRepoUrl,
 	}
-	// TODO depends on i.Debug
-	log.EnableDebug()
 }
 
 func checkResource(resources *v1.ResourceRequirements) bool {
