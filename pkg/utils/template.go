@@ -20,6 +20,7 @@ import (
 
 const DatabaseUrlTpl = "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
 
+/*
 func RenderInstallDef(tplStr string) []byte {
 	// context = uc
 	tpl, err := template.New("c7n-install-def").Funcs(c7nFunc).Parse(tplStr)
@@ -35,7 +36,7 @@ func RenderInstallDef(tplStr string) []byte {
 		os.Exit(255)
 	}
 	return intDef.Bytes()
-}
+}*/
 
 func RenderRelease(rlsName, tplStr string) []byte {
 	rls := renderTpl(rlsName, tplStr)
@@ -84,7 +85,7 @@ func getImageRepo(rls string) string {
 // 应该警惕获取的 rls 未安装导致的 value 不完整
 func GetResource(rlsName string) *config.Resource {
 	//news := context.Ctx.GetSucceed(rlsName, context.ReleaseTYPE)
-	ji := context.Ctx.JobInfo[rlsName]
+	_, ji := context.Ctx.GetJobInfo(rlsName)
 	// get info from succeed
 	if ji.Name != "" {
 		return &ji.Resource
@@ -100,7 +101,7 @@ func GetResource(rlsName string) *config.Resource {
 }
 
 func getReleaseValue(rls, valueName string) string {
-	ji := context.Ctx.JobInfo[rls]
+	_, ji := context.Ctx.GetJobInfo(rls)
 	var err error
 	if ji.Name != "" {
 		for _, key := range ji.Values {

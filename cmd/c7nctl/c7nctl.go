@@ -17,6 +17,9 @@ import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/choerodon/c7nctl/pkg/cli"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/consts"
+	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,14 +31,7 @@ var (
 	clientConfig         c7nclient.C7NContext
 
 	envSettings = cli.New()
-	cmdLog      = &log.Entry{}
 )
-
-func init() {
-	cmdLog = log.New().WithFields(log.Fields{
-		"pkg": "github.com/choerodon/c7nctl/cmd",
-	})
-}
 
 func main() {
 	actionConfig := action.NewCfg()
@@ -58,38 +54,25 @@ func initConfig() {
 		viper.SetConfigFile(envSettings.CfgFile)
 	} else {
 		// set default configuration is $HOME/.c7n/config.yml
-		viper.AddConfigPath("$HOME/.c7n")
+		viper.AddConfigPath(consts.DefaultConfigPath)
+		viper.SetConfigName(consts.DefaultConfigFileName)
 		viper.SetConfigType("yml")
-		viper.SetConfigName("config")
 	}
 
 	// read in environment variables that match
 	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		// TODO new don's used config.yml. so only check it existing ?
-		if err := viper.Unmarshal(&clientPlatformConfig); err != nil {
-			cmdLog.Error(err)
-			os.Exit(1)
-		} /*else {
-			if clientPlatformConfig.CurrentContext == "" {
-				cmdLog.Error(" You have to define current context!")
-				os.Exit(1)
-			}
-			for _, context := range clientPlatformConfig.Contexts {
-				if context.Name == clientPlatformConfig.CurrentContext {
-					if context.Server == "" {
-						cmdLog.Error(" You should define a server under the current context!")
-						os.Exit(1)
-					}
-					clientConfig = context
-				}
-			}
-			if clientConfig.Name == "" {
-				log.Info(" The current context is not exist!")
-				os.Exit(1)
-			}
-		}*/
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found; ignore error if desired
+			log.Error(err)
+		} else {
+			// Config file was found but another error was produced
+			c7n_utils.CheckErrAndExit(err, 1)
+		}
 	}
+	log.WithField("config", viper.ConfigFileUsed()).Info("using configuration file")
+	err := viper.Unmarshal(&config.Cfg)
+	c7n_utils.CheckErrAndExit(err, 1)
 }

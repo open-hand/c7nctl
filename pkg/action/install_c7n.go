@@ -2,6 +2,7 @@ package action
 
 import (
 	"encoding/json"
+	std_error "errors"
 	"github.com/choerodon/c7nctl/pkg/config"
 	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
@@ -24,7 +25,7 @@ const (
 	C7nLabelValue  = "c7n-installer"
 )
 
-type InstallC7n struct {
+type Choerodon struct {
 	cfg *Configuration
 	// api versions
 	Version string
@@ -32,7 +33,7 @@ type InstallC7n struct {
 	PassVersion string
 	// choerodon install configuration
 	ConfigFile string
-	// install
+	// install resource
 	ResourceFile       string
 	Prefix             string
 	NoTimeout          bool
@@ -44,23 +45,23 @@ type InstallC7n struct {
 	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
-func NewInstall(cfg *Configuration) *InstallC7n {
-	return &InstallC7n{cfg: cfg}
+func NewInstall(cfg *Configuration) *Choerodon {
+	return &Choerodon{cfg: cfg}
 }
 
-//
-func (i *InstallC7n) Run() error {
+func (i *Choerodon) Run() error {
 	// 当 version 没有设置时，从 git repo 获取最新版本
-	i.Version = c7n_utils.GetVersion(i.Version)
+	if i.Version == "" {
+		i.Version = c7n_utils.GetVersion("master")
+	}
 
 	userConfig := getUserConfig(i.ConfigFile)
 	if userConfig == nil {
-		log.Info("need user config file")
-		os.Exit(127)
+		c7n_utils.CheckErrAndExit(std_error.New("need user config file"), 127)
 	}
 
-	initContext(i, userConfig)
 	id := i.getInstallDef(userConfig)
+	i.initContext(userConfig, id)
 
 	// 检查硬件资源
 	if !checkResource(&id.Spec.Resources) {
@@ -71,7 +72,6 @@ func (i *InstallC7n) Run() error {
 	}
 
 	stopCh := make(chan struct{})
-	// TODO move method PrepareSlaver()
 	s, err := id.PrepareSlaver(stopCh)
 	if err != nil {
 		return err
@@ -82,14 +82,15 @@ func (i *InstallC7n) Run() error {
 		stopCh <- struct{}{}
 	}()
 
-	_ = c7n_ctx.Ctx.LoadJobInfoFromCM()
+	err = c7n_ctx.Ctx.LoadJobInfo()
+	c7n_utils.CheckErr(err)
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {
 		// 传入参数的是 *Release
 		renderRelease(rls)
 	}
 
-	releaseGraph := resource.NewReleaseGraph(id)
+	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
 	installQueue := releaseGraph.TopoSortByKahn()
 
 	for !installQueue.IsEmpty() {
@@ -109,7 +110,7 @@ func (i *InstallC7n) Run() error {
 	return nil
 }
 
-func (i *InstallC7n) InstallComponent(cname string) error {
+func (i *Choerodon) InstallComponent(cname string) error {
 	i.Version = c7n_utils.GetVersion(i.Version)
 
 	id := i.getInstallDef(nil)
@@ -117,18 +118,6 @@ func (i *InstallC7n) InstallComponent(cname string) error {
 	c7n_ctx.Ctx.KubeClient = i.cfg.KubeClient
 	c7n_ctx.Ctx.Namespace = i.Namespace
 	c7n_ctx.Ctx.RepoUrl = DefaultRepoUrl
-
-	/*	stopCh := make(chan struct{})
-		// TODO move method PrepareSlaver()
-		s, err := id.PrepareSlaver(stopCh)
-		if err != nil {
-			return err
-		}
-
-		c7n_ctx.Ctx.Slaver = s
-		defer func() {
-			stopCh <- struct{}{}
-		}()*/
 
 	for _, rls := range id.Spec.Component {
 		if rls.Name == cname {
@@ -146,10 +135,10 @@ func (i *InstallC7n) InstallComponent(cname string) error {
 }
 
 func renderRelease(rls *resource.Release) {
-	ji := c7n_ctx.Ctx.GetJobInfo(rls.Name)
+	_, ji := c7n_ctx.Ctx.GetJobInfo(rls.Name)
 
 	if ji.Name == "" {
-		ji = c7n_ctx.JobInfo{
+		ji = &c7n_ctx.JobInfo{
 			Name:      rls.Name,
 			Namespace: c7n_ctx.Ctx.Namespace,
 			Type:      c7n_ctx.ReleaseTYPE,
@@ -279,16 +268,10 @@ func mergerResource(r *resource.Release) {
 	}
 }
 
-// 为了避免循环依赖，从 install_definition.go 移到这里
-func (i *InstallC7n) getInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
-	var rd []byte
-	if i.ResourceFile != "" {
-		rd = c7n_utils.GetResourceFile(false, i.Version, i.ResourceFile)
-	} else {
-		rd = c7n_utils.GetResourceFile(true, i.Version, c7n_utils.InstallConfigPath)
-	}
-	// 只获取 installDef，不做全局渲染，gitlab Token 需要手动获取
-	// rdRender := c7n_utils.RenderInstallDef(string(rd))
+// 为了避免循环依赖，从 resource.install.go 移到这里
+func (i *Choerodon) getInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
+	// 在 getVersion 之后执行，已经确保了 i.Version 一定有值
+	rd := c7n_utils.GetInstallDefinition(i.ConfigFile, i.Version)
 
 	installDef := &resource.InstallDefinition{}
 	rdJson, err := yaml.ToJSON(rd)
@@ -298,7 +281,6 @@ func (i *InstallC7n) getInstallDef(uc *config.C7nConfig) *resource.InstallDefini
 	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
 	_ = json.Unmarshal(rdJson, installDef)
 
-	// TODO PaasVersion and Timeout is necessary?
 	installDef.PaaSVersion = i.Version
 	if i.NoTimeout {
 		installDef.Timeout = 60 * 60 * 24
@@ -317,20 +299,16 @@ func (i *InstallC7n) getInstallDef(uc *config.C7nConfig) *resource.InstallDefini
 
 func getUserConfig(filePath string) *config.C7nConfig {
 	if filePath == "" {
-		log.Debugf("no user config defined by `-c`")
+		log.Debug("no user config defined by `-c`")
 		return nil
 	}
 	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Error(err)
-		os.Exit(124)
-	}
+	c7n_utils.CheckErrAndExit(err, 124)
+
 	userConfig := &config.C7nConfig{}
 	err = yaml_v2.Unmarshal(data, userConfig)
-	if err != nil {
-		log.Error(err)
-		os.Exit(124)
-	}
+	c7n_utils.CheckErrAndExit(err, 124)
+
 	return userConfig
 }
 
@@ -357,7 +335,7 @@ func cleanJobs() error {
 	return nil
 }
 
-func initContext(i *InstallC7n, userConfig *config.C7nConfig) {
+func (i *Choerodon) initContext(userConfig *config.C7nConfig, id *resource.InstallDefinition) {
 	commonLabels := map[string]string{
 		C7nLabelKey: C7nLabelValue,
 	}
@@ -372,11 +350,10 @@ func initContext(i *InstallC7n, userConfig *config.C7nConfig) {
 		CommonLabels: i.CommonLabels,
 		UserConfig:   userConfig,
 		Metrics:      c7n_ctx.Metrics{},
-		JobInfo:      map[string]c7n_ctx.JobInfo{},
+		JobInfo:      []*c7n_ctx.JobInfo{},
 		SkipInput:    i.SkipInput,
 		Prefix:       i.Prefix,
-		// TODO 根据 install.yaml 配置
-		RepoUrl: DefaultRepoUrl,
+		RepoUrl:      id.Spec.Basic.RepoURL,
 	}
 }
 
@@ -411,7 +388,7 @@ func checkNamespace() bool {
 	_, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Get(c7n_ctx.Ctx.UserConfig.Metadata.Namespace, meta_v1.GetOptions{})
 	if err != nil {
 		if errorStatus, ok := err.(*errors.StatusError); ok {
-			if errorStatus.ErrStatus.Code == 404 && c7n_utils.CreateNamespace() {
+			if errorStatus.ErrStatus.Code == 404 && CreateNamespace() {
 				return true
 			}
 		}
@@ -419,5 +396,20 @@ func checkNamespace() bool {
 		return false
 	}
 	log.Infof("namespace %s already exists", c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
+	return true
+}
+
+func CreateNamespace() bool {
+	ns := &v1.Namespace{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name: c7n_ctx.Ctx.UserConfig.Metadata.Namespace,
+		},
+	}
+	namespace, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Create(ns)
+	log.Infof("creating namespace %s", namespace.Name)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
 	return true
 }

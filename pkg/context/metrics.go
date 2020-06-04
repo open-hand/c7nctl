@@ -3,9 +3,8 @@ package context
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
-	"github.com/vinkdong/gox/log"
 	"net"
 	"net/http"
 	"sync"
@@ -25,6 +24,7 @@ type Metrics struct {
 	Mail       string
 }
 
+// TODO is move to pkg consts ?
 const (
 	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
 	ipAddr     = "ns1.dnspod.net:6666"
@@ -56,9 +56,10 @@ func (m *Metrics) pack() []byte {
 	)
 
 	enc := codec.NewEncoderBytes(&b, &mh)
+
 	err := enc.Encode(m)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	return b
 }

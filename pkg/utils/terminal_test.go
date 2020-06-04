@@ -1,15 +1,18 @@
 package utils
 
-import "testing"
+import (
+	"github.com/choerodon/c7nctl/pkg/context"
+	"testing"
+)
 
 //func TestAskAgreeTerms(t *testing.T){
 //	AskAgreeTerms()
 //}
 
 func TestCheckMatch(t *testing.T) {
-	input := Input{
+	input := context.Input{
 		Regex:   "^\\S{8}$",
-		Include: []KV{KV{Name: "必须包含数字", Value: "\\d+"}, KV{Name: "必须包含大写", Value: "[A-Z]+"}},
+		Include: []context.KV{context.KV{Name: "必须包含数字", Value: "\\d+"}, context.KV{Name: "必须包含大写", Value: "[A-Z]+"}},
 	}
 
 	if CheckMatch("abcdef", input) {

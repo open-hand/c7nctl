@@ -2,12 +2,12 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
+	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/context"
-	"github.com/choerodon/c7nctl/pkg/utils"
+	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-
 	"io"
 )
 
@@ -29,8 +29,7 @@ func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *
 		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg.InitCfg()
-			err := installC7n(install)
-			if err != nil {
+			if err := installC7n(install); err != nil {
 				return err
 			}
 			return nil
@@ -52,48 +51,47 @@ func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *
 	return cmd
 }
 
-func installC7n(install *action.InstallC7n) error {
-	c, err := utils.GetConfig()
-	if err != nil {
-		cmdLog.Error(err)
-		return err
-	}
+func installC7n(install *action.Choerodon) error {
+
 	// set user config. default is $HOME/.c7n/config.yaml
-	setUserConfig(c, install)
+	setUserConfig(install)
 
 	if err := install.Run(); err != nil {
-		cmdLog.Error("InstallC7n failed")
+		log.Error("Choerodon failed")
 		return err
 	}
-	cmdLog.Info("InstallC7n succeed")
+	log.Info("Choerodon succeed")
 	return nil
 }
 
-func addInstallFlags(fs *pflag.FlagSet, client *action.InstallC7n) {
+func addInstallFlags(fs *pflag.FlagSet, client *action.Choerodon) {
 	fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
-	fs.StringVarP(&client.ConfigFile, "--c7n-config", "c", "", "User Config file to read from, User define config by this file")
+	fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
 	fs.StringVar(&client.Version, "version", "", "specify a version")
 	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
 	fs.BoolVar(&client.SkipInput, "skip-input", false, "use default username and password to avoid user input")
 }
 
-func setUserConfig(c *utils.Config, client *action.InstallC7n) {
+func setUserConfig(client *action.Choerodon) {
+	// 在 c7nctl.initConfig() 中 viper 获取了默认的配置文件
+	c := config.Cfg
 	if !c.Terms.Accepted && !client.SkipInput {
-		utils.AskAgreeTerms()
-		mail, err := utils.AcceptUserInput(context.Input{
-			Password: false,
-			Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
-			Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-		})
-		if err != nil {
-			log.Error(err)
-		}
+		c7n_utils.AskAgreeTerms()
+		mail := inputUserMail()
 		c.Terms.Accepted = true
 		c.OpsMail = mail
-
-		_ = c.Write()
 	} else {
 		log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 	}
+}
+
+func inputUserMail() string {
+	mail, err := c7n_utils.AcceptUserInput(context.Input{
+		Password: false,
+		Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
+		Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+	})
+	c7n_utils.CheckErr(err)
+	return mail
 }

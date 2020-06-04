@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -21,12 +22,12 @@ func newInstallComponentCmd(cfg *action.Configuration, args []string) *cobra.Com
 		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg.InitCfg()
-			cmdLog.Info("Starting install component ", args[0])
+			log.Info("Starting install component ", args[0])
 			if err := install.InstallComponent(args[0]); err != nil {
-				cmdLog.Error("Install component failed")
+				log.Error("Install component failed")
 				return err
 			}
-			cmdLog.Info("Install component succeed")
+			log.Info("Install component succeed")
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) { cfg.HelmClient.Teardown() },
@@ -45,7 +46,7 @@ func newInstallComponentCmd(cfg *action.Configuration, args []string) *cobra.Com
 	return cmd
 }
 
-func addInstallComponentFlags(fs *pflag.FlagSet, i *action.InstallC7n) {
+func addInstallComponentFlags(fs *pflag.FlagSet, i *action.Choerodon) {
 	fs.StringVarP(&i.Namespace, "namespace", "n", "default", "Namespace Which installed component")
 	fs.StringVarP(&i.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
 

@@ -70,21 +70,28 @@ func (g *Graph) TopoSortByKahn() *QueueRelease {
 	return result
 }
 
-func NewReleaseGraph(id *InstallDefinition) *Graph {
+func NewReleaseGraph(rls []*Release) *Graph {
 	var graph = Graph{}
 
-	//
-	for _, rls := range id.Spec.Release {
-		graph.AddVertex(rls)
+	for _, r := range rls {
+		graph.AddVertex(r)
 	}
-	for _, rls := range id.Spec.Release {
-		for _, r := range rls.Requirements {
-			// TODO Check release nil
-			requirements := id.GetRelease(r)
-
-			graph.AddEdges(requirements, rls)
+	for _, r := range rls {
+		for _, rName := range r.Requirements {
+			if requirements := checkRequirements(rName, rls); requirements != nil {
+				graph.AddEdges(requirements, r)
+			}
 		}
 	}
 
 	return &graph
+}
+
+func checkRequirements(rName string, rls []*Release) *Release {
+	for _, r := range rls {
+		if rName == r.Name {
+			return r
+		}
+	}
+	return nil
 }

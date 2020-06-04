@@ -26,16 +26,17 @@ var (
 	ResourceFile string
 )
 
+const installDesc = `
+install [command] [flags]
+`
+
 // installCmd represents the resource command
 func newInstallCmd(cfg *action.Configuration, out io.Writer, args []string) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "InstallC7n Choerodon in kubernetes with the given config",
-		Long:  `InstallC7n Choerodon quickly.`,
-		RunE: func(c *cobra.Command, args []string) error {
-			return c.Help()
-		},
+		Short: "Install choerodon、kubernetes or component.",
+		Long:  installC7nDesc,
 	}
 
 	cmd.AddCommand(

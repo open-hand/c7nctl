@@ -1,25 +1,16 @@
 package utils
 
-import (
-	"fmt"
-	"github.com/choerodon/c7nctl/pkg/context"
-	"github.com/vinkdong/gox/log"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-)
-
 const cmName = "c7n-input-values"
 
+/*
 func GetInputValue(key string) string {
-	cm := getOrCreateCm(cmName)
+	//cm := getOrCreateCm(cmName)
 	return cm.Data[key]
 }
 
 func SaveInputValue(key, value string) {
 	if value != "" {
-		saveToCm(cmName, key, value)
+		//saveToCm(cmName, key, value)
 	}
 }
 
@@ -63,3 +54,4 @@ func getOrCreateCm(cmName string) *v1.ConfigMap {
 	}
 	return cm
 }
+*/

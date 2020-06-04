@@ -24,30 +24,9 @@ func AskAgreeTerms() {
 		log.Error(err)
 		os.Exit(127)
 	}
+	// 拒绝协议，直接退出
 	if r == "n" || r == "N" {
 		os.Exit(151)
-	}
-}
-
-func AcceptArrayUserInput(input context.Input) ([]string, error) {
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Println(input.Tip)
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		strs := strings.Fields(text)
-		isMatch := true
-		for _, s := range strs {
-			if !CheckMatch(s, input) {
-				isMatch = false
-				break
-			}
-		}
-		if isMatch {
-			return strs, nil
-		}
 	}
 }
 

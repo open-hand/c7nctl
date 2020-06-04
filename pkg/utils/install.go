@@ -2,8 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/context"
-	v1 "k8s.io/api/core/v1"
+	"github.com/choerodon/c7nctl/pkg/config"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -19,16 +18,19 @@ const (
 	UpgradeConfigPath = "upgrade.yml"
 
 	githubResourceUrl = "https://cdn.jsdelivr.net/gh/yidaqiang/c7nctl@%s/manifests/%s"
-	fileResource      = "https://file.choerodon.com.cn/choerodon-install/%s/%s"
+	fileResourceUrl   = "https://file.choerodon.com.cn/choerodon-install/%s/%s"
 )
 
-type Versions struct {
-	Versions []Version
-}
-
-type Version struct {
-	Version string
-	Status  string
+func GetInstallDefinition(file string, version string) (rd []byte) {
+	if file != "" {
+		url := fmt.Sprintf(githubResourceUrl, version, InstallConfigPath)
+		rd = GetRemoteResource(url)
+	} else {
+		var err error
+		rd, err = ioutil.ReadFile(file)
+		CheckErrAndExit(err, 127)
+	}
+	return rd
 }
 
 func GetResourceFile(isRemote bool, version, filepath string) (rd []byte) {
@@ -51,15 +53,16 @@ func GetResourceFile(isRemote bool, version, filepath string) (rd []byte) {
 	return rd
 }
 
-func GetVersion(version string) string {
-	if version == "" {
-		version = "master"
+// 获取最新的
+func GetVersion(branch string) string {
+	if branch == "" {
+		branch = "master"
 	}
-	url := fmt.Sprintf(githubResourceUrl, version, VersionPath)
-	// TODO CheckNetWork error
+	url := fmt.Sprintf(githubResourceUrl, branch, VersionPath)
 	vd := GetRemoteResource(url)
-	versions := Versions{}
-	yaml_v2.Unmarshal(vd, &versions)
+	versions := config.Versions{}
+	err := yaml_v2.Unmarshal(vd, &versions)
+	CheckErr(err)
 
 	for _, v := range versions.Versions {
 		if v.Status == "stable" {
@@ -78,19 +81,4 @@ func GetClusterResource(client kubernetes.Interface) (int64, int64) {
 		sumCpu += v.Status.Capacity.Cpu().Value()
 	}
 	return sumMemory, sumCpu
-}
-
-func CreateNamespace() bool {
-	ns := &v1.Namespace{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name: context.Ctx.UserConfig.Metadata.Namespace,
-		},
-	}
-	namespace, err := (*context.Ctx.KubeClient).CoreV1().Namespaces().Create(ns)
-	log.Infof("creating namespace %s", namespace.Name)
-	if err != nil {
-		log.Error(err)
-		return false
-	}
-	return true
 }

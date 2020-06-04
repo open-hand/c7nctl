@@ -7,6 +7,9 @@ const (
 )
 
 const (
+	DefaultConfigFileName = "c7nctl"
+	DefaultConfigPath     = "$HOME/.c7n"
+
 	DefaultRepoUrl = "https://openchart.choerodon.com.cn/choerodon/c7n/"
 	C7nLabelKey    = "c7n-usage"
 	C7nLabelValue  = "c7n-installer"

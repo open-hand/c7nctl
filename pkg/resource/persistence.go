@@ -30,15 +30,15 @@ type Persistence struct {
 	MountOptions []string
 }
 
-func (p *Persistence) PrepareNews() *context.JobInfo {
-	news := &context.JobInfo{
+func (p *Persistence) PrepareJobInfo() *context.JobInfo {
+	ji := &context.JobInfo{
 		Name:      p.Name,
 		Namespace: p.Namespace,
 		Type:      context.PvType,
 		Status:    context.SucceedStatus,
 		RefName:   p.RefPvName,
 	}
-	return news
+	return ji
 }
 
 // Get exist pv
@@ -70,9 +70,9 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	if news := context.Ctx.GetSucceed(p.Name, context.PvType); news != nil {
-		log.Infof("using exist pv [%s]", news.RefName)
-		p.RefPvName = news.RefName
+	if _, ji := context.Ctx.GetJobInfo(p.Name); ji != nil && ji.Type == context.PvType {
+		log.Infof("using exist pv [%s]", ji.RefName)
+		p.RefPvName = ji.RefName
 		return nil
 	}
 
@@ -107,8 +107,8 @@ func (p *Persistence) CheckOrCreatePvc() error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	if news := context.Ctx.GetSucceed(p.Name, context.PvcType); news != nil {
-		p.RefPvcName = news.RefName
+	if _, ji := context.Ctx.GetJobInfo(p.Name); ji != nil && ji.Type == context.PvType {
+		p.RefPvcName = ji.RefName
 		return nil
 	}
 checkpvc:
@@ -154,8 +154,8 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 		},
 	}
 
-	news := p.PrepareNews()
-	defer context.Ctx.SaveNews(news)
+	news := p.PrepareJobInfo()
+	defer context.Ctx.AddJobInfo(news)
 
 	_, err := client.CoreV1().PersistentVolumes().Create(pv)
 	if err != nil {
@@ -198,17 +198,17 @@ func (p *Persistence) CreatePvc() error {
 		},
 	}
 
-	news := p.PrepareNews()
-	news.Type = context.PvcType
-	news.RefName = p.RefPvcName
+	ji := p.PrepareJobInfo()
+	ji.Type = context.PvcType
+	ji.RefName = p.RefPvcName
 
-	defer context.Ctx.SaveNews(news)
+	defer context.Ctx.AddJobInfo(ji)
 
 	_, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Create(pvc)
 	if err != nil {
 		log.Error(err)
-		news.Status = context.FailedStatus
-		news.Reason = err.Error()
+		ji.Status = context.FailedStatus
+		ji.Reason = err.Error()
 		return err
 	}
 	log.Successf("created pvc [%s]", p.RefPvcName)

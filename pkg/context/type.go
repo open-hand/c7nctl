@@ -37,7 +37,7 @@ type KV struct {
 	Value string
 }
 
-// i want use log but it make ...
+// JobInfo 包含了两类
 type JobInfo struct {
 	Name      string
 	Namespace string
