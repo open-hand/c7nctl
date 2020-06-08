@@ -5,7 +5,8 @@ import (
 	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/vinkdong/gox/log"
+	log "github.com/sirupsen/logrus"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,7 +164,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 		news.Reason = err.Error()
 		return err
 	}
-	log.Successf("created pv [%s]", p.RefPvName)
+	log.Info("created pv [%s]", p.RefPvName)
 	return nil
 }
 
@@ -211,6 +212,6 @@ func (p *Persistence) CreatePvc() error {
 		ji.Reason = err.Error()
 		return err
 	}
-	log.Successf("created pvc [%s]", p.RefPvcName)
+	log.Info("created pvc [%s]", p.RefPvcName)
 	return nil
 }

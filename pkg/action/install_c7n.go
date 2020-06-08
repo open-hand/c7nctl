@@ -71,6 +71,9 @@ func (i *Choerodon) Run() error {
 		os.Exit(127)
 	}
 
+	err := c7n_ctx.Ctx.LoadJobInfo()
+	c7n_utils.CheckErr(err)
+
 	stopCh := make(chan struct{})
 	s, err := id.PrepareSlaver(stopCh)
 	if err != nil {
@@ -82,8 +85,6 @@ func (i *Choerodon) Run() error {
 		stopCh <- struct{}{}
 	}()
 
-	err = c7n_ctx.Ctx.LoadJobInfo()
-	c7n_utils.CheckErr(err)
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {
 		// 传入参数的是 *Release
@@ -172,7 +173,7 @@ func renderRelease(rls *resource.Release) {
 		c7n_ctx.Ctx.UpdateJobInfo(ji)
 	}
 	// 当 rls 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-	if ji.Status == c7n_ctx.RenderedStatus {
+	if ji.Status == c7n_ctx.RenderedStatus || ji.Status == c7n_ctx.FailedStatus {
 		rls.Values = ji.Values
 		rls.Resource = &ji.Resource
 	}

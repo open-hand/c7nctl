@@ -25,15 +25,15 @@ func newInstallK8sCmd(out io.Writer, args []string) *cobra.Command {
 }
 
 func addInstallK8sFlag(fs *pflag.FlagSet, install *action.InstallK8s) {
-	fs.StringVar(&install.Ssh.Username, "user", "root", "servers user name for ssh")
-	fs.StringVar(&install.Ssh.Password, "passwd", "", "password for ssh")
-	fs.StringVar(&install.Ssh.PkFile, "pk", "/root/.ssh/id_rsa", "private key for ssh")
+	fs.StringVar(&install.Ssh.AnsibleUser, "user", "root", "servers user name for ssh")
+	fs.IntVar(&install.Ssh.AnsiblePort, "port", 22, "password for ssh")
+	fs.StringVar(&install.Ssh.AnsiblePassword, "password", "", "password for ssh")
 
 	fs.StringVar(&install.VIP, "vip", "", "virtual ip")
-	fs.StringSliceVar(&install.MasterIPs, "master", []string{}, "kubernetes multi-masters ex. 192.168.0.2-192.168.0.4")
-	fs.StringSliceVar(&install.NodeIPs, "node", []string{}, "kubernetes multi-nodes ex. 192.168.0.5-192.168.0.5")
+	fs.StringSliceVar(&install.MasterIPs, "master", []string{}, "kubernetes multi-masters")
+	fs.StringSliceVar(&install.NodeIPs, "node", []string{}, "kubernetes multi-nodes")
 
-	fs.StringVar(&install.Version, "version", "v1.14.1", "version is kubernetes version")
+	fs.StringVar(&install.Version, "version", "v1.16.9", "version is kubernetes version")
 	/*fs.StringVar(&install.Repo, "repo", "k8s.gcr.io", "choose a container registry to pull control plane images from")
 	fs.StringVar(&install.PodCIDR, "podcidr", "100.64.0.0/10", "Specify range of IP addresses for the pod network")
 	fs.StringVar(&install.SvcCIDR, "svccidr", "10.96.0.0/12", "Use alternative range of IP address for service VIPs")

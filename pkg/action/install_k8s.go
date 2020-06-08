@@ -2,10 +2,13 @@ package action
 
 import (
 	"bytes"
+	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/consts"
+	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/go-git/go-git/v5"
 	"github.com/mitchellh/go-homedir"
-	"github.com/vinkdong/gox/log"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
 	"net"
@@ -31,7 +34,7 @@ helm init \
 
 type InstallK8s struct {
 	Cfg       Configuration
-	Ssh       SSHConfig
+	Ssh       client.Host
 	Hosts     []string
 	MasterIPs []string
 	NodeIPs   []string
@@ -40,33 +43,24 @@ type InstallK8s struct {
 	VIP       string
 }
 
-type SSHConfig struct {
-	SshPort  int
-	Username string
-	Password string
-	PkFile   string
-}
-
 func (i InstallK8s) RunInstallK8s() error {
 	// 检查输入参数是否有效
 	i.checkValid()
 
 	// clone repo kubeadm-ha
 	cloneRepo()
+	inventory := i.newInventory()
 
 	log.Info("starting write host.ini to file")
 	home, _ := homedir.Dir()
-	hostPath := home + string(os.PathSeparator) + ".c7n/host.ini"
+	hostPath := home + string(os.PathSeparator) + ".c7n/host.yaml"
 	if checkFileIsExist(hostPath) {
 		log.Info("host.ini already existing, skip up generate host.ini")
 	} else {
-		hostFile := i.renderHosts()
-
-		var hostByte = []byte(hostFile)
-		err := ioutil.WriteFile(hostPath, hostByte, 0644) //写入文件(字节数组)
-		if err != nil {
-			log.Error(err)
-		}
+		hostByte, err := yaml.Marshal(inventory)
+		c7n_utils.CheckErrAndExit(err, 1)
+		err = ioutil.WriteFile(hostPath, hostByte, 0644) //写入文件(字节数组)
+		c7n_utils.CheckErrAndExit(err, 1)
 	}
 
 	log.Info("Starting install Necessary components")
@@ -85,7 +79,7 @@ func (i InstallK8s) RunInstallK8s() error {
 	}
 
 	log.Info("String install kubeadm-ha")
-	intK8s := exec.Command("ansible-playbook", "-i"+hostPath, kubeadmHaPath+string(os.PathSeparator)+"90-init-cluster.yml")
+	intK8s := exec.Command("ansible-playbook", "-i", hostPath, kubeadmHaPath+string(os.PathSeparator)+"90-init-cluster.yml")
 	intK8s.Stdout = os.Stdout
 
 	if err := intK8s.Run(); err != nil {
@@ -105,12 +99,57 @@ func (i InstallK8s) RunInstallK8s() error {
 	return nil
 }
 
+func (i InstallK8s) newInventory() client.Inventory {
+
+	if i.Version != "" {
+		client.DefaultAnsibleVar.KubeVersion = i.Version
+	}
+	if i.Network != "" {
+		client.DefaultAnsibleVar.NetworkPlugin = i.Network
+	}
+	inventory := client.Inventory{All: client.Group{
+		Hosts: map[string]client.Host{},
+		Vars:  client.DefaultAnsibleVar,
+		Children: client.Children{
+			Etcd:       client.Hostname{Hosts: map[string]interface{}{}},
+			KubeMaster: client.Hostname{Hosts: map[string]interface{}{}},
+			KubeWorker: client.Hostname{Hosts: map[string]interface{}{}},
+			NewEtcd:    client.Hostname{Hosts: map[string]interface{}{}},
+			NewMaster:  client.Hostname{Hosts: map[string]interface{}{}},
+			NewWorker:  client.Hostname{Hosts: map[string]interface{}{}},
+			Lb:         client.Hostname{Hosts: map[string]interface{}{}},
+		},
+	}}
+	for _, ip := range i.MasterIPs {
+		host := i.Ssh
+		inventory.All.Hosts[ip] = host
+		inventory.All.Children.KubeMaster.Hosts[ip] = struct{}{}
+		inventory.All.Children.Etcd.Hosts[ip] = struct{}{}
+	}
+	for _, ip := range i.NodeIPs {
+		host := i.Ssh
+		inventory.All.Hosts[ip] = host
+		inventory.All.Children.KubeWorker.Hosts[ip] = struct{}{}
+	}
+	return inventory
+}
+
+// 检查输入项是否有效
 func (i InstallK8s) checkValid() {
 	// 检查输入的 IP 格式
+	checkMasterIP(i.MasterIPs)
 	var hosts = append(i.MasterIPs, i.NodeIPs...)
 	checkIP(hosts)
-	if i.Ssh.Username == "" {
-		log.Error("用户不能为空")
+}
+
+func checkMasterIP(m []string) {
+	if len(m) == 0 {
+		log.Error("The number cant's be zero")
+		os.Exit(1)
+	}
+	// 节点数必须为奇数
+	if len(m)%2 == 0 {
+		log.Error("The number of nodes must be odd")
 		os.Exit(1)
 	}
 }
@@ -131,17 +170,21 @@ func (i InstallK8s) renderHosts() string {
 }
 
 func checkIP(ips []string) {
-	if len(ips) == 0 {
-		log.Error("节点数量不能为空")
-		os.Exit(1)
-	}
+
+	dict := make(map[string]bool)
 	for _, ip := range ips {
 		if address := net.ParseIP(ip); address == nil {
-			log.Errorf("IP %s 格式错误\n", ip)
+			log.WithField("IP", ip).Errorf("IP %s format error\n", ip)
 			os.Exit(1)
 		}
+		if _, ok := dict[ip]; !ok {
+			dict[ip] = true //不冲突, 主机名加入字典
+		} else {
+			log.WithField("IP", ip).Error("duplicate IP is not allowed")
+			os.Exit(1)
+		}
+		log.WithField("IP", ip).Info("Node check ok")
 	}
-	// TODO 检查重复 IP
 }
 
 func cloneRepo() {
@@ -162,7 +205,6 @@ func cloneRepo() {
 			os.Exit(1)
 		}
 	}
-
 }
 
 /**

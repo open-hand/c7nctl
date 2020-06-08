@@ -87,6 +87,8 @@ func (ctx *Context) UpdateJobInfo(ji *JobInfo) {
 	idx, _ := ctx.GetJobInfo(ji.Name)
 	if idx > 0 {
 		ctx.JobInfo[idx] = ji
+	} else {
+		ctx.JobInfo = append(ctx.JobInfo, ji)
 	}
 
 	ctx.saveJobInfo()
@@ -103,7 +105,7 @@ func (ctx *Context) GetJobInfo(jobName string) (int, *JobInfo) {
 		}
 	}
 	// 不存在返回 nil
-	return -1, nil
+	return -1, &JobInfo{}
 }
 
 func (ctx *Context) LoadJobInfo() error {

@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"io"
 )
 
@@ -61,6 +62,7 @@ func installC7n(install *action.Choerodon) error {
 		return err
 	}
 	log.Info("Choerodon succeed")
+
 	return nil
 }
 
@@ -81,6 +83,8 @@ func setUserConfig(client *action.Choerodon) {
 		mail := inputUserMail()
 		c.Terms.Accepted = true
 		c.OpsMail = mail
+		viper.Set("terms", c.Terms)
+		viper.Set("opsMail", mail)
 	} else {
 		log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 	}
