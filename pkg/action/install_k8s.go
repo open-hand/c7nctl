@@ -19,17 +19,21 @@ import (
 const (
 	kubeadmHaRepoUrl = "https://github.com/TimeBye/kubeadm-ha.git"
 	repoPath         = ".c7n/cache/kubeadm-ha"
-	installHelmCmd   = `kubectl create serviceaccount --namespace kube-system helm-tiller
-kubectl create clusterrolebinding helm-tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:helm-tiller
-curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz
-tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz
-sudo mv /tmp/linux-amd64/helm /usr/bin/helm
-helm init \
+)
+
+var (
+	installHelmCmd = [6]string{
+		"kubectl create serviceaccount --namespace kube-system helm-tiller",
+		"kubectl create clusterrolebinding helm-tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:helm-tiller",
+		"curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz",
+		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz",
+		"mv /tmp/linux-amd64/helm /usr/bin/helm",
+		`helm init \
     --history-max=3 \
     --tiller-image=registry.aliyuncs.com/google_containers/tiller:v2.16.3 \
     --stable-repo-url=https://mirror.azure.cn/kubernetes/charts/ \
-    --service-account=helm-tiller
-`
+    --service-account=helm-tiller`,
+	}
 )
 
 type InstallK8s struct {
@@ -88,14 +92,17 @@ func (i InstallK8s) RunInstallK8s() error {
 	}
 	log.Info("sucessed install kubernetes")
 
-	/*	log.Info("Starting install helm")
-		ssh := client.NewSSHClient(i.MasterIPs[0], i.Ssh.Username, i.Ssh.Password, 22)
-		result ,err := ssh.Run(installHelmCmd)
+	log.Info("Starting install helm")
+	ssh := client.NewSSHClient(i.MasterIPs[0], i.Ssh.AnsibleUser, i.Ssh.AnsiblePassword, i.Ssh.AnsiblePort)
+	for _, cmd := range installHelmCmd {
+		result, err := ssh.Run(cmd)
 		if err != nil {
 			log.Error(err)
 		} else {
 			log.Info(result)
-		}*/
+		}
+	}
+
 	return nil
 }
 
