@@ -28,11 +28,7 @@ var (
 		"curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz",
 		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz",
 		"mv /tmp/linux-amd64/helm /usr/bin/helm",
-		`helm init \
-    --history-max=3 \
-    --tiller-image=registry.aliyuncs.com/google_containers/tiller:v2.16.3 \
-    --stable-repo-url=https://mirror.azure.cn/kubernetes/charts/ \
-    --service-account=helm-tiller`,
+		"helm init --history-max=3 --tiller-image=registry.aliyuncs.com/google_containers/tiller:v2.16.3 --stable-repo-url=https://mirror.azure.cn/kubernetes/charts/ --service-account=helm-tiller",
 	}
 )
 
@@ -72,7 +68,7 @@ func (i InstallK8s) RunInstallK8s() error {
 	_, err1 := exec.LookPath("ansible")
 	_, err2 := exec.LookPath("netaddr")
 	if err1 == nil && err2 == nil {
-		log.Error("command ansible and netaddr is Is already installed")
+		log.Info("command ansible and netaddr is Is already installed")
 	} else {
 		installAnsible := exec.Command(kubeadmHaPath + string(os.PathSeparator) + "install-ansible.sh")
 		installAnsible.Stdout = os.Stdout
@@ -131,6 +127,7 @@ func (i InstallK8s) newInventory() client.Inventory {
 		host := i.Ssh
 		inventory.All.Hosts[ip] = host
 		inventory.All.Children.KubeMaster.Hosts[ip] = struct{}{}
+		inventory.All.Children.KubeWorker.Hosts[ip] = struct{}{}
 		inventory.All.Children.Etcd.Hosts[ip] = struct{}{}
 	}
 	for _, ip := range i.NodeIPs {

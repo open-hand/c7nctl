@@ -33,7 +33,7 @@ func addInstallK8sFlag(fs *pflag.FlagSet, install *action.InstallK8s) {
 	fs.StringSliceVar(&install.MasterIPs, "master", []string{}, "kubernetes multi-masters")
 	fs.StringSliceVar(&install.NodeIPs, "node", []string{}, "kubernetes multi-nodes")
 
-	fs.StringVar(&install.Version, "version", "v1.16.9", "version is kubernetes version")
+	fs.StringVar(&install.Version, "version", "1.16.9", "version is kubernetes version")
 	/*fs.StringVar(&install.Repo, "repo", "k8s.gcr.io", "choose a container registry to pull control plane images from")
 	fs.StringVar(&install.PodCIDR, "podcidr", "100.64.0.0/10", "Specify range of IP addresses for the pod network")
 	fs.StringVar(&install.SvcCIDR, "svccidr", "10.96.0.0/12", "Use alternative range of IP address for service VIPs")
