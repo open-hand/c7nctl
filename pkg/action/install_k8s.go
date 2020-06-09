@@ -31,7 +31,7 @@ var (
 		"kubectl create serviceaccount --namespace kube-system helm-tiller",
 		"kubectl create clusterrolebinding helm-tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:helm-tiller",
 		"curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz",
-		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz -c /tmp",
+		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz -C /tmp",
 		"mv /tmp/linux-amd64/helm /usr/bin/helm",
 		"helm init --history-max=3 --tiller-image=registry.aliyuncs.com/google_containers/tiller:v2.16.3 --stable-repo-url=https://mirror.azure.cn/kubernetes/charts/ --service-account=helm-tiller",
 	}
