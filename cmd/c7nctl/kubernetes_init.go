@@ -11,9 +11,9 @@ import (
 func newInstallK8sCmd(out io.Writer, args []string) *cobra.Command {
 	install := &action.InstallK8s{}
 	cmd := &cobra.Command{
-		Use:   "k8s",
+		Use:   "init",
 		Short: "Simplest way to init your kubernets HA cluster",
-		Long:  `c7nctl install k8s --master 192.168.0.2 --master 192.168.0.3 --master 192.168.0.4 --node 192.168.0.5 --user root --passwd your-server-password`,
+		Long:  `c7nctl k8s init --master 192.168.0.2 --master 192.168.0.3 --master 192.168.0.4 --node 192.168.0.5 --user root --passwd your-server-password`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := install.RunInstallK8s(); err != nil {
 				log.Error(err)
