@@ -42,6 +42,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDeleteCmd(out),
 		newGetCmd(out),
 		newInstallCmd(actionConfig, out, args),
+		newJoinCmd(out, args),
 		newLoginCmd(out),
 		newLogoutCmd(out),
 		newContextCmd(out),

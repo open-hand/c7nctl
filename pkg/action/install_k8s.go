@@ -22,7 +22,13 @@ const (
 )
 
 var (
-	installHelmCmd = [6]string{
+	home, _             = homedir.Dir()
+	hostPath            = home + string(os.PathSeparator) + ".c7n/host.yaml"
+	kubeadmHaPath       = home + string(os.PathSeparator) + repoPath
+	installScriptPath   = kubeadmHaPath + string(os.PathSeparator) + "install-ansible.sh"
+	installPlaybookPath = kubeadmHaPath + string(os.PathSeparator) + "90-init-cluster.yml"
+	installPlaybook     = "90-init-cluster.yml"
+	installHelmCmd      = [6]string{
 		"kubectl create serviceaccount --namespace kube-system helm-tiller",
 		"kubectl create clusterrolebinding helm-tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:helm-tiller",
 		"curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz",
@@ -52,8 +58,7 @@ func (i InstallK8s) RunInstallK8s() error {
 	inventory := i.newInventory()
 
 	log.Info("starting write host.ini to file")
-	home, _ := homedir.Dir()
-	hostPath := home + string(os.PathSeparator) + ".c7n/host.yaml"
+
 	if checkFileIsExist(hostPath) {
 		log.Info("host.ini already existing, skip up generate host.ini")
 	} else {
@@ -64,13 +69,12 @@ func (i InstallK8s) RunInstallK8s() error {
 	}
 
 	log.Info("Starting install Necessary components")
-	kubeadmHaPath := home + string(os.PathSeparator) + repoPath
 	_, err1 := exec.LookPath("ansible")
 	_, err2 := exec.LookPath("netaddr")
 	if err1 == nil && err2 == nil {
 		log.Info("command ansible and netaddr is Is already installed")
 	} else {
-		installAnsible := exec.Command(kubeadmHaPath + string(os.PathSeparator) + "install-ansible.sh")
+		installAnsible := exec.Command(installScriptPath)
 		installAnsible.Stdout = os.Stdout
 		if err := installAnsible.Run(); err != nil {
 			log.Error(err)
@@ -79,13 +83,7 @@ func (i InstallK8s) RunInstallK8s() error {
 	}
 
 	log.Info("String install kubeadm-ha")
-	intK8s := exec.Command("ansible-playbook", "-i", hostPath, kubeadmHaPath+string(os.PathSeparator)+"90-init-cluster.yml")
-	intK8s.Stdout = os.Stdout
-
-	if err := intK8s.Run(); err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
+	execAnsiblePlaybook(installPlaybook)
 	log.Info("sucessed install kubernetes")
 
 	log.Info("Starting install helm")
@@ -100,6 +98,16 @@ func (i InstallK8s) RunInstallK8s() error {
 	}
 
 	return nil
+}
+
+func execAnsiblePlaybook(playbook string) {
+	intK8s := exec.Command("ansible-playbook", "-i", hostPath, kubeadmHaPath+string(os.PathSeparator)+playbook)
+	intK8s.Stdout = os.Stdout
+
+	if err := intK8s.Run(); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 }
 
 func (i InstallK8s) newInventory() client.Inventory {
@@ -174,7 +182,6 @@ func (i InstallK8s) renderHosts() string {
 }
 
 func checkIP(ips []string) {
-
 	dict := make(map[string]bool)
 	for _, ip := range ips {
 		if address := net.ParseIP(ip); address == nil {
