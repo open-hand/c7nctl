@@ -22,17 +22,16 @@ const (
 )
 
 var (
-	home, _             = homedir.Dir()
-	hostPath            = home + string(os.PathSeparator) + ".c7n/host.yaml"
-	kubeadmHaPath       = home + string(os.PathSeparator) + repoPath
-	installScriptPath   = kubeadmHaPath + string(os.PathSeparator) + "install-ansible.sh"
-	installPlaybookPath = kubeadmHaPath + string(os.PathSeparator) + "90-init-cluster.yml"
-	installPlaybook     = "90-init-cluster.yml"
-	installHelmCmd      = [6]string{
+	home, _           = homedir.Dir()
+	hostPath          = home + string(os.PathSeparator) + ".c7n/host.yaml"
+	kubeadmHaPath     = home + string(os.PathSeparator) + repoPath
+	installScriptPath = kubeadmHaPath + string(os.PathSeparator) + "install-ansible.sh"
+	installPlaybook   = "90-init-cluster.yml"
+	installHelmCmd    = [6]string{
 		"kubectl create serviceaccount --namespace kube-system helm-tiller",
 		"kubectl create clusterrolebinding helm-tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:helm-tiller",
 		"curl -L -o /tmp/helm-v2.16.3-linux-amd64.tar.gz https://file.choerodon.com.cn/kubernetes-helm/v2.16.3/helm-v2.16.3-linux-amd64.tar.gz",
-		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz",
+		"tar -zxvf /tmp/helm-v2.16.3-linux-amd64.tar.gz -c /tmp",
 		"mv /tmp/linux-amd64/helm /usr/bin/helm",
 		"helm init --history-max=3 --tiller-image=registry.aliyuncs.com/google_containers/tiller:v2.16.3 --stable-repo-url=https://mirror.azure.cn/kubernetes/charts/ --service-account=helm-tiller",
 	}
@@ -91,7 +90,7 @@ func (i InstallK8s) RunInstallK8s() error {
 	for _, cmd := range installHelmCmd {
 		result, err := ssh.Run(cmd)
 		if err != nil {
-			log.Error(err)
+			log.Error(result)
 		} else {
 			log.Info(result)
 		}
@@ -161,7 +160,7 @@ func checkMasterIP(m []string) {
 	}
 	// 节点数必须为奇数
 	if len(m)%2 == 0 {
-		log.Error("The number of nodes must be odd")
+		log.Error("The number of master nodes must be odd")
 		os.Exit(1)
 	}
 }

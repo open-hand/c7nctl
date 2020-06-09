@@ -47,7 +47,7 @@ type Hostname struct {
 }
 
 type Vars struct {
-	SkipVerifyNode        bool   `yaml:"skip_verify_node,omitempty"`
+	SkipVerifyNode        bool   `yaml:"skip_verify_node"`
 	KubeVersion           string `yaml:"kube_version,omitempty"`
 	LbMode                string `yaml:"lb_mode,omitempty"`
 	LbKubeApiserverPort   int    `yaml:"lb_kube_apiserver_port,omitempty"`

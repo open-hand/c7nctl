@@ -9,6 +9,12 @@ import (
 	"os"
 )
 
+const (
+	addMasterPlaybook = "91-add-master.yml"
+	addWorkerPlaybook = "92-add-worker.yml"
+	addEtcdPlaybook   = "93-add-etcd.yml"
+)
+
 func (i *InstallK8s) RunJoinNode() {
 	inventory := client.Inventory{}
 	in, err := ioutil.ReadFile(hostPath)
@@ -19,20 +25,19 @@ func (i *InstallK8s) RunJoinNode() {
 
 	if len(i.MasterIPs) > 0 {
 		joinMaster(i.MasterIPs, &inventory)
+		joinNode(i.MasterIPs, &inventory)
 	}
 	if len(i.NodeIPs) > 0 {
-		nodes := append(i.MasterIPs, i.NodeIPs...)
-		joinNode(nodes, &inventory)
+		joinNode(i.NodeIPs, &inventory)
 	}
 }
 
 func joinNode(ps []string, inventory *client.Inventory) {
 	log.WithField("IPs", ps).Info("Start join worker node into k8s")
-
 	inventory.AddHosts(ps)
 	inventory.AddNewWorkers(ps)
 	writeHosts(inventory)
-	execAnsiblePlaybook("92-add-worker.yml")
+	execAnsiblePlaybook(addWorkerPlaybook)
 	inventory.MoveToKubeWorkers()
 	writeHosts(inventory)
 }
@@ -43,7 +48,7 @@ func joinMaster(ps []string, inventory *client.Inventory) {
 	inventory.AddNewMasters(ps)
 	writeHosts(inventory)
 
-	execAnsiblePlaybook("91-add-master.yml")
+	execAnsiblePlaybook(addMasterPlaybook)
 	inventory.MoveToKubeMasters()
 	writeHosts(inventory)
 
@@ -52,7 +57,7 @@ func joinMaster(ps []string, inventory *client.Inventory) {
 		inventory.AddNewEtcd(ip)
 		writeHosts(inventory)
 
-		execAnsiblePlaybook("3-add-etcd.yml")
+		execAnsiblePlaybook(addEtcdPlaybook)
 		inventory.MoveToEtcd()
 		writeHosts(inventory)
 	}

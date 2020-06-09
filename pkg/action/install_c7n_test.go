@@ -66,7 +66,7 @@ func TestNewInstallQueue(t *testing.T) {
 	context.Ctx.Namespace = userConf.Metadata.Namespace
 
 	id := install.getInstallDef(userConf)
-	graph := resource.NewReleaseGraph(id)
+	graph := resource.NewReleaseGraph(id.Spec.Release)
 	queue := graph.TopoSortByKahn()
 	for !queue.IsEmpty() {
 		rls := queue.Dequeue()

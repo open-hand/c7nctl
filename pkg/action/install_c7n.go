@@ -329,7 +329,7 @@ func cleanJobs() error {
 			if err := jobInterface.Delete(job.Name, delOpts); err != nil {
 				return err
 			}
-			log.Info("deleted job %s", job.Name)
+			log.Infof("deleted job %s", job.Name)
 		}
 		log.Info(job.Name)
 	}
