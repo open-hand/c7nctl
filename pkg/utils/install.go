@@ -22,7 +22,7 @@ const (
 )
 
 func GetInstallDefinition(file string, version string) (rd []byte) {
-	if file != "" {
+	if file == "" {
 		url := fmt.Sprintf(githubResourceUrl, version, InstallConfigPath)
 		rd = GetRemoteResource(url)
 	} else {

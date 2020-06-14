@@ -71,7 +71,8 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	if _, ji := context.Ctx.GetJobInfo(p.Name); ji != nil && ji.Type == context.PvType {
+	_, ji := context.Ctx.GetJobInfo(p.Name)
+	if ji != nil && ji.Type == context.PvType {
 		log.Infof("using exist pv [%s]", ji.RefName)
 		p.RefPvName = ji.RefName
 		return nil
@@ -108,7 +109,8 @@ func (p *Persistence) CheckOrCreatePvc() error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	if _, ji := context.Ctx.GetJobInfo(p.Name); ji != nil && ji.Type == context.PvType {
+	_, ji := context.Ctx.GetJobInfo(p.Name)
+	if ji != nil && ji.Type == context.PvcType {
 		p.RefPvcName = ji.RefName
 		return nil
 	}

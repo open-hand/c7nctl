@@ -36,7 +36,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer, args []string) *cob
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install choerodon or component.",
-		Long:  installC7nDesc,
+		Long:  installDesc,
 	}
 
 	cmd.AddCommand(

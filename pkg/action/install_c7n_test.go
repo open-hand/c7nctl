@@ -11,9 +11,9 @@ import (
 func TestGetInstallDef(t *testing.T) {
 
 	install := initInstall()
-	userConf := getUserConfig("../../example/config.yml")
+	userConf := GetUserConfig("../../example/config.yml")
 
-	install.getInstallDef(userConf)
+	install.GetInstallDef(userConf)
 }
 
 func initInstall() *Choerodon {
@@ -60,12 +60,12 @@ func setSettings(settings *helm_env.EnvSettings) {
 
 func TestNewInstallQueue(t *testing.T) {
 	install := initInstall()
-	userConf := getUserConfig("../../example/config.yml")
+	userConf := GetUserConfig("../../example/config.yml")
 	install.ResourceFile = "../../manifests/install.yml"
 	context.Ctx.UserConfig = userConf
 	context.Ctx.Namespace = userConf.Metadata.Namespace
 
-	id := install.getInstallDef(userConf)
+	id := install.GetInstallDef(userConf)
 	graph := resource.NewReleaseGraph(id.Spec.Release)
 	queue := graph.TopoSortByKahn()
 	for !queue.IsEmpty() {
@@ -76,12 +76,12 @@ func TestNewInstallQueue(t *testing.T) {
 
 func TestRenderRelease(t *testing.T) {
 	install := initInstall()
-	userConf := getUserConfig("../../example/config.yml")
+	userConf := GetUserConfig("../../example/config.yml")
 	install.ResourceFile = "../../manifests/install.yml"
 	context.Ctx.UserConfig = userConf
 	context.Ctx.Namespace = userConf.Metadata.Namespace
 
-	id := install.getInstallDef(userConf)
+	id := install.GetInstallDef(userConf)
 
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {

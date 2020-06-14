@@ -5,8 +5,8 @@ metadata:
 spec:
   resources:
     requests: 
-      cpu: 3000m
-      memory: 30Gi
+      cpu: 4000m
+      memory: 40Gi
   basic:
     repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
     slaver:
@@ -57,7 +57,7 @@ spec:
       value: "true"
   - name: gitlab
     chart: gitlab-ha
-    version: 0.2.0
+    version: 0.2.2
     # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
     resource: 
       schema: http

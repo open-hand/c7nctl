@@ -19,7 +19,6 @@ import (
 	"github.com/choerodon/c7nctl/pkg/cli"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/consts"
-	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,7 +38,7 @@ func main() {
 	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	cobra.OnInitialize(initConfig)
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Debug(err)
 	}
 	defer viper.WriteConfig()
 }
@@ -65,14 +64,20 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; ignore error if desired
-			log.Error(err)
+			// Config file not found; Set default config to predefined path
+			log.Warn(err)
+			if err = viper.Unmarshal(&config.Cfg); err != nil {
+				log.Error(err)
+			}
+			viper.WriteConfig()
 		} else {
 			// Config file was found but another error was produced
-			c7n_utils.CheckErrAndExit(err, 1)
+			log.Error(err)
+			os.Exit(1)
 		}
 	}
 	log.WithField("config", viper.ConfigFileUsed()).Info("using configuration file")
-	err := viper.Unmarshal(&config.Cfg)
-	c7n_utils.CheckErrAndExit(err, 1)
+	if err := viper.Unmarshal(&config.Cfg); err != nil {
+		log.Error(err)
+	}
 }

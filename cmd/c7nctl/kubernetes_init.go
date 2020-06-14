@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func newInstallK8sCmd(out io.Writer, args []string) *cobra.Command {
+func newKubernetesInitCmd(out io.Writer, args []string) *cobra.Command {
 	install := &action.InstallK8s{}
 	cmd := &cobra.Command{
 		Use:   "init",

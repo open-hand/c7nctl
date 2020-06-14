@@ -20,8 +20,8 @@ func newKubernetesCmd(out io.Writer, args []string) *cobra.Command {
 
 	addKubernetesFlag(cmd.Flags())
 	cmd.AddCommand(
-		newJoinCmd(out, args),
-		newInstallK8sCmd(out, args),
+		newKubernetesJoinCmd(out, args),
+		newKubernetesInitCmd(out, args),
 	)
 
 	return cmd

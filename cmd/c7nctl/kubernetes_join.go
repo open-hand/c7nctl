@@ -12,7 +12,7 @@ import (
 const JoinCmdDesc = `
 `
 
-func newJoinCmd(out io.Writer, args []string) *cobra.Command {
+func newKubernetesJoinCmd(out io.Writer, args []string) *cobra.Command {
 	install := &action.InstallK8s{}
 
 	cmd := &cobra.Command{

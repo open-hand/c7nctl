@@ -4,7 +4,9 @@ import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/context"
+	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -30,10 +32,9 @@ func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *
 		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg.InitCfg()
-			if err := installC7n(install); err != nil {
-				return err
-			}
-			return nil
+			err := installC7n(install)
+			c7n_ctx.Ctx.SendMetrics(err)
+			return err
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) { cfg.HelmClient.Teardown() },
 	}
@@ -53,16 +54,10 @@ func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *
 }
 
 func installC7n(install *action.Choerodon) error {
-
-	// set user config. default is $HOME/.c7n/config.yaml
-	setUserConfig(install)
-
 	if err := install.Run(); err != nil {
-		log.Error("Choerodon failed")
-		return err
+		return errors.WithMessage(err, "Install Choerodon failed")
 	}
-	log.Info("Choerodon succeed")
-
+	log.Info("Install Choerodon succeed")
 	return nil
 }
 

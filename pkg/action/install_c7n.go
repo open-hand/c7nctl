@@ -2,11 +2,12 @@ package action
 
 import (
 	"encoding/json"
-	std_error "errors"
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -55,29 +56,30 @@ func (i *Choerodon) Run() error {
 		i.Version = c7n_utils.GetVersion("master")
 	}
 
-	userConfig := getUserConfig(i.ConfigFile)
+	userConfig := GetUserConfig(i.ConfigFile)
 	if userConfig == nil {
-		c7n_utils.CheckErrAndExit(std_error.New("need user config file"), 127)
+		return std_errors.New("Must have user config file")
 	}
 
-	id := i.getInstallDef(userConfig)
-	i.initContext(userConfig, id)
+	id := i.GetInstallDef(userConfig)
+	i.InitContext(userConfig, id)
 
 	// 检查硬件资源
-	if !checkResource(&id.Spec.Resources) {
-		os.Exit(126)
+	if err := CheckResource(&id.Spec.Resources); err != nil {
+		return err
 	}
-	if !checkNamespace() {
-		os.Exit(127)
+	if err := CheckNamespace(); err != nil {
+		return err
 	}
 
-	err := c7n_ctx.Ctx.LoadJobInfo()
-	c7n_utils.CheckErr(err)
+	if err := c7n_ctx.Ctx.LoadJobInfo(); err != nil {
+		return err
+	}
 
 	stopCh := make(chan struct{})
 	s, err := id.PrepareSlaver(stopCh)
 	if err != nil {
-		return err
+		return std_errors.WithMessage(err, "Create Slaver failed")
 	}
 
 	c7n_ctx.Ctx.Slaver = s
@@ -88,7 +90,9 @@ func (i *Choerodon) Run() error {
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {
 		// 传入参数的是 *Release
-		renderRelease(rls)
+		if err := renderRelease(rls); err != nil {
+			return err
+		}
 	}
 
 	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
@@ -98,7 +102,7 @@ func (i *Choerodon) Run() error {
 		rls := installQueue.Dequeue()
 
 		if err = rls.Install(); err != nil {
-			log.Error(err)
+			return std_errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
 		}
 	}
 
@@ -107,14 +111,13 @@ func (i *Choerodon) Run() error {
 		return err
 	}
 
-	c7n_ctx.Ctx.CheckExist(0)
 	return nil
 }
 
 func (i *Choerodon) InstallComponent(cname string) error {
 	i.Version = c7n_utils.GetVersion(i.Version)
 
-	id := i.getInstallDef(nil)
+	id := i.GetInstallDef(nil)
 	c7n_ctx.Ctx.HelmClient = i.cfg.HelmClient
 	c7n_ctx.Ctx.KubeClient = i.cfg.KubeClient
 	c7n_ctx.Ctx.Namespace = i.Namespace
@@ -135,7 +138,7 @@ func (i *Choerodon) InstallComponent(cname string) error {
 	return nil
 }
 
-func renderRelease(rls *resource.Release) {
+func renderRelease(rls *resource.Release) error {
 	_, ji := c7n_ctx.Ctx.GetJobInfo(rls.Name)
 
 	if ji.Name == "" {
@@ -160,11 +163,13 @@ func renderRelease(rls *resource.Release) {
 		c7n_ctx.Ctx.UpdateJobInfo(ji)
 	}
 	if ji.Status == c7n_ctx.InputtedStatus {
-		rlsByte, _ := yaml_v2.Marshal(rls)
-		renderedRls := c7n_utils.RenderRelease(rls.Name, string(rlsByte))
-		_ = yaml_v2.Unmarshal(renderedRls, rls)
+		if err := render(rls); err != nil {
+			return err
+		}
 		// 检查域名
-		_ = checkReleaseDomain(rls)
+		if err := checkReleaseDomain(rls); err != nil {
+			return std_errors.WithMessage(err, fmt.Sprintf("Release %s's domain is invalid", rls))
+		}
 
 		ji.Resource = *rls.Resource
 		ji.Values = rls.Values
@@ -176,7 +181,21 @@ func renderRelease(rls *resource.Release) {
 	if ji.Status == c7n_ctx.RenderedStatus || ji.Status == c7n_ctx.FailedStatus {
 		rls.Values = ji.Values
 		rls.Resource = &ji.Resource
+		// 重新渲染 preCommand 等
+		if err := render(rls); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func render(rls *resource.Release) error {
+	rlsByte, _ := yaml_v2.Marshal(rls)
+	renderedRls := c7n_utils.RenderRelease(rls.Name, string(rlsByte))
+	if err := yaml_v2.Unmarshal(renderedRls, rls); err != nil {
+		return std_errors.WithMessage(err, fmt.Sprintf("Render Release %s failed", rls))
+	}
+	return nil
 }
 
 func renderComponent(rls *resource.Release) {
@@ -270,9 +289,9 @@ func mergerResource(r *resource.Release) {
 }
 
 // 为了避免循环依赖，从 resource.install.go 移到这里
-func (i *Choerodon) getInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
+func (i *Choerodon) GetInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
 	// 在 getVersion 之后执行，已经确保了 i.Version 一定有值
-	rd := c7n_utils.GetInstallDefinition(i.ConfigFile, i.Version)
+	rd := c7n_utils.GetInstallDefinition(i.ResourceFile, i.Version)
 
 	installDef := &resource.InstallDefinition{}
 	rdJson, err := yaml.ToJSON(rd)
@@ -298,7 +317,7 @@ func (i *Choerodon) getInstallDef(uc *config.C7nConfig) *resource.InstallDefinit
 	return installDef
 }
 
-func getUserConfig(filePath string) *config.C7nConfig {
+func GetUserConfig(filePath string) *config.C7nConfig {
 	if filePath == "" {
 		log.Debug("no user config defined by `-c`")
 		return nil
@@ -336,7 +355,7 @@ func cleanJobs() error {
 	return nil
 }
 
-func (i *Choerodon) initContext(userConfig *config.C7nConfig, id *resource.InstallDefinition) {
+func (i *Choerodon) InitContext(userConfig *config.C7nConfig, id *resource.InstallDefinition) {
 	commonLabels := map[string]string{
 		C7nLabelKey: C7nLabelValue,
 	}
@@ -355,10 +374,11 @@ func (i *Choerodon) initContext(userConfig *config.C7nConfig, id *resource.Insta
 		SkipInput:    i.SkipInput,
 		Prefix:       i.Prefix,
 		RepoUrl:      id.Spec.Basic.RepoURL,
+		Version:      i.Version,
 	}
 }
 
-func checkResource(resources *v1.ResourceRequirements) bool {
+func CheckResource(resources *v1.ResourceRequirements) error {
 	client := *c7n_ctx.Ctx.KubeClient
 	request := resources.Requests
 
@@ -371,46 +391,42 @@ func checkResource(resources *v1.ResourceRequirements) bool {
 
 	serverVersion, err := client.Discovery().ServerVersion()
 	if err != nil {
-		log.Error("can't get your cluster version")
+		return std_errors.Wrap(err, "can't get your cluster version")
 	}
 	c7n_ctx.Ctx.Metrics.Version = serverVersion.String()
 	if clusterMemory < reqMemory {
-		log.Errorf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024))
-		return false
+		return std_errors.New(fmt.Sprintf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024)))
 	}
 	if clusterCpu < reqCpu {
-		log.Errorf("cluster cpu not enough, request %dc", reqCpu/1000)
-		return false
+		return std_errors.New(fmt.Sprintf("cluster cpu not enough, request %dc", reqCpu/1000))
 	}
-	return true
+	return nil
 }
 
-func checkNamespace() bool {
+func CheckNamespace() error {
 	_, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Get(c7n_ctx.Ctx.UserConfig.Metadata.Namespace, meta_v1.GetOptions{})
 	if err != nil {
 		if errorStatus, ok := err.(*errors.StatusError); ok {
-			if errorStatus.ErrStatus.Code == 404 && CreateNamespace() {
-				return true
+			if errorStatus.ErrStatus.Code == 404 {
+				return CreateNamespace()
 			}
 		}
-		log.Error(err)
-		return false
+		return std_errors.Wrap(err, "Failed create namespace")
 	}
 	log.Infof("namespace %s already exists", c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
-	return true
+	return nil
 }
 
-func CreateNamespace() bool {
+func CreateNamespace() error {
 	ns := &v1.Namespace{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name: c7n_ctx.Ctx.UserConfig.Metadata.Namespace,
 		},
 	}
+	log.Infof("creating namespace %s", c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
 	namespace, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Create(ns)
-	log.Infof("creating namespace %s", namespace.Name)
 	if err != nil {
-		log.Error(err)
-		return false
+		return std_errors.Wrap(err, fmt.Sprintf("Create Namespace %+v failed", namespace))
 	}
-	return true
+	return nil
 }

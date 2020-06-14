@@ -25,16 +25,18 @@ const (
 	ReleaseTYPE = "helm"
 	TaskType    = "task"
 
+	// Release 未初始化
+	UninitializedStatus = "uninitialized"
+	// Release 输入配置完成
+	InputtedStatus = "inputted"
+	// Release 配置渲染成功
+	RenderedStatus = "rendered"
 	// Release 安装成功
+	InstalledStatus = "installed"
+	// Release 完成所有安装步骤，即 afterTask 完成
 	SucceedStatus = "succeed"
 	// Release 安装失败
 	FailedStatus = "failed"
-	// Release 输入配置完成
-	InputtedStatus = "inputted"
-	// Release 未初始化
-	UninitializedStatus = "uninitialized"
-	// Release 配置渲染成功
-	RenderedStatus = "rendered"
 
 	// if have after process while wait
 	CreatedStatus      = "created"
@@ -66,6 +68,7 @@ type Context struct {
 	SkipInput     bool
 	Prefix        string
 	RepoUrl       string
+	Version       string
 }
 
 func (ctx *Context) GetConfig() *config.C7nConfig {
@@ -74,8 +77,8 @@ func (ctx *Context) GetConfig() *config.C7nConfig {
 
 func (ctx *Context) AddJobInfo(ji *JobInfo) {
 	_, r := ctx.GetJobInfo(ji.Name)
-	if r != nil {
-		log.WithField("release", ji.Name).Debug("Release already existed")
+	if r.Name != "" {
+		log.WithField("release", ji.Name).Info("Release already existed")
 		return
 	}
 	ctx.JobInfo = append(ctx.JobInfo, ji)
@@ -139,6 +142,16 @@ func (ctx *Context) CheckExist(code int, errMsg ...string) {
 	os.Exit(code)
 }
 
+func (ctx *Context) SendMetrics(err error) {
+	if err == nil {
+		ctx.Metrics.Status = "succeed"
+	} else {
+		ctx.Metrics.Status = "failed"
+		ctx.Metrics.ErrorMsg = append(ctx.Metrics.ErrorMsg, err.Error())
+	}
+
+	ctx.Metrics.Send()
+}
 func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
 	cm, err := (*ctx.KubeClient).CoreV1().ConfigMaps(ctx.Namespace).Get(cmName, meta_v1.GetOptions{})
 	if err != nil {

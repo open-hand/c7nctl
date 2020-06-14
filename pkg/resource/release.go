@@ -8,13 +8,11 @@ import (
 	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	"github.com/choerodon/c7nctl/pkg/utils"
-	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vinkdong/gox/http/downloader"
-	core_v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"os"
 	"strings"
 	"time"
 )
@@ -209,16 +207,14 @@ func (rls *Release) getUserValuesTpl() ([]byte, error) {
 }
 
 // convert yml format values template to yaml raw data
-func (rls *Release) ValuesRaw() string {
+func (rls *Release) ValuesRaw() (string, error) {
 	data, err := rls.getUserValuesTpl()
 
 	if err != nil {
-		log.Error(err)
-		log.Errorf("get user values for %s failed", rls.Name)
-		os.Exit(127)
+		return "", std_errors.WithMessage(err, fmt.Sprintf("get user values for %s failed", rls.Name))
 	}
 	if len(data) == 0 {
-		url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, rls.PaaSVersion, "values/"+rls.Name+".yaml")
+		url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, context.Ctx.Version, "values/"+rls.Name+".yaml")
 		nData, statusCode, err := downloader.GetFileContent(url)
 		if statusCode == 200 && err == nil {
 			data = nData
@@ -226,9 +222,9 @@ func (rls *Release) ValuesRaw() string {
 	}
 	if len(data) > 0 {
 		//return rls.renderValue(string(data[:]))
-		return utils.RenderReleaseValue(rls.Name, string(data[:]))
+		return utils.RenderReleaseValue(rls.Name, string(data[:])), nil
 	}
-	return ""
+	return "", nil
 }
 
 // convert yml values to values list as xxx=yyy
@@ -245,56 +241,71 @@ func (rls *Release) HelmValues() []string {
 // resource infra
 func (rls *Release) Install() error {
 	_, ji := context.Ctx.GetJobInfo(rls.Name)
-	// 如果已经安装直接返回
 	if ji.Status == context.SucceedStatus {
-		log.Infof("already installed %s", rls.Name)
+		log.Infof("Release %s is already installed", rls.Name)
 		return nil
 	}
+	if ji.Status == context.RenderedStatus || ji.Status == context.FailedStatus {
+		// 等待依赖项安装完成
+		for _, r := range rls.Requirements {
+			checkReleasePodRunning(r)
+		}
 
-	for _, r := range rls.Requirements {
-		checkReleasePodRunning(r)
-	}
+		if err := rls.ExecutePreCommands(); err != nil {
+			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", rls.Name))
+		}
 
-	err := rls.ExecutePreCommands()
-	c7n_utils.CheckErr(err)
+		values := rls.HelmValues()
+		var releaseName string
+		if context.Ctx.Prefix != "" {
+			releaseName = fmt.Sprintf("%s-%s", context.Ctx.Prefix, rls.Name)
+		} else {
+			releaseName = rls.Name
 
-	values := rls.HelmValues()
-	releaseName := rls.Name
-	if context.Ctx.Prefix != "" {
-		releaseName = fmt.Sprintf("%s-%s", context.Ctx.Prefix, rls.Name)
-	}
-	chartArgs := client.ChartArgs{
-		ReleaseName: releaseName,
-		Namespace:   context.Ctx.Namespace,
-		RepoUrl:     context.Ctx.RepoUrl,
-		Verify:      false,
-		Version:     rls.Version,
-		ChartName:   rls.Chart,
-	}
+		}
+		chartArgs := client.ChartArgs{
+			ReleaseName: releaseName,
+			Namespace:   context.Ctx.Namespace,
+			RepoUrl:     context.Ctx.RepoUrl,
+			Verify:      false,
+			Version:     rls.Version,
+			ChartName:   rls.Chart,
+		}
 
-	log.Infof("installing %s", rls.Name)
-	for _, k := range values {
-		log.Debugf(k)
-	}
-	if rls.Timeout > 0 {
-		values = append(values, fmt.Sprintf("preJob.timeout=%d", rls.Timeout))
-	}
-	raw := rls.ValuesRaw()
-	err = context.Ctx.HelmClient.InstallRelease(values, raw, chartArgs)
+		log.Infof("installing %s", rls.Name)
+		for _, k := range values {
+			log.WithField("release", rls.Name).Debug(k)
+		}
+		// TODO useless
+		if rls.Timeout > 0 {
+			values = append(values, fmt.Sprintf("preJob.timeout=%d", rls.Timeout))
+		}
+		raw, err := rls.ValuesRaw()
+		if err != nil {
+			return std_errors.WithMessage(err, "Release %s get value failed")
+		}
+		err = context.Ctx.HelmClient.InstallRelease(values, raw, chartArgs)
 
-	if err != nil {
-		ji.Status = context.FailedStatus
+		if err != nil {
+			ji.Status = context.FailedStatus
+			context.Ctx.UpdateJobInfo(ji)
+			return err
+		} else {
+			ji.Status = context.InstalledStatus
+			context.Ctx.UpdateJobInfo(ji)
+		}
+	}
+	if ji.Status == context.InstalledStatus {
+		// TODO 解决 after task失败二次执行
+		if len(rls.AfterInstall) > 0 {
+			go rls.ExecuteAfterTasks()
+			// return std_errors.WithMessage(err, "Execute after task failed")
+		}
+		ji.Status = context.SucceedStatus
+		// 更新 jobinfo 状态
 		context.Ctx.UpdateJobInfo(ji)
-		return err
 	}
 
-	if len(rls.AfterInstall) > 0 {
-		err = rls.ExecuteAfterTasks()
-		c7n_utils.CheckErr(err)
-	}
-	ji.Status = context.SucceedStatus
-	// 更新 jobinfo 状态
-	context.Ctx.UpdateJobInfo(ji)
 	return nil
 }
 
@@ -339,43 +350,6 @@ func (rls *Release) ExecuteAfterTasks() error {
 	return nil
 }
 
-func (rls *Release) CatchInitJobs() error {
-	client := *context.Ctx.KubeClient
-	jobInterface := client.BatchV1().Jobs(context.Ctx.UserConfig.Metadata.Namespace)
-	jobList, err := jobInterface.List(meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("choerodon.io/release=%s", rls.Name),
-	})
-	if err != nil {
-		return err
-	}
-	for _, job := range jobList.Items {
-		if job.Status.Active > 0 {
-			log.Infof("job %s haven't finished yet. please wait patiently", job.Name)
-			jobLabelSelector := fmt.Sprintf("job-name=%s", job.Name)
-			rls.catchPodLogs(jobLabelSelector, client)
-		}
-	}
-	log.Debugf("still resource %s", rls.Name)
-	return nil
-}
-
-func (rls *Release) catchPodLogs(labelSelector string, client kubernetes.Interface) error {
-	podList, err := client.CoreV1().Pods(rls.Namespace).List(meta_v1.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, po := range podList.Items {
-		if po.Status.Phase == core_v1.PodRunning {
-			log.Debugf("you can watch logs by execute follow command:\nkubectl logs -f %s -n %s",
-				po.Name, po.Namespace)
-		}
-	}
-	return nil
-}
-
 // 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
 // TODO 所有组件设置统一的label
 func checkReleasePodRunning(rls string) {
@@ -384,30 +358,49 @@ func checkReleasePodRunning(rls string) {
 	namespace := context.Ctx.Namespace
 	time.Sleep(time.Second * 3)
 
+	labels := []string{
+		fmt.Sprintf("choerodon.io/release=%s", rls),
+		fmt.Sprintf("app=%s", rls),
+	}
 	for {
-		pods1, err := clientset.CoreV1().Pods(namespace).List(meta_v1.ListOptions{LabelSelector: fmt.Sprintf("choerodon.io/release=%s", rls)})
-		if err != nil {
-			log.Error(err)
-		}
-		pods2, err := clientset.CoreV1().Pods(namespace).List(meta_v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", rls)})
-		if err != nil {
-			log.Error(err)
-		}
-
-		pods := append(pods1.Items, pods2.Items...)
-		log.Infof("%s has %d pods in the cluster\n", rls, len(pods))
-		isReady := true
-		for _, p := range pods {
-			if p.Status.Phase != core_v1.PodRunning {
-				log.Infof("Waiting for pods %s of release %s", p.Name, rls)
-				isReady = false
+		for _, label := range labels {
+			deploy, err := clientset.AppsV1().Deployments(namespace).List(meta_v1.ListOptions{LabelSelector: label})
+			if errors.IsNotFound(err) {
+				log.Infof("Deployment %s in namespace %s not found\n", label, namespace)
+			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
+				log.Infof("Error getting deployment %s in namespace %s: %v\n",
+					label, namespace, statusError.ErrStatus.Message)
+			} else if err != nil {
+				panic(err.Error())
+			} else {
+				for _, d := range deploy.Items {
+					if *d.Spec.Replicas != d.Status.ReadyReplicas {
+						log.Infof("Deployment %s is not ready\n", d.Name)
+					} else {
+						log.Infof("Deployment %s is Ready\n", d.Name)
+						return
+					}
+				}
+			}
+			ss, err := clientset.AppsV1().StatefulSets(namespace).List(meta_v1.ListOptions{LabelSelector: label})
+			if errors.IsNotFound(err) {
+				log.Infof("StatefulSet %s in namespace %s not found\n", label, namespace)
+			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
+				log.Infof("Error getting statefulSet %s in namespace %s: %v\n",
+					label, namespace, statusError.ErrStatus.Message)
+			} else if err != nil {
+				panic(err.Error())
+			} else {
+				for _, s := range ss.Items {
+					if *s.Spec.Replicas != s.Status.ReadyReplicas {
+						log.Infof("StatefulSet %s is not ready\n", s.Name)
+					} else {
+						log.Infof("statefulSet %s is Ready\n", s.Name)
+						return
+					}
+				}
 			}
 		}
-		if isReady {
-			log.Infof("%s's pods is running", rls)
-			break
-		} else {
-			time.Sleep(time.Second * 4)
-		}
+		time.Sleep(10 * time.Second)
 	}
 }
