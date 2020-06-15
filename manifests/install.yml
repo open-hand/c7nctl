@@ -714,3 +714,51 @@ spec:
           value: "50Gi"
         - name: "ingress.enabled"
           value: "true"
+    - name: nfs-client-provisioner
+      chart: nfs-client-provisioner
+      version: 0.1.1
+      values:
+        - name: "rbac.create"
+          value: true
+        - name: "persistence.enabled"
+          value: true
+        - name: "storageClass.name"
+          value: nfs-provisioner
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入 storageClass 的名字: "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.enabled"
+          value: nfs-provisioner
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入 NFS 服务器的IP: "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.nfsServer"
+          value: nfs-provisioner
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入 NFS 服务器的IP: "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
+        - name: "persistence.nfsPath"
+          value: nfs-provisioner
+          input:
+            enabled: true
+            regex: ".+"
+            password: false
+            tip: "请输入 NFS 的目录: "
+            exclude:
+              - value: "^\\d*$"
+                name: "不能为纯数字"
