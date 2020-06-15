@@ -27,7 +27,7 @@ func (c *C7NClient) ListApps(out io.Writer, projectId int) {
 	for _, app := range apps.List {
 		var status string
 		var types string
-		if app.Synchro&&app.Active {
+		if app.Synchro && app.Active {
 			status = "可用"
 		} else {
 			status = "不可用"

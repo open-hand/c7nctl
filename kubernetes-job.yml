@@ -28,7 +28,7 @@ subjects:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: install-config
+  name: resource-config
   namespace: c7n-system
 data:
   install.yml: |-
@@ -77,8 +77,8 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   labels:
-    job-name: install-choerodon
-  name: install-choerodon
+    job-name: resource-choerodon
+  name: resource-choerodon
   namespace: c7n-system
 spec:
   backoffLimit: 50
@@ -91,7 +91,7 @@ spec:
       containers:
       - image: registry.cn-shanghai.aliyuncs.com/choerodon/c7n:0.1
         imagePullPolicy: Always
-        name: install-choerodon
+        name: resource-choerodon
         resources: {}
         volumeMounts:
         - name: config
@@ -100,4 +100,4 @@ spec:
         - name: config
           configMap:
             defaultMode: 420
-            name: install-config
+            name: resource-config

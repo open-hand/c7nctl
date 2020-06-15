@@ -5,9 +5,8 @@ env:
     DEPTH: 2
 persistence:
   enabled: true
-  existingClaim: {{ (index .Persistence 0).RefPvcName }}
+  storageClass: {{ getStorageClass }}
 ingress:
   enabled: true
   hosts:
-  - name: {{ .GetPreValue "CHART_BASE_DOMAIN" }}
-    path: /
+  - path: /

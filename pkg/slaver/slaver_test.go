@@ -25,7 +25,7 @@ func TestInstall(t *testing.T) {
 	slaver := Slaver{
 		Client:       kube.GetClient(),
 		Version:      "0.1",
-		Namespace:    "install",
+		Namespace:    "resource",
 		Name:         "c7n-slaver",
 		CommonLabels: labels,
 		Image:        "vinkdong/timing",
@@ -38,7 +38,7 @@ func TestInstall(t *testing.T) {
 	ds, err := slaver.Install()
 	if err != nil {
 		t.Error(err)
-		t.Error("install daemonset failed")
+		t.Error("resource daemonset failed")
 	} else {
 		log.Info(ds.Spec)
 	}
@@ -50,7 +50,7 @@ func TestPortForward(t *testing.T) {
 	slaver := Slaver{
 		Client:       kube.GetClient(),
 		Version:      "0.1",
-		Namespace:    "install",
+		Namespace:    "resource",
 		Name:         "c7n-slaver",
 		CommonLabels: labels,
 		Image:        "vinkdong/timing",
@@ -157,7 +157,7 @@ func TestSendAll(t *testing.T) {
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
 		Client:      kube.GetClient(),
-		Namespace:   "install",
+		Namespace:   "resource",
 	}
 	request := &pb.RouteRequest{
 		Method: "GET",
@@ -186,7 +186,7 @@ func TestCheckClusterDomain(t *testing.T) {
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
 		Client:      kube.GetClient(),
-		Namespace:   "install",
+		Namespace:   "resource",
 		Name:        "c7n-slaver",
 		Ports: []v1.ContainerPort{
 			v1.ContainerPort{

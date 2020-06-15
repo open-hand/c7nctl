@@ -1,2 +1,4 @@
 .idea
-c7nctl
+
+bin/
+_dist/

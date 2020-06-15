@@ -1,0 +1,19 @@
+externalURL: {{ ( getResource "harbor" ).Schema }}://{{ ( getResource "harbor" ).Domain }}
+
+persistence:
+  persistentVolumeClaim:
+    database:
+      storageClass: {{ getStorageClass }}
+    registry:
+      storageClass: {{ getStorageClass }}
+    jobservice:
+      storageClass: {{ getStorageClass }}
+    redis:
+      storageClass: {{ getStorageClass }}
+
+chartmuseum:
+  enabled: false
+notary:
+  enabled: false
+clair:
+  enabled: false

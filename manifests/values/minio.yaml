@@ -1,10 +1,7 @@
-accessKey: {{ .GetPreValue "MINIO_BASE_ACCESS_KEY" }}
-secretKey: {{ .GetPreValue "MINIO_BASE_SECRET_KEY" }}
+mode: distributed
 persistence:
   enabled: true
-  existingClaim: {{ (index .Persistence 0).RefPvcName }}
+  storageClass: {{ getStorageClass }}
+  size: 50Gi
 ingress:
   enabled: true
-  path: /
-  hosts:
-  - {{ .GetPreValue "MINIO_BASE_DOMAIN" }}

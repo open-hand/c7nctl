@@ -1,14 +1,18 @@
 module github.com/choerodon/c7nctl
 
-go 1.13
+go 1.14
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1 // indirect
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/buger/jsonparser v0.0.0-20191204142016-1a29609e0929
+	github.com/chr4/pwgen v1.1.0
 	github.com/ghodss/yaml v0.0.0-20180820084758-c7ce16629ff4
+	github.com/go-git/go-git/v5 v5.0.0
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/protobuf v1.3.1
 	github.com/gosuri/uitable v0.0.4
@@ -21,15 +25,19 @@ require (
 	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.1
+	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/rubenv/sql-migrate v0.0.0-20191213152630-06338513c237 // indirect
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/ugorji/go/codec v1.1.7
 	github.com/vinkdong/gox v0.0.0-20191217071044-432e0b72e0f8
-	golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
-	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
+	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.13.0
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/yaml.v2 v2.2.5
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0

@@ -9,7 +9,8 @@ import (
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/kube"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
-	"github.com/vinkdong/gox/log"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/vinkdong/gox/random"
 	"google.golang.org/grpc"
 	"io/ioutil"
@@ -61,7 +62,6 @@ type Dir struct {
 /**
 Type: httpGet or socket
 */
-
 func (s *Slaver) CheckInstall() (*v1.DaemonSet, error) {
 	ds, err := s.Client.AppsV1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
 	if err != nil {

@@ -1,18 +1,18 @@
 env:
   open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
-    SERVICES_ATTACHMENT_URL: {{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_SCHEMA" }}://{{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_DOMAIN" }}/knowledgebase-service/
-    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
-    SPRING_DATASOURCE_PASSWORD: {{ .GetPreValue "DATABASE_PASSWORD" }}
-    SPRING_DATASOURCE_URL: {{ .GetPreValue "DATASOURCE_URL" }}
-    SPRING_DATASOURCE_USERNAME: {{ .GetPreValue "DATABASE_USERNAME" }}
-    ELASTICSEARCH_IP: {{ ( .GetResource "elasticsearch-kb").Host }}:{{ ( .GetResource "elasticsearch-kb").Port }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( getResource "register-server").Url }}
+    SERVICES_ATTACHMENT_URL: {{ ( getResource "minio").Schema }}://{{ ( getResource "minio").Domain }}
+    SPRING_CLOUD_CONFIG_URI: {{ ( getResource "register-server").Schema }}://{{ ( getResource "register-server").Host }}:{{ ( getResource "register-server").Port }}
+    SPRING_DATASOURCE_PASSWORD: "password"
+    SPRING_DATASOURCE_URL: {{ getDatabaseUrl "knowledgebase_service" }}
+    SPRING_DATASOURCE_USERNAME: "choerodon"
+    ELASTICSEARCH_IP: {{ ( getResource "elasticsearch-kb").Host }}:{{ ( getResource "elasticsearch-kb").Port }}
 preJob:
   timeout: 1800
   preInitDB:
     datasource:
-      url: {{ .GetPreValue "DATASOURCE_URL" }}
-      username: {{ .GetPreValue "DATABASE_USERNAME" }}
-      password: {{ .GetPreValue "DATABASE_PASSWORD" }}
+      url: {{ getDatabaseUrl "knowledgebase_service" }}
+      username: "choerodon"
+      password: "password"
   preConfig:
     updatePolicy: override  

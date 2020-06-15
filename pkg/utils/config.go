@@ -62,7 +62,7 @@ func getPath() string {
 	configDir := fmt.Sprintf("%s%c.c7n%c", homePath, os.PathSeparator, os.PathSeparator)
 	// check dir is exist
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		os.Mkdir(configDir, os.FileMode(0755))
+		os.MkdirAll(configDir, os.FileMode(0755))
 	}
 	configFile := configDir + configFileName
 	return configFile
