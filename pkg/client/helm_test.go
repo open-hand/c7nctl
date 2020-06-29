@@ -23,5 +23,8 @@ ingress:
 	} else {
 		t.Log(string(v))
 	}
+}
+
+func TestRunHelmInstall(t *testing.T) {
 
 }

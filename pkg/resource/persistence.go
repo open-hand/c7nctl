@@ -2,19 +2,18 @@ package resource
 
 import (
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/context"
-	"github.com/choerodon/c7nctl/pkg/slaver"
-	"github.com/choerodon/c7nctl/pkg/utils"
+	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
+	c7nctx "github.com/choerodon/c7nctl/pkg/context"
+	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Persistence struct {
-	Client       kubernetes.Interface
 	CommonLabels map[string]string
 	AccessModes  []v1.PersistentVolumeAccessMode
 	Capacity     v1.ResourceList
@@ -31,100 +30,81 @@ type Persistence struct {
 	MountOptions []string
 }
 
-func (p *Persistence) PrepareJobInfo() *context.JobInfo {
-	ji := &context.JobInfo{
-		Name:      p.Name,
-		Namespace: p.Namespace,
-		Type:      context.PvType,
-		Status:    context.SucceedStatus,
-		RefName:   p.RefPvName,
-	}
-	return ji
-}
-
-// Get exist pv
-func (p *Persistence) getPv() (hasFound bool, pv *v1.PersistentVolume) {
-	client := p.Client
-	pv, err := client.CoreV1().PersistentVolumes().Get(p.RefPvName, meta_v1.GetOptions{})
-	if err != nil {
-		if context.IsNotFound(err) {
-			return false, pv
-		}
-	}
-	return true, pv
-}
-
-// Get exist pvc
-func (p *Persistence) getPvc() (hasFound bool, pvc *v1.PersistentVolumeClaim) {
-	client := p.Client
-	pvc, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Get(p.RefPvcName, meta_v1.GetOptions{})
-	if err != nil {
-		if context.IsNotFound(err) {
-			return false, pvc
-		}
-	}
-	return true, pvc
-}
-
 // check and create pv with defined pv schema
-func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
+func (p *Persistence) CheckOrCreatePv(per *c7ncfg.Persistence) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	_, ji := context.Ctx.GetJobInfo(p.Name)
-	if ji != nil && ji.Type == context.PvType {
-		log.Infof("using exist pv [%s]", ji.RefName)
-		p.RefPvName = ji.RefName
-		return nil
-	}
-
-	if context.Ctx.UserConfig.IgnorePv() {
-		p.RefPvName = ""
-		log.Debug("ignore create pv because specify storage class and no other persistence config")
-		return nil
-	}
-
-	// create dir
-	dir := slaver.Dir{
-		Mode: p.Mode,
-		Path: p.Path,
-		Own:  p.Own,
-	}
-	if context.Ctx.Slaver == nil {
-		goto checkpv
-	}
-	if err := context.Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
+	ti, err := c7nctx.GetTaskFromCM(p.Namespace, p.Name)
+	if err != nil {
 		return err
 	}
-
-checkpv:
-	if got, _ := p.getPv(); got {
-		p.RefPvName = fmt.Sprintf("%s-%s", p.Name, utils.RandomString())
-		goto checkpv
+	if ti != nil && ti.Type == c7nctx.PvType {
+		log.Infof("using exist pv [%s]", ti.RefName)
+		p.RefPvName = ti.RefName
+		return nil
 	}
-	return p.CreatePv(pvs)
+	// 当为NFS时可以忽略 PV，现在只支持 storage Class
+	/*
+		if context.Ctx.UserConfig.IgnorePv() {
+			p.RefPvName = ""
+			log.Debug("ignore create pv because specify storage class and no other persistence config")
+			return nil
+		}
+	*/
+
+	// 当 slaver 存在时，在它的 pvc 中创建 Persistence 挂载的目录？应该是在新建的 PVC 中创建目录
+	/*
+		dir := slaver.Dir{
+			Mode: p.Mode,
+			Path: p.Path,
+			Own:  p.Own,
+		}
+		if context.Ctx.Slaver == nil {
+			goto checkpv
+		}
+
+		if err := context.Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
+			return err
+		}
+
+	*/
+	// 获得一个不重复的 pv name
+	for {
+		if got, _ := p.getPv(); got {
+			p.RefPvName = fmt.Sprintf("%s-%s", p.Name, c7nutils.RandomString())
+		} else {
+			break
+		}
+	}
+	return p.createPv(per.StorageClassName, per.GetPersistentVolumeSource(""))
 }
 
-func (p *Persistence) CheckOrCreatePvc() error {
+func (p *Persistence) CheckOrCreatePvc(sc string) error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	_, ji := context.Ctx.GetJobInfo(p.Name)
-	if ji != nil && ji.Type == context.PvcType {
-		p.RefPvcName = ji.RefName
+	ti, err := c7nctx.GetTaskFromCM(p.Namespace, p.Name)
+	if err != nil {
+		return err
+	}
+	if ti != nil && ti.Type == c7nctx.PvcType {
+		p.RefPvcName = ti.RefName
 		return nil
 	}
-checkpvc:
-	if got, _ := p.getPvc(); got {
-		p.RefPvcName = fmt.Sprintf("%s-%s", p.Name, utils.RandomString())
-		goto checkpvc
+	// 获得一个不重复的 pvc name
+	for {
+		if got, _ := p.getPvc(); got {
+			p.RefPvcName = fmt.Sprintf("%s-%s", p.Name, c7nutils.RandomString())
+		} else {
+			break
+		}
 	}
-	return p.CreatePvc()
+	return p.createPvc(sc)
 }
 
-func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
+func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
 	log.Infof("creating pv %s", p.RefPvName)
-	client := p.Client
 	if len(p.AccessModes) == 0 {
 		p.AccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
 	}
@@ -137,14 +117,14 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 
 	mountOptions := p.MountOptions
 
-	storageClassName := context.Ctx.UserConfig.GetStorageClassName()
+	storageClassName := sc
 
 	pv := &v1.PersistentVolume{
-		TypeMeta: meta_v1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolume",
 			APIVersion: "v1",
 		},
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   p.RefPvName,
 			Labels: p.CommonLabels,
 		},
@@ -157,12 +137,12 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 		},
 	}
 
-	news := p.PrepareJobInfo()
-	defer context.Ctx.AddJobInfo(news)
+	news := p.prepareTaskInfo()
+	defer c7nctx.AddTaskToCM(p.Namespace, *news)
 
-	_, err := client.CoreV1().PersistentVolumes().Create(pv)
+	_, err := c7nclient.CreatePv(pv)
 	if err != nil {
-		news.Status = context.FailedStatus
+		news.Status = c7nctx.FailedStatus
 		news.Reason = err.Error()
 		return err
 	}
@@ -170,9 +150,7 @@ func (p *Persistence) CreatePv(pvs v1.PersistentVolumeSource) error {
 	return nil
 }
 
-func (p *Persistence) CreatePvc() error {
-	client := p.Client
-
+func (p *Persistence) createPvc(sc string) error {
 	q := resource.MustParse(p.Size)
 
 	resList := v1.ResourceList{
@@ -182,14 +160,14 @@ func (p *Persistence) CreatePvc() error {
 		Requests: resList,
 	}
 
-	storageClassName := context.Ctx.UserConfig.GetStorageClassName()
+	storageClassName := sc
 
 	pvc := &v1.PersistentVolumeClaim{
-		TypeMeta: meta_v1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
 			APIVersion: "v1",
 		},
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   p.RefPvcName,
 			Labels: p.CommonLabels,
 		},
@@ -201,19 +179,52 @@ func (p *Persistence) CreatePvc() error {
 		},
 	}
 
-	ji := p.PrepareJobInfo()
-	ji.Type = context.PvcType
-	ji.RefName = p.RefPvcName
+	ti := p.prepareTaskInfo()
+	ti.Type = c7nctx.PvcType
+	ti.RefName = p.RefPvcName
+	defer c7nctx.AddTaskToCM(p.Namespace, *ti)
 
-	defer context.Ctx.AddJobInfo(ji)
-
-	_, err := client.CoreV1().PersistentVolumeClaims(p.Namespace).Create(pvc)
+	_, err := c7nclient.CreatePvc(p.Namespace, pvc)
 	if err != nil {
 		log.Error(err)
-		ji.Status = context.FailedStatus
-		ji.Reason = err.Error()
+		ti.Status = c7nctx.FailedStatus
+		ti.Reason = err.Error()
 		return err
 	}
 	log.Info("created pvc [%s]", p.RefPvcName)
 	return nil
+}
+
+func (p *Persistence) prepareTaskInfo() *c7nctx.TaskInfo {
+	ti := &c7nctx.TaskInfo{
+		Name:      p.Name,
+		Namespace: p.Namespace,
+		Type:      c7nctx.PvType,
+		Status:    c7nctx.SucceedStatus,
+		RefName:   p.RefPvName,
+	}
+	return ti
+}
+
+// Get exist pv
+func (p *Persistence) getPv() (hasFound bool, pv *v1.PersistentVolume) {
+	pv, err := c7nclient.GetPv(p.RefPvName)
+	if err != nil {
+		if c7nctx.IsNotFound(err) {
+			return false, pv
+		}
+	}
+	return true, pv
+}
+
+// Get exist pvc
+func (p *Persistence) getPvc() (hasFound bool, pvc *v1.PersistentVolumeClaim) {
+	pvc, err := c7nclient.GetPvc(p.Namespace, p.RefPvName)
+
+	if err != nil {
+		if c7nctx.IsNotFound(err) {
+			return false, pvc
+		}
+	}
+	return true, pvc
 }

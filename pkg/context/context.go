@@ -3,11 +3,11 @@ package context
 import "C"
 import (
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+	"helm.sh/helm/v3/pkg/action"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +22,7 @@ const (
 	PvType      = "pv"
 	PvcType     = "pvc"
 	CRDType     = "crd"
-	ReleaseTYPE = "helm"
+	ReleaseType = "helm"
 	TaskType    = "task"
 
 	// Release 未初始化
@@ -51,13 +51,15 @@ const (
 
 type Context struct {
 	// client for Release
-	HelmClient *client.HelmClient
+
+	// TODO 可以去掉，使用单例模式
+	HelmClient *action.Install
 	KubeClient *kubernetes.Interface
 	Slaver     *slaver.Slaver
 
 	// configration
 	UserConfig *config.C7nConfig
-	JobInfo    []*JobInfo
+	JobInfo    []*TaskInfo
 	Metrics    Metrics
 
 	Mux sync.Mutex
@@ -75,7 +77,7 @@ func (ctx *Context) GetConfig() *config.C7nConfig {
 	return ctx.UserConfig
 }
 
-func (ctx *Context) AddJobInfo(ji *JobInfo) {
+func (ctx *Context) AddJobInfo(ji *TaskInfo) {
 	_, r := ctx.GetJobInfo(ji.Name)
 	if r.Name != "" {
 		log.WithField("release", ji.Name).Info("Release already existed")
@@ -86,7 +88,7 @@ func (ctx *Context) AddJobInfo(ji *JobInfo) {
 }
 
 // 保存 jobInfo 修改到 cm
-func (ctx *Context) UpdateJobInfo(ji *JobInfo) {
+func (ctx *Context) UpdateJobInfo(ji *TaskInfo) {
 	idx, _ := ctx.GetJobInfo(ji.Name)
 	if idx > 0 {
 		ctx.JobInfo[idx] = ji
@@ -97,7 +99,7 @@ func (ctx *Context) UpdateJobInfo(ji *JobInfo) {
 	ctx.saveJobInfo()
 }
 
-func (ctx *Context) GetJobInfo(jobName string) (int, *JobInfo) {
+func (ctx *Context) GetJobInfo(jobName string) (int, *TaskInfo) {
 	if ctx.JobInfo == nil {
 		log.Error("Release job info can't be empty.")
 		os.Exit(128)
@@ -108,13 +110,13 @@ func (ctx *Context) GetJobInfo(jobName string) (int, *JobInfo) {
 		}
 	}
 	// 不存在返回 nil
-	return -1, &JobInfo{}
+	return -1, &TaskInfo{}
 }
 
 func (ctx *Context) LoadJobInfo() error {
 	insLogs := ctx.GetOrCreateConfigMapData(staticLogName, staticLogKey)
 
-	jil := []*JobInfo{}
+	jil := []*TaskInfo{}
 	if err := yaml.Unmarshal([]byte(insLogs), &jil); err != nil {
 		log.Error(err)
 	}
@@ -164,7 +166,7 @@ func (ctx *Context) GetOrCreateConfigMapData(cmName, cmKey string) string {
 }
 
 func (ctx *Context) saveJobInfo() {
-	// 直接保存所有的 JobInfo
+	// 直接保存所有的 TaskInfo
 	jiByte, err := yaml.Marshal(ctx.JobInfo)
 	if err != nil {
 		log.Error(err)

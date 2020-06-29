@@ -37,8 +37,8 @@ type KV struct {
 	Value string
 }
 
-// JobInfo 包含了两类
-type JobInfo struct {
+// TaskInfo 包含了两类
+type TaskInfo struct {
 	Name      string
 	Namespace string
 	RefName   string

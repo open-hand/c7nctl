@@ -3,7 +3,6 @@ package action
 import (
 	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
-	helm_env "k8s.io/helm/pkg/helm/environment"
 	"os"
 	"testing"
 )
@@ -18,18 +17,18 @@ func TestGetInstallDef(t *testing.T) {
 
 func initInstall() *Choerodon {
 	cfg := NewCfg()
-	setSettings(cfg.HelmClient.Settings())
-	_ = cfg.HelmClient.SetupConnection()
-	defer cfg.HelmClient.Teardown()
+	setSettings(cfg.HelmInstall.Settings())
+	_ = cfg.HelmInstall.SetupConnection()
+	defer cfg.HelmInstall.Teardown()
 
 	cfg.InitCfg()
-	i := NewInstall(cfg)
+	i := NewChoerodon(cfg)
 	i.Version = "release-0.21"
 
 	context.Ctx.Metrics.Mail = i.Mail
 	context.Ctx = context.Context{
 		// also init i.cfg
-		HelmClient:   i.cfg.HelmClient,
+		HelmClient:   i.cfg.HelmInstall,
 		KubeClient:   i.cfg.KubeClient,
 		CommonLabels: i.CommonLabels,
 		Metrics:      context.Ctx.Metrics,
@@ -86,7 +85,7 @@ func TestRenderRelease(t *testing.T) {
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {
 		// 传入参数的是 *Release
-		renderRelease(rls)
+		RenderRelease(rls)
 	}
 	for _, rls := range id.Spec.Release {
 		t.Log(rls.Name)

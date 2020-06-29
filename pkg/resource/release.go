@@ -1,19 +1,22 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/consts"
-	"github.com/choerodon/c7nctl/pkg/context"
+	c7nctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/slaver"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/vinkdong/gox/http/downloader"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,7 +26,7 @@ type Release struct {
 	Version      string
 	Namespace    string
 	RepoURL      string
-	Values       []context.ChartValue
+	Values       []c7nctx.ChartValue
 	Persistence  []*Persistence
 	PreInstall   []ReleaseJob
 	AfterInstall []ReleaseJob
@@ -58,7 +61,7 @@ type Request struct {
 type ChartValue struct {
 	Name  string
 	Value string
-	Input context.Input
+	Input c7nctx.Input
 	Case  string
 	Check string
 }
@@ -80,24 +83,27 @@ func (r *Request) parserUrl() string {
 	return url
 }
 
-func (pi *ReleaseJob) ExecuteSql(rls *Release, sqlType string) error {
-	_, r := context.Ctx.GetJobInfo(pi.Name)
-	if r != nil && r.Type == sqlType && r.Status == context.SucceedStatus {
+func (pi *ReleaseJob) ExecuteSql(rls *Release, sqlType string, s *slaver.Slaver) error {
+	task, err := c7nctx.GetTaskFromCM(rls.Namespace, pi.Name)
+	if err != nil {
+		return err
+	}
+
+	if task != nil && task.Status == c7nctx.SucceedStatus {
 		log.Infof("task %s had executed", pi.Name)
 		return nil
 	}
 	log.Infof("executing %s , %s", rls.Name, pi.Name)
 
-	r = &context.JobInfo{
+	task = &c7nctx.TaskInfo{
 		Name:     pi.Name,
 		RefName:  rls.Name,
-		Type:     context.TaskType,
-		Status:   context.SucceedStatus,
-		TaskType: context.SqlTask,
+		Type:     c7nctx.TaskType,
+		Status:   c7nctx.SucceedStatus,
+		TaskType: c7nctx.SqlTask,
 		Version:  rls.Version,
 	}
-
-	defer context.Ctx.AddJobInfo(r)
+	defer c7nctx.AddTaskToCM(rls.Namespace, *task)
 
 	sqlList := make([]string, 0)
 
@@ -110,39 +116,38 @@ func (pi *ReleaseJob) ExecuteSql(rls *Release, sqlType string) error {
 	for _, v := range pi.Psql {
 		sqlList = append(sqlList, v)
 	}
-	res := utils.GetResource(pi.InfraRef)
-	s := context.Ctx.Slaver
-	if err := s.ExecuteRemoteSql(sqlList, res, pi.Database, sqlType); err != nil {
-		r.Status = context.FailedStatus
-		r.Reason = err.Error()
+	rlsRef, _ := c7nctx.GetReleaseTaskInfo(rls.Namespace, pi.InfraRef)
+	res := rlsRef.Resource
+	if err := s.ExecuteRemoteSql(sqlList, &res, pi.Database, sqlType); err != nil {
+		task.Status = c7nctx.FailedStatus
+		task.Reason = err.Error()
 		return err
 	}
 	return nil
 }
 
-func (pi *ReleaseJob) ExecuteRequests(infra *Release) error {
+func (pi *ReleaseJob) ExecuteRequests(infra *Release, s *slaver.Slaver) error {
 	if pi.Request == nil {
 		return nil
 	}
-	_, r := context.Ctx.GetJobInfo(pi.Name)
-	if r != nil && r.Type == context.HttpGetTask {
+	_, r := c7nctx.Ctx.GetJobInfo(pi.Name)
+	if r != nil && r.Type == c7nctx.HttpGetTask {
 		log.Infof("task %s had executed", pi.Name)
 		return nil
 	}
 
-	r = &context.JobInfo{
+	r = &c7nctx.TaskInfo{
 		Name:     pi.Name,
 		RefName:  infra.Name,
-		Type:     context.TaskType,
-		Status:   context.SucceedStatus,
-		TaskType: context.HttpGetTask,
+		Type:     c7nctx.TaskType,
+		Status:   c7nctx.SucceedStatus,
+		TaskType: c7nctx.HttpGetTask,
 		Version:  infra.Version,
 	}
 
-	defer context.Ctx.AddJobInfo(r)
+	defer c7nctx.Ctx.AddJobInfo(r)
 
 	req := pi.Request
-	s := context.Ctx.Slaver
 	header := make(map[string][]string)
 	for _, h := range req.Header {
 		header[h.Name] = []string{h.Value}
@@ -162,39 +167,40 @@ func (pi *ReleaseJob) ExecuteRequests(infra *Release) error {
 
 	_, err := s.ExecuteRemoteRequest(f)
 	if err != nil {
-		r.Status = context.FailedStatus
+		r.Status = c7nctx.FailedStatus
 		r.Reason = err.Error()
 	}
 	return err
 }
 
-func (rls *Release) String() string {
-	return rls.Name
+func (r *Release) String() string {
+	return r.Name
 }
-func (rls *Release) ExecutePreCommands() error {
-	err := rls.executeExternalFunc(rls.PreInstall)
+func (r *Release) ExecutePreCommands(s *slaver.Slaver) error {
+
+	err := r.executeExternalFunc(r.PreInstall, s)
 	return err
 }
 
-func (rls *Release) executeExternalFunc(c []ReleaseJob) error {
+func (r *Release) executeExternalFunc(c []ReleaseJob, s *slaver.Slaver) error {
 	for _, pi := range c {
 		if len(pi.Commands) > 0 {
-			if err := pi.ExecuteSql(rls, "mysql"); err != nil {
+			if err := pi.ExecuteSql(r, "mysql", s); err != nil {
 				return err
 			}
 		}
 		if len(pi.Mysql) > 0 {
-			if err := pi.ExecuteSql(rls, "mysql"); err != nil {
+			if err := pi.ExecuteSql(r, "mysql", s); err != nil {
 				return err
 			}
 		}
 		if len(pi.Psql) > 0 {
-			if err := pi.ExecuteSql(rls, "postgres"); err != nil {
+			if err := pi.ExecuteSql(r, "postgres", s); err != nil {
 				return err
 			}
 		}
 		if pi.Request != nil {
-			if err := pi.ExecuteRequests(rls); err != nil {
+			if err := pi.ExecuteRequests(r, s); err != nil {
 				return err
 			}
 		}
@@ -202,36 +208,88 @@ func (rls *Release) executeExternalFunc(c []ReleaseJob) error {
 	return nil
 }
 
-func (rls *Release) getUserValuesTpl() ([]byte, error) {
-	return context.Ctx.UserConfig.GetHelmValuesTpl(rls.Name)
+// 将 config.yml 中的值合并到 Release.Resource
+func (r *Release) mergerResource(uc *config.C7nConfig) {
+	cnf := uc
+	if res := cnf.GetResource(r.Name); res == nil {
+		log.Warnf("There is no resource in config.yaml of Release %s", r.Name)
+	} else {
+		// 直接使用外部配置
+		if res.External {
+			r.Resource = res
+		} else {
+			// TODO 有没有更加简便的方式
+			if res.Domain != "" {
+				r.Resource.Domain = res.Domain
+			}
+			if res.Schema != "" {
+				r.Resource.Schema = res.Schema
+			}
+			if res.Url != "" {
+				r.Resource.Url = res.Url
+			}
+			if res.Host != "" {
+				r.Resource.Host = res.Host
+			}
+			if res.Port > 0 {
+				r.Resource.Port = res.Port
+			}
+			if res.Username != "" {
+				r.Resource.Username = res.Username
+			}
+			if res.Password != "" {
+				r.Resource.Password = res.Password
+			}
+			if res.Persistence != nil {
+				r.Resource.Persistence = res.Persistence
+			}
+		}
+	}
+}
+
+func (r *Release) getUserValuesTpl(valuesPath string) ([]byte, error) {
+	return c7nctx.Ctx.UserConfig.GetHelmValuesTpl(r.Name)
 }
 
 // convert yml format values template to yaml raw data
-func (rls *Release) ValuesRaw() (string, error) {
-	data, err := rls.getUserValuesTpl()
-
-	if err != nil {
-		return "", std_errors.WithMessage(err, fmt.Sprintf("get user values for %s failed", rls.Name))
+func (r *Release) ValuesRaw(uc *config.C7nConfig) (string, error) {
+	dir := uc.Spec.HelmConfig.Values.Dir
+	c7nversion := uc.Version
+	if dir == "" {
+		dir = "values"
 	}
-	if len(data) == 0 {
-		url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, context.Ctx.Version, "values/"+rls.Name+".yaml")
-		nData, statusCode, err := downloader.GetFileContent(url)
-		if statusCode == 200 && err == nil {
-			data = nData
+	// values.yaml 与 rls 名一致
+	valuesFilepath := fmt.Sprintf("%s/%s.yaml", dir, r.Name)
+
+	var data []byte
+	_, err := os.Stat(valuesFilepath)
+	// 当本地文件不存在时拉取远程文件
+	if err != nil {
+		if os.IsNotExist(err) {
+			url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, c7nversion, r.Name)
+			nData, statusCode, err := downloader.GetFileContent(url)
+			if statusCode == 200 && err == nil {
+				data = nData
+			}
+		} else {
+			return "", std_errors.WithMessage(err, fmt.Sprintf("get user values for %s failed", r.Name))
 		}
 	}
+	if err == nil {
+		data, _ = ioutil.ReadFile(valuesFilepath)
+	}
+
 	if len(data) > 0 {
-		//return rls.renderValue(string(data[:]))
-		return utils.RenderReleaseValue(rls.Name, string(data[:])), nil
+		return string(data[:]), nil
 	}
 	return "", nil
 }
 
 // convert yml values to values list as xxx=yyy
-func (rls *Release) HelmValues() []string {
-	values := make([]string, len(rls.Values))
+func (r *Release) HelmValues() []string {
+	values := make([]string, len(r.Values))
 	// store values for feature use
-	for k, v := range rls.Values {
+	for k, v := range r.Values {
 		// 解决特殊字符
 		values[k] = fmt.Sprintf("%s=%s", v.Name, v.Value)
 	}
@@ -239,123 +297,126 @@ func (rls *Release) HelmValues() []string {
 }
 
 // resource infra
-func (rls *Release) Install() error {
-	_, ji := context.Ctx.GetJobInfo(rls.Name)
-	if ji.Status == context.SucceedStatus {
-		log.Infof("Release %s is already installed", rls.Name)
+func (r *Release) Install(s *slaver.Slaver, vals map[string]interface{}) error {
+	ti, err := c7nctx.GetReleaseTaskInfo(r.Namespace, r.Name)
+	if err != nil {
+		return err
+	}
+	if ti.Status == c7nctx.SucceedStatus {
+		log.Infof("Release %s is already installed", r.Name)
 		return nil
 	}
-	if ji.Status == context.RenderedStatus || ji.Status == context.FailedStatus {
+	if ti.Status == c7nctx.RenderedStatus || ti.Status == c7nctx.FailedStatus {
 		// 等待依赖项安装完成
-		for _, r := range rls.Requirements {
-			checkReleasePodRunning(r)
+		for _, r := range r.Requirements {
+			CheckReleasePodRunning(r)
 		}
 
-		if err := rls.ExecutePreCommands(); err != nil {
-			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", rls.Name))
+		if err := r.ExecutePreCommands(s); err != nil {
+			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", r.Name))
 		}
 
-		values := rls.HelmValues()
+		values := r.HelmValues()
 		var releaseName string
-		if context.Ctx.Prefix != "" {
-			releaseName = fmt.Sprintf("%s-%s", context.Ctx.Prefix, rls.Name)
+		if c7nctx.Ctx.Prefix != "" {
+			releaseName = fmt.Sprintf("%s-%s", r.Prefix, r.Name)
 		} else {
-			releaseName = rls.Name
-
+			releaseName = r.Name
 		}
+
 		chartArgs := client.ChartArgs{
 			ReleaseName: releaseName,
-			Namespace:   context.Ctx.Namespace,
-			RepoUrl:     context.Ctx.RepoUrl,
+			Namespace:   c7nctx.Ctx.Namespace,
+			RepoUrl:     c7nctx.Ctx.RepoUrl,
 			Verify:      false,
-			Version:     rls.Version,
-			ChartName:   rls.Chart,
+			Version:     r.Version,
+			ChartName:   r.Chart,
 		}
 
-		log.Infof("installing %s", rls.Name)
+		log.Infof("installing %s", r.Name)
 		for _, k := range values {
-			log.WithField("release", rls.Name).Debug(k)
+			log.WithField("release", r.Name).Debug(k)
 		}
-		// TODO useless
-		if rls.Timeout > 0 {
-			values = append(values, fmt.Sprintf("preJob.timeout=%d", rls.Timeout))
-		}
-		raw, err := rls.ValuesRaw()
-		if err != nil {
-			return std_errors.WithMessage(err, "Release %s get value failed")
-		}
-		err = context.Ctx.HelmClient.InstallRelease(values, raw, chartArgs)
 
 		if err != nil {
-			ji.Status = context.FailedStatus
-			context.Ctx.UpdateJobInfo(ji)
+			ti.Status = c7nctx.FailedStatus
+			c7nctx.Ctx.UpdateJobInfo(ti)
 			return err
 		} else {
-			ji.Status = context.InstalledStatus
-			context.Ctx.UpdateJobInfo(ji)
+			ti.Status = c7nctx.InstalledStatus
+			c7nctx.Ctx.UpdateJobInfo(ti)
 		}
 	}
-	if ji.Status == context.InstalledStatus {
+	if ti.Status == c7nctx.InstalledStatus {
 		// TODO 解决 after task失败二次执行
-		if len(rls.AfterInstall) > 0 {
-			go rls.ExecuteAfterTasks()
+		if len(r.AfterInstall) > 0 {
+			go r.ExecuteAfterTasks()
 			// return std_errors.WithMessage(err, "Execute after task failed")
 		}
-		ji.Status = context.SucceedStatus
+		ti.Status = c7nctx.SucceedStatus
 		// 更新 jobinfo 状态
-		context.Ctx.UpdateJobInfo(ji)
+		c7nctx.Ctx.UpdateJobInfo(ti)
 	}
 
 	return nil
 }
 
-func (rls *Release) InstallComponent() error {
+func (r *Release) InstallComponent() error {
 
-	values := rls.HelmValues()
-	releaseName := rls.Name
-	if rls.Prefix != "" {
-		releaseName = fmt.Sprintf("%s-%s", context.Ctx.Prefix, rls.Name)
+	values := r.HelmValues()
+	releaseName := r.Name
+	if r.Prefix != "" {
+		releaseName = fmt.Sprintf("%s-%s", c7nctx.Ctx.Prefix, r.Name)
 	}
 	chartArgs := client.ChartArgs{
 		ReleaseName: releaseName,
-		Namespace:   context.Ctx.Namespace,
-		RepoUrl:     context.Ctx.RepoUrl,
+		Namespace:   c7nctx.Ctx.Namespace,
+		RepoUrl:     c7nctx.Ctx.RepoUrl,
 		Verify:      false,
-		Version:     rls.Version,
-		ChartName:   rls.Chart,
+		Version:     r.Version,
+		ChartName:   r.Chart,
 	}
 
-	log.Infof("installing %s", rls.Name)
+	log.Infof("installing %s", r.Name)
 	for _, k := range values {
 		log.Debug(k)
 	}
-	if rls.Timeout > 0 {
-		values = append(values, fmt.Sprintf("preJob.timeout=%d", rls.Timeout))
+	if r.Timeout > 0 {
+		values = append(values, fmt.Sprintf("preJob.timeout=%d", r.Timeout))
 	}
-	// raw := rls.ValuesRaw()
-	err := context.Ctx.HelmClient.InstallRelease(values, "", chartArgs)
+	// raw := r.ValuesRaw()
+	err := c7nctx.Ctx.HelmClient.InstallRelease(values, "", chartArgs)
 	return err
 }
 
 //
-func (rls *Release) ExecuteAfterTasks() error {
-	checkReleasePodRunning(rls.Name)
-
-	log.Infof("%s: started, will execute required commands and requests", rls.Name)
-	err := rls.executeExternalFunc(rls.AfterInstall)
+func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error {
+	ti, err := c7nctx.GetTaskFromCM(r.Namespace, r.Name)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
+	defer c7nctx.UpdateTaskToCM(r.Namespace, *ti)
+
+	CheckReleasePodRunning(r.Name)
+
+	log.Infof("%s: started, will execute required commands and requests", r.Name)
+	err = r.executeExternalFunc(r.AfterInstall, s)
+	if err != nil {
+		log.Error(err)
+		ti.Status = c7nctx.FailedStatus
+		return err
+	}
+	ti.Status = c7nctx.SucceedStatus
+	wg.Done()
 	return nil
 }
 
 // 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
 // TODO 所有组件设置统一的label
-func checkReleasePodRunning(rls string) {
+func CheckReleasePodRunning(rls string) {
 
-	clientset := *context.Ctx.KubeClient
-	namespace := context.Ctx.Namespace
+	clientset := *c7nctx.Ctx.KubeClient
+	namespace := c7nctx.Ctx.Namespace
 	time.Sleep(time.Second * 3)
 
 	labels := []string{
@@ -364,7 +425,7 @@ func checkReleasePodRunning(rls string) {
 	}
 	for {
 		for _, label := range labels {
-			deploy, err := clientset.AppsV1().Deployments(namespace).List(meta_v1.ListOptions{LabelSelector: label})
+			deploy, err := clientset.AppsV1().Deployments(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
 			if errors.IsNotFound(err) {
 				log.Infof("Deployment %s in namespace %s not found\n", label, namespace)
 			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
@@ -382,7 +443,7 @@ func checkReleasePodRunning(rls string) {
 					}
 				}
 			}
-			ss, err := clientset.AppsV1().StatefulSets(namespace).List(meta_v1.ListOptions{LabelSelector: label})
+			ss, err := clientset.AppsV1().StatefulSets(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
 			if errors.IsNotFound(err) {
 				log.Infof("StatefulSet %s in namespace %s not found\n", label, namespace)
 			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {

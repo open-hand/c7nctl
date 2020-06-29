@@ -71,11 +71,11 @@ func (u *Upgrader) Init() {
 			KubeClient:   kube.GetClient(),
 		}
 		helmClient.InitClient()
-		u.HelmClient = helmClient*/
+		u.HelmInstall = helmClient*/
 }
 
 func (u *Upgrader) GetReleaseValues(upgrade *Upgrade) error {
-	/*	ls, err := u.HelmClient.HelmClient.ReleaseContent(upgrade.Name)
+	/*	ls, err := u.HelmInstall.HelmInstall.ReleaseContent(upgrade.Name)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func upgradeRelease(u *Upgrader, upgrade *Upgrade) error {
 				ChartName:   upgrade.Chart,
 			}
 			log.Infof("Upgrade %s to %s version,please waiting.", upgrade.Name, upgrade.Version)
-			return u.HelmClient.UpgradeRelease(
+			return u.HelmInstall.UpgradeRelease(
 				raw,
 				chartArgs,
 			)*/
@@ -224,7 +224,7 @@ func (u *Upgrader) preUpgrade() error {
 					v.Name, constraintVersion, v.InstalledVersion)
 			}
 			if v.Namespace != namespace {
-				/*jobInterface := u.HelmClient.KubeClient.BatchV1().Jobs(v.Namespace)
+				/*jobInterface := u.HelmInstall.KubeClient.BatchV1().Jobs(v.Namespace)
 				jobList, err := jobInterface.List(meta_v1.ListOptions{})
 				if err != nil {
 					return err

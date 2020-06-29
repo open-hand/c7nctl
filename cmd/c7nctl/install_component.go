@@ -2,54 +2,58 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 const installComponentDesc = `
 `
 
-func newInstallComponentCmd(cfg *action.Configuration, args []string) *cobra.Command {
-	install := action.NewInstall(cfg)
+func newInstallComponentCmd(cfg *action.C7nConfiguration) *cobra.Command {
+	c7n := action.NewChoerodon(cfg)
 	cmd := &cobra.Command{
-		Use:              "component [ARG]",
-		Short:            "Install common components to k8s",
-		Long:             installComponentDesc,
-		Args:             minimumNArgs(1),
-		PreRunE:          func(_ *cobra.Command, _ []string) error { return cfg.HelmClient.SetupConnection() },
-		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
+		Use:   "component [ARG]",
+		Short: "Install common components to k8s",
+		Long:  installComponentDesc,
+		Args:  minimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg.InitCfg()
 			log.Info("Starting install component ", args[0])
-			if err := install.InstallComponent(args[0]); err != nil {
+			if err := InstallComponent(c7n, args[0]); err != nil {
 				log.Error("Install component failed")
 				return err
 			}
 			log.Info("Install component succeed")
 			return nil
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) { cfg.HelmClient.Teardown() },
 	}
 
-	settings := cfg.HelmClient.Settings()
-
-	addInstallComponentFlags(cmd.Flags(), install)
-
-	flags := cmd.PersistentFlags()
-	settings.AddFlags(flags)
-	_ = flags.Parse(args)
-
-	// set defaults from environment
-	settings.Init(flags)
 	return cmd
 }
 
-func addInstallComponentFlags(fs *pflag.FlagSet, i *action.Choerodon) {
-	fs.StringVarP(&i.Namespace, "namespace", "n", "default", "Namespace Which installed component")
-	fs.StringVarP(&i.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
+func InstallComponent(c *action.Choerodon, cname string) error {
+	c.Version = c7nutils.GetVersion(c.Version)
 
+	id, _ := c.GetInstallDef(c7nconsts.DefaultResource)
+
+	for _, rls := range id.Spec.Component {
+		if rls.Name == cname {
+			err := id.RenderComponent(rls)
+			if err != nil {
+				return err
+			}
+			vals, err := id.RenderHelmValues(rls, nil)
+			rls.Name = rls.Name + "-" + c7nutils.RandomString(5)
+			if err := c.InstallRelease(rls, vals); err != nil {
+				return err
+			} else {
+				break
+			}
+		}
+	}
+	return nil
 }
 
 // minimumNArgs returns an error if there is not at least N args.

@@ -33,7 +33,7 @@ func TestCreatePv(t *testing.T) {
 		Capacity:     pvCapacity,
 		Name:         "test-pv",
 	}
-	p.CreatePv(pvs)
+	p.createPv(pvs)
 }
 
 func TestCreatePvc(t *testing.T) {
@@ -50,5 +50,5 @@ func TestCreatePvc(t *testing.T) {
 		Namespace:    "default",
 		Size:         "10Gi",
 	}
-	p.CreatePvc()
+	p.createPvc()
 }

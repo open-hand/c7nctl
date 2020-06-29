@@ -20,8 +20,8 @@ import (
 	"io"
 )
 
-// TODO REMOVE
 var (
+	// TODO REMOVE
 	ConfigFile   string
 	ResourceFile string
 )
@@ -31,7 +31,7 @@ install [command] [flags]
 `
 
 // installCmd represents the resource command
-func newInstallCmd(cfg *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -40,8 +40,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer, args []string) *cob
 	}
 
 	cmd.AddCommand(
-		newInstallC7nCmd(cfg, out, args),
-		newInstallComponentCmd(cfg, args),
+		newInstallC7nCmd(cfg, out),
+		newInstallComponentCmd(cfg),
 	)
 
 	return cmd

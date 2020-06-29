@@ -1,33 +1,37 @@
 package action
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/config"
-	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
+	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	c7nctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
-	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	"github.com/choerodon/c7nctl/pkg/slaver"
+	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/kubernetes/pkg/util/maps"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors"
 	"os"
-	"time"
-)
-
-// TODO is necessary move to consts pkg ?
-const (
-	DefaultRepoUrl = "https://openchart.choerodon.com.cn/choerodon/c7n/"
-	C7nLabelKey    = "c7n-usage"
-	C7nLabelValue  = "c7n-installer"
+	"sync"
 )
 
 type Choerodon struct {
-	cfg *Configuration
+	cfg        *C7nConfiguration
+	Metrics    c7nctx.Metrics
+	Slaver     *slaver.Slaver
+	UserConfig *c7ncfg.C7nConfig
+
+	Wg *sync.WaitGroup
+	// TODO 是否移动到 cmd/c7nctl
 	// api versions
 	Version string
 	// Choerodon version
@@ -39,6 +43,7 @@ type Choerodon struct {
 	Prefix             string
 	NoTimeout          bool
 	SkipInput          bool
+	RepoUrl            string
 	Namespace          string
 	Timeout            int
 	Mail               string
@@ -46,88 +51,75 @@ type Choerodon struct {
 	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
-func NewInstall(cfg *Configuration) *Choerodon {
-	return &Choerodon{cfg: cfg}
+func NewChoerodon(cfg *C7nConfiguration) *Choerodon {
+	return &Choerodon{
+		cfg: cfg,
+		CommonLabels: map[string]string{
+			c7nconsts.C7nLabelKey: c7nconsts.C7nLabelValue,
+		},
+	}
 }
 
-func (i *Choerodon) Run() error {
-	// 当 version 没有设置时，从 git repo 获取最新版本
-	if i.Version == "" {
-		i.Version = c7n_utils.GetVersion("master")
-	}
+func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interface{}) error {
+	ti, err := c7nctx.GetTaskFromCM(c.Namespace, rls.Name)
 
-	userConfig := GetUserConfig(i.ConfigFile)
-	if userConfig == nil {
-		return std_errors.New("Must have user config file")
-	}
-
-	id := i.GetInstallDef(userConfig)
-	i.InitContext(userConfig, id)
-
-	// 检查硬件资源
-	if err := CheckResource(&id.Spec.Resources); err != nil {
-		return err
-	}
-	if err := CheckNamespace(); err != nil {
-		return err
-	}
-
-	if err := c7n_ctx.Ctx.LoadJobInfo(); err != nil {
-		return err
-	}
-
-	stopCh := make(chan struct{})
-	s, err := id.PrepareSlaver(stopCh)
 	if err != nil {
-		return std_errors.WithMessage(err, "Create Slaver failed")
+		return err
 	}
+	// 完成后更新 task 状态
+	defer c7nctx.UpdateTaskToCM(c.Namespace, *ti)
 
-	c7n_ctx.Ctx.Slaver = s
-	defer func() {
-		stopCh <- struct{}{}
-	}()
+	if ti.Status == c7nctx.SucceedStatus {
+		log.Infof("Release %s is already installed", rls.Name)
+		return nil
+	}
+	if ti.Status == c7nctx.RenderedStatus || ti.Status == c7nctx.FailedStatus {
+		// 等待依赖项安装完成
+		for _, r := range rls.Requirements {
+			resource.CheckReleasePodRunning(r)
+		}
 
-	// 渲染 Release
-	for _, rls := range id.Spec.Release {
-		// 传入参数的是 *Release
-		if err := renderRelease(rls); err != nil {
+		if err := rls.ExecutePreCommands(c.Slaver); err != nil {
+			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", rls.Name))
+		}
+
+		args := c7nclient.ChartArgs{
+			RepoUrl:     c.RepoUrl,
+			Namespace:   c.Namespace,
+			ReleaseName: c.getReleaseName(rls.Name),
+			ChartName:   rls.Chart,
+			Version:     rls.Version,
+		}
+
+		log.Infof("installing %s", rls.Name)
+		// TODO 使用统一的 io.writer
+		_, err := c.cfg.HelmClient.Install(args, vals, os.Stdout)
+		if err != nil {
+			ti.Status = c7nctx.FailedStatus
 			return err
 		}
-	}
 
-	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
-	installQueue := releaseGraph.TopoSortByKahn()
-
-	for !installQueue.IsEmpty() {
-		rls := installQueue.Dequeue()
-
-		if err = rls.Install(); err != nil {
-			return std_errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
+		if len(rls.AfterInstall) > 0 {
+			c.Wg.Add(1)
+			go rls.ExecuteAfterTasks(c.Slaver, c.Wg)
+			// return std_errors.WithMessage(err, "Execute after task failed")
 		}
-	}
-
-	// 清理历史的job
-	if err := cleanJobs(); err != nil {
-		return err
+		ti.Status = c7nctx.InstalledStatus
 	}
 
 	return nil
 }
 
-func (i *Choerodon) InstallComponent(cname string) error {
-	i.Version = c7n_utils.GetVersion(i.Version)
+func (c *Choerodon) InstallComponent(cname string) error {
+	c.Version = c7nutils.GetVersion(c.Version)
 
-	id := i.GetInstallDef(nil)
-	c7n_ctx.Ctx.HelmClient = i.cfg.HelmClient
-	c7n_ctx.Ctx.KubeClient = i.cfg.KubeClient
-	c7n_ctx.Ctx.Namespace = i.Namespace
-	c7n_ctx.Ctx.RepoUrl = DefaultRepoUrl
+	id, _ := c.GetInstallDef(c7nconsts.DefaultResource)
 
 	for _, rls := range id.Spec.Component {
 		if rls.Name == cname {
 			renderComponent(rls)
 
-			rls.Name = rls.Name + "-" + c7n_utils.RandomString(5)
+			rls.Name = rls.Name + "-" + c7nutils.RandomString(5)
 			if err := rls.InstallComponent(); err != nil {
 				return err
 			} else {
@@ -138,78 +130,11 @@ func (i *Choerodon) InstallComponent(cname string) error {
 	return nil
 }
 
-func renderRelease(rls *resource.Release) error {
-	_, ji := c7n_ctx.Ctx.GetJobInfo(rls.Name)
-
-	if ji.Name == "" {
-		ji = &c7n_ctx.JobInfo{
-			Name:      rls.Name,
-			Namespace: c7n_ctx.Ctx.Namespace,
-			Type:      c7n_ctx.ReleaseTYPE,
-			Status:    c7n_ctx.UninitializedStatus,
-			Date:      time.Now(),
-		}
-		c7n_ctx.Ctx.UpdateJobInfo(ji)
-	}
-	if ji.Status == c7n_ctx.UninitializedStatus {
-		// 传入的参数是指针
-		mergerResource(rls)
-		ji.Resource = *rls.Resource
-		c7n_ctx.Ctx.UpdateJobInfo(ji)
-
-		renderValues(rls)
-		ji.Values = rls.Values
-		ji.Status = c7n_ctx.InputtedStatus
-		c7n_ctx.Ctx.UpdateJobInfo(ji)
-	}
-	if ji.Status == c7n_ctx.InputtedStatus {
-		if err := render(rls); err != nil {
-			return err
-		}
-		// 检查域名
-		if err := checkReleaseDomain(rls); err != nil {
-			return std_errors.WithMessage(err, fmt.Sprintf("Release %s's domain is invalid", rls))
-		}
-
-		ji.Resource = *rls.Resource
-		ji.Values = rls.Values
-		ji.Status = c7n_ctx.RenderedStatus
-		// 保存渲染完成的rls
-		c7n_ctx.Ctx.UpdateJobInfo(ji)
-	}
-	// 当 rls 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-	if ji.Status == c7n_ctx.RenderedStatus || ji.Status == c7n_ctx.FailedStatus {
-		rls.Values = ji.Values
-		rls.Resource = &ji.Resource
-		// 重新渲染 preCommand 等
-		if err := render(rls); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func render(rls *resource.Release) error {
-	rlsByte, _ := yaml_v2.Marshal(rls)
-	renderedRls := c7n_utils.RenderRelease(rls.Name, string(rlsByte))
-	if err := yaml_v2.Unmarshal(renderedRls, rls); err != nil {
-		return std_errors.WithMessage(err, fmt.Sprintf("Render Release %s failed", rls))
-	}
-	return nil
-}
-
-func renderComponent(rls *resource.Release) {
-	renderValues(rls)
-	rlsByte, _ := yaml_v2.Marshal(rls)
-	renderedRls := c7n_utils.RenderRelease(rls.Name, string(rlsByte))
-	_ = yaml_v2.Unmarshal(renderedRls, rls)
-}
-
-func checkReleaseDomain(rls *resource.Release) error {
+func (c *Choerodon) CheckReleaseDomain(rls *resource.Release) error {
 	for _, v := range rls.Values {
 		if v.Check == "clusterdomain" {
 			log.Debugf("Value %s: %s, checking: %s", v.Name, v.Value, v.Check)
-			if err := c7n_ctx.Ctx.Slaver.CheckClusterDomain(v.Value); err != nil {
+			if err := c.Slaver.CheckClusterDomain(v.Value); err != nil {
 				log.Errorf("请检查您的域名: %s 已正确解析到集群", v.Value)
 				return err
 			}
@@ -218,82 +143,22 @@ func checkReleaseDomain(rls *resource.Release) error {
 	return nil
 }
 
-// 传指针的方式好呢，还是返回值的方式好？
-//
-// 在渲染 release 前将 values 渲染完成
-func renderValues(rls *resource.Release) {
-	if rls.Values == nil {
-		log.Debugf("release %s values is empty", rls.Name)
-		return
-	}
-	for idx, v := range rls.Values {
-		// 输入 value
-		if v.Input.Enabled && !c7n_ctx.Ctx.SkipInput {
-			var err error
-			var value string
-			if v.Input.Password {
-				v.Input.Twice = true
-				value, err = c7n_utils.AcceptUserPassword(v.Input)
-			} else {
-				value, err = c7n_utils.AcceptUserInput(v.Input)
-			}
-			// v.Values 是复制
-			rls.Values[idx].Value = value
-			if err != nil {
-				log.Error(err)
-				os.Exit(128)
-			}
-		} else {
-			rls.Values[idx].Value = c7n_utils.RenderReleaseValue(v.Name, v.Value)
-		}
-	}
-}
-
-// 将 config.yml 中的值合并到 Release.Resource
-func mergerResource(r *resource.Release) {
-	cnf := c7n_ctx.Ctx.GetConfig()
-	if res := cnf.GetResource(r.Name); res == nil {
-		log.Warnf("There is no resource in config.yaml of Release %s", r.Name)
-	} else {
-		// 直接使用外部配置
-		if res.External {
-			r.Resource = res
-		} else {
-			// TODO 有没有更加简便的方式
-			if res.Domain != "" {
-				r.Resource.Domain = res.Domain
-			}
-			if res.Schema != "" {
-				r.Resource.Schema = res.Schema
-			}
-			if res.Url != "" {
-				r.Resource.Url = res.Url
-			}
-			if res.Host != "" {
-				r.Resource.Host = res.Host
-			}
-			if res.Port > 0 {
-				r.Resource.Port = res.Port
-			}
-			if res.Username != "" {
-				r.Resource.Username = res.Username
-			}
-			if res.Password != "" {
-				r.Resource.Password = res.Password
-			}
-			if res.Persistence != nil {
-				r.Resource.Persistence = res.Persistence
-			}
-		}
-	}
-}
-
 // 为了避免循环依赖，从 resource.install.go 移到这里
-func (i *Choerodon) GetInstallDef(uc *config.C7nConfig) *resource.InstallDefinition {
+func (c *Choerodon) GetInstallDef(res string) (*resource.InstallDefinition, error) {
 	// 在 getVersion 之后执行，已经确保了 i.Version 一定有值
-	rd := c7n_utils.GetInstallDefinition(i.ResourceFile, i.Version)
+	rd, err := c7nutils.GetInstallDefinition(res, c.Version)
+	if err != nil {
+		return nil, err
+	}
 
-	installDef := &resource.InstallDefinition{}
+	installDef := &resource.InstallDefinition{
+		Namespace:    c.Namespace,
+		Prefix:       c.Prefix,
+		Timeout:      c.Timeout,
+		SkipInput:    c.SkipInput,
+		Version:      c.Version,
+		CommonLabels: c.CommonLabels,
+	}
 	rdJson, err := yaml.ToJSON(rd)
 	if err != nil {
 		panic(err)
@@ -301,51 +166,53 @@ func (i *Choerodon) GetInstallDef(uc *config.C7nConfig) *resource.InstallDefinit
 	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
 	_ = json.Unmarshal(rdJson, installDef)
 
-	installDef.PaaSVersion = i.Version
-	if i.NoTimeout {
+	installDef.PaaSVersion = c.Version
+	if c.NoTimeout {
 		installDef.Timeout = 60 * 60 * 24
 	}
 
-	if uc != nil {
-		if accessModes := uc.Spec.Persistence.AccessModes; len(accessModes) > 0 {
+	if c.UserConfig != nil {
+		if accessModes := c.UserConfig.Spec.Persistence.AccessModes; len(accessModes) > 0 {
 			installDef.DefaultAccessModes = accessModes
 		} else {
 			installDef.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
 		}
 	}
 
-	return installDef
+	return installDef, nil
 }
 
-func GetUserConfig(filePath string) *config.C7nConfig {
+func GetUserConfig(filePath string) (*c7ncfg.C7nConfig, error) {
 	if filePath == "" {
-		log.Debug("no user config defined by `-c`")
-		return nil
+		return nil, std_errors.New("No user config defined by `-c`")
 	}
 	data, err := ioutil.ReadFile(filePath)
-	c7n_utils.CheckErrAndExit(err, 124)
+	if err != nil {
+		return nil, std_errors.WithMessage(err, "Read config file failed")
+	}
 
-	userConfig := &config.C7nConfig{}
-	err = yaml_v2.Unmarshal(data, userConfig)
-	c7n_utils.CheckErrAndExit(err, 124)
+	userConfig := &c7ncfg.C7nConfig{}
+	if err = yaml_v2.Unmarshal(data, userConfig); err != nil {
+		return nil, std_errors.WithMessage(err, "Unmarshal config failed")
+	}
 
-	return userConfig
+	return userConfig, nil
 }
 
 // mv to client package
-func cleanJobs() error {
-	jobInterface := (*c7n_ctx.Ctx.KubeClient).BatchV1().Jobs(c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
-	jobList, err := jobInterface.List(meta_v1.ListOptions{})
+func CleanJobs() error {
+	jobInterface := (*c7nctx.Ctx.KubeClient).BatchV1().Jobs(c7nctx.Ctx.UserConfig.Metadata.Namespace)
+	jobList, err := jobInterface.List(context.TODO(), meta_v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	log.Info("clean history jobs...")
-	delOpts := &meta_v1.DeleteOptions{}
+	delOpts := meta_v1.DeleteOptions{}
 	for _, job := range jobList.Items {
 		if job.Status.Active > 0 {
 			log.Infof("job %s still active ignored..", job.Name)
 		} else {
-			if err := jobInterface.Delete(job.Name, delOpts); err != nil {
+			if err := jobInterface.Delete(context.TODO(), job.Name, delOpts); err != nil {
 				return err
 			}
 			log.Infof("deleted job %s", job.Name)
@@ -355,45 +222,44 @@ func cleanJobs() error {
 	return nil
 }
 
-func (i *Choerodon) InitContext(userConfig *config.C7nConfig, id *resource.InstallDefinition) {
-	commonLabels := map[string]string{
-		C7nLabelKey: C7nLabelValue,
-	}
-	i.CommonLabels = commonLabels
+/*
+func (c *Choerodon) InitContext(userConfig *c7ncfg.C7nConfig, id *resource.InstallDefinition) {
+	commonLabels :=
+	c.CommonLabels = commonLabels
 
-	c7n_ctx.Ctx.Metrics.Mail = i.Mail
-	c7n_ctx.Ctx = c7n_ctx.Context{
+	c7nctx.Ctx.Metrics.Mail = c.Mail
+	c7nctx.Ctx = c7nctx.Context{
 		// also init i.cfg
-		HelmClient:   i.cfg.HelmClient,
-		KubeClient:   i.cfg.KubeClient,
+		HelmClient:   c.cfg.HelmInstall,
+		KubeClient:   c.cfg.KubeClient,
 		Namespace:    userConfig.Metadata.Namespace,
-		CommonLabels: i.CommonLabels,
+		CommonLabels: c.CommonLabels,
 		UserConfig:   userConfig,
-		Metrics:      c7n_ctx.Metrics{},
-		JobInfo:      []*c7n_ctx.JobInfo{},
-		SkipInput:    i.SkipInput,
-		Prefix:       i.Prefix,
+		Metrics:      c7nctx.Metrics{},
+		JobInfo:      []*c7nctx.TaskInfo{},
+		SkipInput:    c.SkipInput,
+		Prefix:       c.Prefix,
 		RepoUrl:      id.Spec.Basic.RepoURL,
-		Version:      i.Version,
+		Version:      c.Version,
 	}
 }
+*/
 
 func CheckResource(resources *v1.ResourceRequirements) error {
-	client := *c7n_ctx.Ctx.KubeClient
 	request := resources.Requests
 
 	reqMemory := request.Memory().Value()
 	reqCpu := request.Cpu().Value()
-	clusterMemory, clusterCpu := c7n_utils.GetClusterResource(client)
+	clusterMemory, clusterCpu := c7nclient.GetClusterResource()
 
-	c7n_ctx.Ctx.Metrics.Memory = clusterMemory
-	c7n_ctx.Ctx.Metrics.CPU = clusterCpu
+	c7nctx.Ctx.Metrics.Memory = clusterMemory
+	c7nctx.Ctx.Metrics.CPU = clusterCpu
 
-	serverVersion, err := client.Discovery().ServerVersion()
+	serverVersion, err := c7nclient.GetServerVersion()
 	if err != nil {
 		return std_errors.Wrap(err, "can't get your cluster version")
 	}
-	c7n_ctx.Ctx.Metrics.Version = serverVersion.String()
+	c7nctx.Ctx.Metrics.Version = serverVersion.String()
 	if clusterMemory < reqMemory {
 		return std_errors.New(fmt.Sprintf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024)))
 	}
@@ -403,30 +269,73 @@ func CheckResource(resources *v1.ResourceRequirements) error {
 	return nil
 }
 
-func CheckNamespace() error {
-	_, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Get(c7n_ctx.Ctx.UserConfig.Metadata.Namespace, meta_v1.GetOptions{})
+func CheckNamespace(namespace string) error {
+	_, err := c7nclient.GetNamespace(namespace)
 	if err != nil {
-		if errorStatus, ok := err.(*errors.StatusError); ok {
-			if errorStatus.ErrStatus.Code == 404 {
-				return CreateNamespace()
-			}
+		if errors.IsNotFound(err) {
+			return c7nclient.CreateNamespace(namespace)
 		}
-		return std_errors.Wrap(err, "Failed create namespace")
+		return err
 	}
-	log.Infof("namespace %s already exists", c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
+	log.Infof("namespace %s already exists", namespace)
 	return nil
 }
 
-func CreateNamespace() error {
-	ns := &v1.Namespace{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name: c7n_ctx.Ctx.UserConfig.Metadata.Namespace,
-		},
+/**
+  创建 slaver 的相关操作
+*/
+func (c *Choerodon) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error) {
+	// s.Client = c.cfg.KubeClient
+	// be care of use point
+	c.Slaver.CommonLabels = maps.CopySS(c.CommonLabels)
+	c.Slaver.Namespace = c.Namespace
+
+	if pvcName, err := c.prepareSlaverPvc(&c.UserConfig.Spec.Persistence); err != nil {
+		return c.Slaver, err
+	} else {
+		c.Slaver.PvcName = pvcName
 	}
-	log.Infof("creating namespace %s", c7n_ctx.Ctx.UserConfig.Metadata.Namespace)
-	namespace, err := (*c7n_ctx.Ctx.KubeClient).CoreV1().Namespaces().Create(ns)
+
+	if _, err := c.Slaver.CheckInstall(); err != nil {
+		return c.Slaver, err
+	}
+	port := c.Slaver.ForwardPort("http", stopCh)
+	grpcPort := c.Slaver.ForwardPort("grpc", stopCh)
+	c.Slaver.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
+	c.Slaver.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
+	return c.Slaver, nil
+}
+
+func (c *Choerodon) prepareSlaverPvc(p *c7ncfg.Persistence) (string, error) {
+
+	persistence := resource.Persistence{
+		CommonLabels: c.CommonLabels,
+		AccessModes:  c.DefaultAccessModes,
+		Size:         "1Gi",
+		Mode:         "755",
+		PvcEnabled:   true,
+		Name:         "slaver",
+	}
+	err := persistence.CheckOrCreatePv(p)
 	if err != nil {
-		return std_errors.Wrap(err, fmt.Sprintf("Create Namespace %+v failed", namespace))
+		return "", err
 	}
-	return nil
+
+	persistence.Namespace = c.Namespace
+
+	if err := persistence.CheckOrCreatePvc(p.StorageClassName); err != nil {
+		return "", err
+	}
+	return persistence.RefPvcName, nil
+}
+
+func (c *Choerodon) SendMetrics(err error) {
+
+}
+
+func (c *Choerodon) getReleaseName(rlsName string) string {
+	if c.Prefix != "" {
+		rlsName = fmt.Sprintf("%s-%s", c.Prefix, rlsName)
+	}
+	return rlsName
 }

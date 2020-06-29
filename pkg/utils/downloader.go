@@ -1,22 +1,23 @@
 package utils
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 )
 
-func GetRemoteResource(resourceUrl string) (data []byte) {
+func GetRemoteResource(resourceUrl string) (data []byte, err error) {
 	log.WithField("url", resourceUrl).Infof("getting resource")
 
 	resp, err := http.Get(resourceUrl)
-	CheckErrAndExit(err, 127)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Unknown error when get remote resource")
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		CheckErrAndExit(errors.New("Network error when get remote resource."), 127)
+		return nil, errors.New("Network error when get remote resource.")
 	}
-	data, err = ioutil.ReadAll(resp.Body)
-	CheckErrAndExit(err, 127)
-	return data
+
+	return ioutil.ReadAll(resp.Body)
 }

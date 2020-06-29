@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/config"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/choerodon/c7nctl/pkg/context"
-	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
+	"github.com/choerodon/c7nctl/pkg/resource"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -21,59 +23,131 @@ and specify the file with "--c7n-config <install-c7n-config.yaml>".
 Ensure you run this within server can vista k8s.
 `
 
-func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *cobra.Command {
-	install := action.NewInstall(cfg)
+func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
+	c := action.NewChoerodon(cfg)
 
 	cmd := &cobra.Command{
-		Use:              "c7n",
-		Short:            "One-click installation choerodon",
-		Long:             installC7nDesc,
-		PreRunE:          func(_ *cobra.Command, _ []string) error { return cfg.HelmClient.SetupConnection() },
-		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
-		RunE: func(_ *cobra.Command, args []string) error {
-			cfg.InitCfg()
-			err := installC7n(install)
-			c7n_ctx.Ctx.SendMetrics(err)
-			return err
+		Use:   "c7n",
+		Short: "One-click installation choerodon",
+		Long:  installC7nDesc,
+		Run: func(_ *cobra.Command, args []string) {
+			setUserConfig(c.SkipInput)
+			if err := runInstallC7n(c); err != nil {
+				log.Error(err) // errors.WithMessage(err, "Install Choerodon failed")
+			}
+			log.Info("Install Choerodon succeed")
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) { cfg.HelmClient.Teardown() },
 	}
 
-	settings := cfg.HelmClient.Settings()
-
-	addInstallFlags(cmd.Flags(), install)
-
 	flags := cmd.PersistentFlags()
-	settings.AddFlags(flags)
-	_ = flags.Parse(args)
+	addInstallFlags(flags, c)
 
 	// set defaults from environment
-	settings.Init(flags)
-
 	return cmd
 }
 
-func installC7n(install *action.Choerodon) error {
-	if err := install.Run(); err != nil {
-		return errors.WithMessage(err, "Install Choerodon failed")
+func runInstallC7n(c *action.Choerodon) error {
+	userConfig, err := action.GetUserConfig(settings.ConfigFile)
+
+	if err != nil {
+		return errors.WithMessage(err, "Failed to get user config file")
 	}
-	log.Info("Install Choerodon succeed")
-	return nil
+	c.UserConfig = userConfig
+
+	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
+	if c.Version == "" {
+		c.Version = c7n_utils.GetVersion(c7nconsts.DefaultGitBranch)
+	}
+	// config.yaml 的 version 配置不会生效
+	userConfig.Version = c.Version
+
+	id, _ := c.GetInstallDef(settings.ResourceFile)
+
+	// 初始化 helmInstall
+	// 只有 id 中用到了 RepoUrl
+	if id.Spec.Basic.RepoURL != "" {
+		c.RepoUrl = id.Spec.Basic.RepoURL
+	} else {
+		c.RepoUrl = c7nconsts.DefaultRepoUrl
+	}
+
+	// 检查硬件资源
+	if err := action.CheckResource(&id.Spec.Resources); err != nil {
+		return err
+	}
+	if err := action.CheckNamespace(c.Namespace); err != nil {
+		return err
+	}
+
+	stopCh := make(chan struct{})
+	_, err = c.PrepareSlaver(stopCh)
+	if err != nil {
+		return errors.WithMessage(err, "Create Slaver failed")
+	}
+
+	defer func() {
+		stopCh <- struct{}{}
+	}()
+
+	// 渲染 Release
+	for _, rls := range id.Spec.Release {
+
+		// 传入参数的是 *Release
+		if err := id.RenderRelease(rls, userConfig); err != nil {
+			return err
+		}
+		// 检测域名
+		if err = c.CheckReleaseDomain(rls); err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("Release %s's domain is invalid", rls.Name))
+		}
+	}
+
+	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
+	installQueue := releaseGraph.TopoSortByKahn()
+
+	for !installQueue.IsEmpty() {
+		rls := installQueue.Dequeue()
+		// TODO move to renderRelease
+		rls.Namespace = c.Namespace
+		rls.Prefix = c.Prefix
+
+		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
+		vals, err := id.RenderHelmValues(rls, userConfig)
+		if err != nil {
+			return err
+		}
+		if err = c.InstallRelease(rls, vals); err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
+		}
+	}
+	// 等待所有 afterTask 执行完成。
+	c.Wg.Wait()
+	c.SendMetrics(err)
+	// 清理历史的job，cm，slaver 等
+	if err := action.CleanJobs(); err != nil {
+		return err
+	}
+
+	return err
 }
 
 func addInstallFlags(fs *pflag.FlagSet, client *action.Choerodon) {
-	fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
-	fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
+	// moved to EnvSettings
+	//fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
+	//fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
+	//fs.StringVarP(&client.Namespace, "namespace", "n", "c7n-system", "set namespace which install choerodon")
+
 	fs.StringVar(&client.Version, "version", "", "specify a version")
-	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
+
+	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
 	fs.BoolVar(&client.SkipInput, "skip-input", false, "use default username and password to avoid user input")
 }
 
-func setUserConfig(client *action.Choerodon) {
+func setUserConfig(skipInput bool) {
 	// 在 c7nctl.initConfig() 中 viper 获取了默认的配置文件
 	c := config.Cfg
-	if !c.Terms.Accepted && !client.SkipInput {
+	if !c.Terms.Accepted && !skipInput {
 		c7n_utils.AskAgreeTerms()
 		mail := inputUserMail()
 		c.Terms.Accepted = true

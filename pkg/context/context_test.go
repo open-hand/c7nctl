@@ -26,7 +26,7 @@ func TestSaveNewsData(t *testing.T) {
 		Namespace:  "test",
 	}
 
-	news := &JobInfo{
+	news := &TaskInfo{
 		Name:      "testnews2",
 		Namespace: "test",
 		Type:      PvcType,

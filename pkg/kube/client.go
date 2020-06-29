@@ -5,8 +5,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/helm/pkg/helm/portforwarder"
-	"k8s.io/helm/pkg/kube"
 	"os"
 )
 
@@ -24,25 +22,6 @@ func getConfig() (*rest.Config, error) {
 	}
 
 	return config, err
-}
-
-func getClientset(c *rest.Config) (*kube.Tunnel, kubernetes.Interface, error) {
-	client, err := kubernetes.NewForConfig(c)
-	if err != nil {
-		log.Error(err)
-	}
-	tunnel, err := portforwarder.New("kube-system", client, c)
-	return tunnel, client, err
-}
-
-func GetTunnel() *kube.Tunnel {
-	config, _ := getConfig()
-	tunnel, _, err := getClientset(config)
-	if err != nil {
-		log.Error(err)
-		os.Exit(129)
-	}
-	return tunnel
 }
 
 func GetConfig() (*rest.Config, error) {

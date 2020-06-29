@@ -227,6 +227,7 @@ getFreePort:
 	return port
 }
 
+// 在 slaver 挂载的pvc 中创建目录
 func (s *Slaver) MakeDir(dir Dir) error {
 	log.Infof("create dir %s with mode %s own %s ", dir.Path, dir.Mode, dir.Own)
 
