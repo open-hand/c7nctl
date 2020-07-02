@@ -6,7 +6,7 @@ config:
   max_connections: 1500
 persistence:
   enabled: true
-  storageClass: {{ getStorageClass }}
+  storageClass: {{ .getStorageClass }}
   size: 20Gi
 service:
   enabled: ture

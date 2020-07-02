@@ -5,7 +5,7 @@ env:
     DEPTH: 2
 persistence:
   enabled: true
-  storageClass: {{ getStorageClass }}
+  storageClass: {{ .getStorageClass }}
 ingress:
   enabled: true
   hosts:

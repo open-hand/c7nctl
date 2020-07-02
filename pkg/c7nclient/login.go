@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/c7nclient/model"
-	"github.com/choerodon/c7nctl/pkg/context"
+
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
@@ -32,12 +32,12 @@ func (c *C7NClient) Login(out io.Writer) {
 		err      error
 	)
 
-	username, err = utils.AcceptUserInput(context.Input{
+	username, err = utils.AcceptUserInput(utils.Input{
 		Password: false,
 		Tip:      "请输入用户名: ",
 		Regex:    ".+",
 	})
-	password, err = utils.AcceptUserInput(context.Input{
+	password, err = utils.AcceptUserInput(utils.Input{
 		Password: true,
 		Tip:      "请输入密码: ",
 		Regex:    ".+",

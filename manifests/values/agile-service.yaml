@@ -2,19 +2,19 @@
 env:
   open:
     # TODO url support prefix
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( getResource "register-server").Url }}
-    SPRING_CLOUD_CONFIG_URI: {{ (getResource "register-server").Schema }}://{{ (getResource "register-server").Host }}:{{ (getResource "register-server").Port }}
-    SPRING_DATASOURCE_URL: {{ getDatabaseUrl "agile_service" }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .getResource "register-server").Url }}
+    SPRING_CLOUD_CONFIG_URI: {{ ( .getResource "register-server").Schema }}://{{ (.getResource "register-server").Host }}:{{ (.getResource "register-server").Port }}
+    SPRING_DATASOURCE_URL: {{ .getDatabaseUrl "agile_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_DATASOURCE_PASSWORD: "password"
     SPRING_REDIS_DATABASE: 9
-    SPRING_REDIS_HOST: {{ ( getResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( getResource "redis").Port }}
-    SERVICES_ATTACHMENT_URL: {{ ( getResource "minio").Schema }}://{{ ( getResource "minio").Domain }}
+    SPRING_REDIS_HOST: {{ ( .getResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .getResource "redis").Port }}
+    SERVICES_ATTACHMENT_URL: {{ ( .getResource "minio").Schema }}://{{ ( .getResource "minio").Domain }}
 preJob:
   timeout: 1800
   preInitDB:
     datasource:
-      url: {{ getDatabaseUrl "agile_service" }}
+      url: {{ .getDatabaseUrl "agile_service" }}
       username: "choerodon"
       password: "password"

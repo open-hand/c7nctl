@@ -23,9 +23,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	haction "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/kube"
-
 	"os"
 )
 
@@ -41,14 +38,13 @@ func main() {
 
 	cmd := newRootCmd(c7nCfg, os.Stdout, os.Args[1:])
 	cobra.OnInitialize(func() {
-		// settings.namespace 是不能设置的，后面的 namespace 都以 settings.Namespace() 为准
-		// c7nCfg.HelmInstall = client.NewHelmInstall(settings)
 		initConfig()
 		// 初始化 helm3Client
-		cfg := initConfiguration(settings.Namespace)
+		cfg := client.InitConfiguration(settings.KubeConfig, settings.Namespace)
 		c7nCfg.HelmClient = client.NewHelm3Client(cfg)
 		// 初始化 kubeClient
-		c7nCfg.KubeClient, _ = client.GetKubeClient()
+		kubeclient, _ := client.GetKubeClient(settings.KubeConfig)
+		c7nCfg.KubeClient = client.NewK8sClient(kubeclient)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Debug(err)
@@ -87,17 +83,4 @@ func initConfig() {
 	if err := viper.Unmarshal(&config.Cfg); err != nil {
 		log.Error(err)
 	}
-
-}
-
-func initConfiguration(namespace string) *haction.Configuration {
-	actionConfig := new(haction.Configuration)
-	helmDriver := os.Getenv("HELM_DRIVER")
-	// TODO 是否
-	if err := actionConfig.Init(kube.GetConfig("", "", settings.Namespace), namespace, helmDriver, func(format string, v ...interface{}) {
-		log.Warnf(format, v)
-	}); err != nil {
-		log.Fatal(err)
-	}
-	return actionConfig
 }

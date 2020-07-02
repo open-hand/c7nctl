@@ -6,9 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
-	c7nctx "github.com/choerodon/c7nctl/pkg/context"
 	c7nslaver "github.com/choerodon/c7nctl/pkg/slaver"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
@@ -16,6 +16,7 @@ import (
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"text/template"
+	"time"
 )
 
 type InstallDefinition struct {
@@ -28,6 +29,7 @@ type InstallDefinition struct {
 	// TODO REMOVE
 	CommonLabels       map[string]string
 	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
+	StorageClass       string
 	SkipInput          bool
 	Timeout            int
 	Prefix             string
@@ -55,11 +57,26 @@ type Basic struct {
 
 // TODO 需要初始化 namespace prefix 等参数
 func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) error {
-	t, err := c7nctx.GetReleaseTaskInfo(i.Namespace, r.Name)
+	t, err := r.Client.GetTaskInfoFromCM(i.Namespace, r.Name)
+
 	if err != nil {
-		return err
+		// 创建一些基本错误类型
+		if err.Error() == "Task info is not found" {
+			t = c7nclient.TaskInfo{
+				Name:      r.Name,
+				Namespace: r.Namespace,
+				RefName:   "",
+				Status:    c7nconsts.UninitializedStatus,
+				Type:      c7nconsts.StaticReleaseKey,
+				Date:      time.Now(),
+				Version:   r.Version,
+				Prefix:    r.Prefix,
+			}
+		} else {
+			return err
+		}
 	}
-	if t.Status == c7nctx.UninitializedStatus {
+	if t.Status == c7nconsts.UninitializedStatus {
 		// 传入的参数是指针
 		r.mergerResource(uc)
 		t.Resource = *r.Resource
@@ -74,13 +91,14 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 		}
 
 		// 保存渲染完成的 r
-		t.Status = c7nctx.RenderedStatus
-		if err = c7nctx.UpdateTaskToCM(i.Namespace, *t); err != nil {
+		t.Status = c7nconsts.RenderedStatus
+		if err = r.Client.SaveTaskInfoToCM(i.Namespace, t); err != nil {
 			return err
 		}
 	}
+
 	// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-	if t.Status == c7nctx.RenderedStatus || t.Status == c7nctx.FailedStatus {
+	if t.Status == c7nconsts.RenderedStatus || t.Status == c7nconsts.FailedStatus {
 		r.Values = t.Values
 		r.Resource = &t.Resource
 		// 重新渲染 preCommand 等，避免在 TaskInfo 加入 PreCommand 导致循环依赖
@@ -92,7 +110,6 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 }
 
 func (i *InstallDefinition) RenderComponent(rls *Release) error {
-
 	rlsByte, _ := yaml_v2.Marshal(rls)
 	renderedRls, err := i.renderTpl(rls.Name, string(rlsByte))
 	if err != nil {
@@ -104,12 +121,6 @@ func (i *InstallDefinition) RenderComponent(rls *Release) error {
 //
 func (i *InstallDefinition) RenderHelmValues(r *Release, uc *c7ncfg.C7nConfig) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
-	/*
-		// TODO useless
-				if r.Timeout > 0 {
-					values = append(values, fmt.Sprintf("preJob.timeout=%d", r.Timeout))
-				}
-	*/
 	var fileValsByte bytes.Buffer
 	if uc == nil {
 		fileVals, err := r.ValuesRaw(uc)
@@ -159,7 +170,6 @@ func (i *InstallDefinition) renderValues(rls *Release) error {
 			}
 			// v.Values 是复制
 			rls.Values[idx].Value = value
-
 		} else {
 			v, err := i.renderTpl(v.Name+"-values", v.Value)
 			if err != nil {
@@ -205,7 +215,8 @@ func (i *InstallDefinition) getReleaseName(rlsName string) string {
 
 // TODO add storageClassName()
 func (i *InstallDefinition) getStorageClass() string {
-	return c7nctx.Ctx.UserConfig.GetStorageClassName()
+	//return c7nctx.Ctx.UserConfig.GetStorageClassName()
+	return i.StorageClass
 }
 
 func (i *InstallDefinition) getDatabaseUrl(rls string) string {

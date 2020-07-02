@@ -11,11 +11,16 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/strvals"
 	"io"
+	"os"
 )
 
+var helmClient *Helm3Client
+
+// helmClient 使用单例模式，
 type Helm3Client struct {
 	*action.Configuration
 }
@@ -37,6 +42,18 @@ func NewHelm3Client(cfg *action.Configuration) *Helm3Client {
 	return &Helm3Client{
 		Configuration: cfg,
 	}
+}
+
+func InitConfiguration(kubeconfig, namespace string) *action.Configuration {
+	actionConfig := new(action.Configuration)
+	helmDriver := os.Getenv("HELM_DRIVER")
+	// TODO 是否
+	if err := actionConfig.Init(kube.GetConfig(kubeconfig, "", namespace), namespace, helmDriver, func(format string, v ...interface{}) {
+		log.Warnf(format, v)
+	}); err != nil {
+		log.Fatal(err)
+	}
+	return actionConfig
 }
 
 func (h *Helm3Client) Install(cArgs ChartArgs, vals map[string]interface{}, out io.Writer) (*release.Release, error) {

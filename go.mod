@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/buger/jsonparser v0.0.0-20191204142016-1a29609e0929
 	github.com/chr4/pwgen v1.1.0
+	github.com/docker/go v1.5.1-1 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.0.0
 	github.com/golang/protobuf v1.3.2
@@ -22,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
+	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/ugorji/go/codec v1.1.7
 	github.com/vinkdong/gox v0.0.0-20191217071044-432e0b72e0f8
 	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904

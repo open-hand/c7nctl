@@ -3,7 +3,6 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/hashicorp/go-version"
 	"github.com/vinkdong/gox/log"
 	"golang.org/x/crypto/ssh/terminal"
@@ -13,10 +12,25 @@ import (
 	"syscall"
 )
 
+type Input struct {
+	Enabled  bool
+	Regex    string
+	Tip      string
+	Password bool
+	Include  []KV
+	Exclude  []KV
+	Twice    bool
+}
+
+type KV struct {
+	Name  string
+	Value string
+}
+
 func AskAgreeTerms() {
-	input := context.Input{
+	input := Input{
 		Password: false,
-		Tip:      "为了提高用户体验，程序会收集一些非敏感信息上传到我们服务器，具体包括:主机内存大小、CPU数量/频率、Kubernetes版本\nIn order to improve the user experience, the program will collect some non-sensitive information to upload to our server, including: host memory size, CPU frequency, Kubernetes version. \n同意请输入Y，不同意请输入N。\nagree to enter Y, do not agree to enter N. [Y/N]:   ",
+		Tip:      "为了提高用户体验，程序会收集一些非敏感信息上传到我们服务器，具体包括:主机内存大小、CPU数量/频率、Kubernetes版本\nIn order to improve the user experience, the program will collect some non-sensitive information to upload to our server, including: host memory size, CPU frequency, Kubernetes version. \n同意请输入Y，不同意请输入N。\nagree to enter Y, do not agree to enter N. [Y/N]: ",
 		Regex:    "^(y|Y|n|N)$",
 	}
 	r, err := AcceptUserInput(input)
@@ -30,7 +44,7 @@ func AskAgreeTerms() {
 	}
 }
 
-func AcceptUserInput(input context.Input) (string, error) {
+func AcceptUserInput(input Input) (string, error) {
 	if input.Password {
 		return AcceptUserPassword(input)
 	}
@@ -41,7 +55,7 @@ start:
 	if err != nil {
 		return "", err
 	}
-	text = strings.Trim(text, "\n")
+	text = strings.Trim(text, "\r")
 
 	if !CheckMatch(text, input) {
 		goto start
@@ -49,7 +63,7 @@ start:
 	return text, nil
 }
 
-func AcceptUserPassword(input context.Input) (string, error) {
+func AcceptUserPassword(input Input) (string, error) {
 start:
 	fmt.Print(input.Tip)
 	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
@@ -86,7 +100,7 @@ start:
 	return string(bytePassword[:]), nil
 }
 
-func CheckMatch(value string, input context.Input) bool {
+func CheckMatch(value string, input Input) bool {
 
 	r := regexp.MustCompile(input.Regex)
 	if !r.MatchString(value) {

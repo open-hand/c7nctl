@@ -7,7 +7,6 @@ import (
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
-	c7nctx "github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
@@ -25,8 +24,8 @@ import (
 )
 
 type Choerodon struct {
-	cfg        *C7nConfiguration
-	Metrics    c7nctx.Metrics
+	Cfg        *C7nConfiguration
+	Metrics    resource.Metrics
 	Slaver     *slaver.Slaver
 	UserConfig *c7ncfg.C7nConfig
 
@@ -53,30 +52,31 @@ type Choerodon struct {
 
 func NewChoerodon(cfg *C7nConfiguration) *Choerodon {
 	return &Choerodon{
-		cfg: cfg,
+		Cfg: cfg,
 		CommonLabels: map[string]string{
 			c7nconsts.C7nLabelKey: c7nconsts.C7nLabelValue,
 		},
+		Wg: &sync.WaitGroup{},
 	}
 }
 
 func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interface{}) error {
-	ti, err := c7nctx.GetTaskFromCM(c.Namespace, rls.Name)
+	ti, err := c.Cfg.KubeClient.GetTaskInfoFromCM(c.Namespace, rls.Name)
 
 	if err != nil {
 		return err
 	}
 	// 完成后更新 task 状态
-	defer c7nctx.UpdateTaskToCM(c.Namespace, *ti)
+	defer c.Cfg.KubeClient.SaveTaskInfoToCM(c.Namespace, ti)
 
-	if ti.Status == c7nctx.SucceedStatus {
+	if ti.Status == c7nconsts.SucceedStatus {
 		log.Infof("Release %s is already installed", rls.Name)
 		return nil
 	}
-	if ti.Status == c7nctx.RenderedStatus || ti.Status == c7nctx.FailedStatus {
+	if ti.Status == c7nconsts.RenderedStatus || ti.Status == c7nconsts.FailedStatus {
 		// 等待依赖项安装完成
 		for _, r := range rls.Requirements {
-			resource.CheckReleasePodRunning(r)
+			rls.CheckReleasePodRunning(r)
 		}
 
 		if err := rls.ExecutePreCommands(c.Slaver); err != nil {
@@ -93,9 +93,9 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 
 		log.Infof("installing %s", rls.Name)
 		// TODO 使用统一的 io.writer
-		_, err := c.cfg.HelmClient.Install(args, vals, os.Stdout)
+		_, err := c.Cfg.HelmClient.Install(args, vals, os.Stdout)
 		if err != nil {
-			ti.Status = c7nctx.FailedStatus
+			ti.Status = c7nconsts.FailedStatus
 			return err
 		}
 
@@ -104,7 +104,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 			go rls.ExecuteAfterTasks(c.Slaver, c.Wg)
 			// return std_errors.WithMessage(err, "Execute after task failed")
 		}
-		ti.Status = c7nctx.InstalledStatus
+		ti.Status = c7nconsts.InstalledStatus
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func (c *Choerodon) InstallComponent(cname string) error {
 
 	for _, rls := range id.Spec.Component {
 		if rls.Name == cname {
-			renderComponent(rls)
+			//renderComponent(rls)
 
 			rls.Name = rls.Name + "-" + c7nutils.RandomString(5)
 			if err := rls.InstallComponent(); err != nil {
@@ -156,6 +156,7 @@ func (c *Choerodon) GetInstallDef(res string) (*resource.InstallDefinition, erro
 		Prefix:       c.Prefix,
 		Timeout:      c.Timeout,
 		SkipInput:    c.SkipInput,
+		StorageClass: c.UserConfig.Spec.Persistence.StorageClassName,
 		Version:      c.Version,
 		CommonLabels: c.CommonLabels,
 	}
@@ -200,8 +201,8 @@ func GetUserConfig(filePath string) (*c7ncfg.C7nConfig, error) {
 }
 
 // mv to client package
-func CleanJobs() error {
-	jobInterface := (*c7nctx.Ctx.KubeClient).BatchV1().Jobs(c7nctx.Ctx.UserConfig.Metadata.Namespace)
+func (c *Choerodon) CleanJobs() error {
+	jobInterface := c.Cfg.KubeClient.GetClientSet().BatchV1().Jobs(c.Namespace)
 	jobList, err := jobInterface.List(context.TODO(), meta_v1.ListOptions{})
 	if err != nil {
 		return err
@@ -222,44 +223,21 @@ func CleanJobs() error {
 	return nil
 }
 
-/*
-func (c *Choerodon) InitContext(userConfig *c7ncfg.C7nConfig, id *resource.InstallDefinition) {
-	commonLabels :=
-	c.CommonLabels = commonLabels
-
-	c7nctx.Ctx.Metrics.Mail = c.Mail
-	c7nctx.Ctx = c7nctx.Context{
-		// also init i.cfg
-		HelmClient:   c.cfg.HelmInstall,
-		KubeClient:   c.cfg.KubeClient,
-		Namespace:    userConfig.Metadata.Namespace,
-		CommonLabels: c.CommonLabels,
-		UserConfig:   userConfig,
-		Metrics:      c7nctx.Metrics{},
-		JobInfo:      []*c7nctx.TaskInfo{},
-		SkipInput:    c.SkipInput,
-		Prefix:       c.Prefix,
-		RepoUrl:      id.Spec.Basic.RepoURL,
-		Version:      c.Version,
-	}
-}
-*/
-
-func CheckResource(resources *v1.ResourceRequirements) error {
+func (c *Choerodon) CheckResource(resources *v1.ResourceRequirements) error {
 	request := resources.Requests
 
 	reqMemory := request.Memory().Value()
 	reqCpu := request.Cpu().Value()
-	clusterMemory, clusterCpu := c7nclient.GetClusterResource()
+	clusterMemory, clusterCpu := c.Cfg.KubeClient.GetClusterResource()
 
-	c7nctx.Ctx.Metrics.Memory = clusterMemory
-	c7nctx.Ctx.Metrics.CPU = clusterCpu
+	c.Metrics.Memory = clusterMemory
+	c.Metrics.CPU = clusterCpu
 
-	serverVersion, err := c7nclient.GetServerVersion()
+	serverVersion, err := c.Cfg.KubeClient.GetServerVersion()
 	if err != nil {
 		return std_errors.Wrap(err, "can't get your cluster version")
 	}
-	c7nctx.Ctx.Metrics.Version = serverVersion.String()
+	c.Metrics.Version = serverVersion.String()
 	if clusterMemory < reqMemory {
 		return std_errors.New(fmt.Sprintf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024)))
 	}
@@ -269,11 +247,11 @@ func CheckResource(resources *v1.ResourceRequirements) error {
 	return nil
 }
 
-func CheckNamespace(namespace string) error {
-	_, err := c7nclient.GetNamespace(namespace)
+func (c *Choerodon) CheckNamespace(namespace string) error {
+	_, err := c.Cfg.KubeClient.GetNamespace(namespace)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return c7nclient.CreateNamespace(namespace)
+			return c.Cfg.KubeClient.CreateNamespace(namespace)
 		}
 		return err
 	}
@@ -289,6 +267,7 @@ func (c *Choerodon) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error
 	// be care of use point
 	c.Slaver.CommonLabels = maps.CopySS(c.CommonLabels)
 	c.Slaver.Namespace = c.Namespace
+	c.Slaver.Client = c.Cfg.KubeClient.GetClientSet()
 
 	if pvcName, err := c.prepareSlaverPvc(&c.UserConfig.Spec.Persistence); err != nil {
 		return c.Slaver, err
@@ -306,9 +285,12 @@ func (c *Choerodon) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error
 	return c.Slaver, nil
 }
 
+/**
+ */
 func (c *Choerodon) prepareSlaverPvc(p *c7ncfg.Persistence) (string, error) {
-
 	persistence := resource.Persistence{
+		Namespace:    c.Namespace,
+		Client:       c.Cfg.KubeClient,
 		CommonLabels: c.CommonLabels,
 		AccessModes:  c.DefaultAccessModes,
 		Size:         "1Gi",
@@ -316,13 +298,13 @@ func (c *Choerodon) prepareSlaverPvc(p *c7ncfg.Persistence) (string, error) {
 		PvcEnabled:   true,
 		Name:         "slaver",
 	}
-	err := persistence.CheckOrCreatePv(p)
-	if err != nil {
-		return "", err
-	}
-
-	persistence.Namespace = c.Namespace
-
+	/*
+		err := persistence.CheckOrCreatePv(p)
+		if err != nil {
+			return "", err
+		}
+	*/
+	// 基于 nfs StorageClass 自动创建 PV
 	if err := persistence.CheckOrCreatePvc(p.StorageClassName); err != nil {
 		return "", err
 	}

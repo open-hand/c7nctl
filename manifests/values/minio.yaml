@@ -1,7 +1,7 @@
 mode: distributed
 persistence:
   enabled: true
-  storageClass: {{ getStorageClass }}
+  storageClass: {{ .getStorageClass }}
   size: 50Gi
 ingress:
   enabled: true

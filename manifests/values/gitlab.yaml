@@ -26,9 +26,9 @@ persistence:
   enabled: true
   persistentVolumeClaim:
     core:
-      storageClass: {{ getStorageClass }}
+      storageClass: {{ .getStorageClass }}
     redis:
-      storageClass: {{ getStorageClass }}
+      storageClass: {{ .getStorageClass }}
     database:
-      storageClass: {{ getStorageClass }}
+      storageClass: {{ .getStorageClass }}
 

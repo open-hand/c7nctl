@@ -28,8 +28,8 @@ func initInstall() *Choerodon {
 	context.Ctx.Metrics.Mail = i.Mail
 	context.Ctx = context.Context{
 		// also init i.cfg
-		HelmClient:   i.cfg.HelmInstall,
-		KubeClient:   i.cfg.KubeClient,
+		HelmClient:   i.Cfg.HelmInstall,
+		KubeClient:   i.Cfg.KubeClient,
 		CommonLabels: i.CommonLabels,
 		Metrics:      context.Ctx.Metrics,
 		SkipInput:    i.SkipInput,

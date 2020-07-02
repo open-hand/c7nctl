@@ -1,16 +1,16 @@
 env:
   open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( getResource "register-server").Url }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .getResource "register-server").Url }}
     # TODO gitlab token get
-    GITLAB_URL: {{ ( getResource "gitlab").Schema }}://{{ ( getResource "gitlab").Domain }}
-    SPRING_CLOUD_CONFIG_URI: {{ (getResource "register-server").Schema }}://{{ (getResource "register-server").Host }}:{{ (getResource "register-server").Port }}
+    GITLAB_URL: {{ ( .getResource "gitlab").Schema }}://{{ ( .getResource "gitlab").Domain }}
+    SPRING_CLOUD_CONFIG_URI: {{ (.getResource "register-server").Schema }}://{{ (.getResource "register-server").Host }}:{{ (.getResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_DATASOURCE_URL: {{ getDatabaseUrl "gitlab_service" }}
+    SPRING_DATASOURCE_URL: {{ .getDatabaseUrl "gitlab_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
 preJob:
   timeout: 1800
   preInitDB:
     datasource:
-      url: {{ getDatabaseUrl "gitlab_service" }}
+      url: {{ .getDatabaseUrl "gitlab_service" }}
       username: "choerodon"
       password: "password"

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
-	c7nctx "github.com/choerodon/c7nctl/pkg/context"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,6 +15,7 @@ import (
 )
 
 type Persistence struct {
+	Client       *c7nclient.K8sClient
 	CommonLabels map[string]string
 	AccessModes  []v1.PersistentVolumeAccessMode
 	Capacity     v1.ResourceList
@@ -35,15 +37,25 @@ func (p *Persistence) CheckOrCreatePv(per *c7ncfg.Persistence) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	ti, err := c7nctx.GetTaskFromCM(p.Namespace, p.Name)
+	ti, err := p.Client.GetTaskInfoFromCM(p.Namespace, p.Name)
 	if err != nil {
-		return err
+		if err.Error() == "Task info is not found" {
+			ti = c7nclient.TaskInfo{
+				Name:    p.Name,
+				RefName: p.Name,
+				Type:    c7nconsts.StaticPersistentKey,
+				Status:  c7nconsts.UninitializedStatus,
+			}
+		} else {
+			return err
+		}
 	}
-	if ti != nil && ti.Type == c7nctx.PvType {
+	if ti.Status == c7nconsts.SucceedStatus && ti.Type == c7nconsts.PvType {
 		log.Infof("using exist pv [%s]", ti.RefName)
 		p.RefPvName = ti.RefName
 		return nil
 	}
+
 	// 当为NFS时可以忽略 PV，现在只支持 storage Class
 	/*
 		if context.Ctx.UserConfig.IgnorePv() {
@@ -84,11 +96,20 @@ func (p *Persistence) CheckOrCreatePvc(sc string) error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	ti, err := c7nctx.GetTaskFromCM(p.Namespace, p.Name)
+	ti, err := p.Client.GetTaskInfoFromCM(p.Namespace, p.Name)
 	if err != nil {
-		return err
+		if err.Error() == "Task info is not found" {
+			ti = c7nclient.TaskInfo{
+				Name:    p.Name,
+				RefName: p.Name,
+				Type:    c7nconsts.StaticPersistentKey,
+				Status:  c7nconsts.UninitializedStatus,
+			}
+		} else {
+			return err
+		}
 	}
-	if ti != nil && ti.Type == c7nctx.PvcType {
+	if ti.Name != "" && ti.Status == c7nconsts.SucceedStatus {
 		p.RefPvcName = ti.RefName
 		return nil
 	}
@@ -138,11 +159,11 @@ func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
 	}
 
 	news := p.prepareTaskInfo()
-	defer c7nctx.AddTaskToCM(p.Namespace, *news)
+	defer p.Client.SaveTaskInfoToCM(p.Namespace, *news)
 
-	_, err := c7nclient.CreatePv(pv)
+	_, err := p.Client.CreatePv(pv)
 	if err != nil {
-		news.Status = c7nctx.FailedStatus
+		news.Status = c7nconsts.FailedStatus
 		news.Reason = err.Error()
 		return err
 	}
@@ -153,15 +174,6 @@ func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
 func (p *Persistence) createPvc(sc string) error {
 	q := resource.MustParse(p.Size)
 
-	resList := v1.ResourceList{
-		"storage": q,
-	}
-	res := v1.ResourceRequirements{
-		Requests: resList,
-	}
-
-	storageClassName := sc
-
 	pvc := &v1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -170,37 +182,44 @@ func (p *Persistence) createPvc(sc string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   p.RefPvcName,
 			Labels: p.CommonLabels,
+			// 基于 NFS storageClass 的 PVC 自动创建
+			Annotations: map[string]string{
+				"volume.beta.kubernetes.io/storage-class": sc,
+			},
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes:      p.AccessModes,
-			Resources:        res,
+			AccessModes: p.AccessModes,
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					"storage": q,
+				},
+			},
 			VolumeName:       p.RefPvName,
-			StorageClassName: &storageClassName,
+			StorageClassName: &sc,
 		},
 	}
 
 	ti := p.prepareTaskInfo()
-	ti.Type = c7nctx.PvcType
 	ti.RefName = p.RefPvcName
-	defer c7nctx.AddTaskToCM(p.Namespace, *ti)
+	defer p.Client.SaveTaskInfoToCM(p.Namespace, *ti)
 
-	_, err := c7nclient.CreatePvc(p.Namespace, pvc)
+	_, err := p.Client.CreatePvc(p.Namespace, pvc)
 	if err != nil {
 		log.Error(err)
-		ti.Status = c7nctx.FailedStatus
+		ti.Status = c7nconsts.FailedStatus
 		ti.Reason = err.Error()
 		return err
 	}
-	log.Info("created pvc [%s]", p.RefPvcName)
+	log.Infof("created pvc [%s]", p.RefPvcName)
 	return nil
 }
 
-func (p *Persistence) prepareTaskInfo() *c7nctx.TaskInfo {
-	ti := &c7nctx.TaskInfo{
+func (p *Persistence) prepareTaskInfo() *c7nclient.TaskInfo {
+	ti := &c7nclient.TaskInfo{
 		Name:      p.Name,
 		Namespace: p.Namespace,
-		Type:      c7nctx.PvType,
-		Status:    c7nctx.SucceedStatus,
+		Type:      c7nconsts.StaticPersistentKey,
+		Status:    c7nconsts.SucceedStatus,
 		RefName:   p.RefPvName,
 	}
 	return ti
@@ -208,9 +227,9 @@ func (p *Persistence) prepareTaskInfo() *c7nctx.TaskInfo {
 
 // Get exist pv
 func (p *Persistence) getPv() (hasFound bool, pv *v1.PersistentVolume) {
-	pv, err := c7nclient.GetPv(p.RefPvName)
+	pv, err := p.Client.GetPv(p.RefPvName)
 	if err != nil {
-		if c7nctx.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return false, pv
 		}
 	}
@@ -219,10 +238,10 @@ func (p *Persistence) getPv() (hasFound bool, pv *v1.PersistentVolume) {
 
 // Get exist pvc
 func (p *Persistence) getPvc() (hasFound bool, pvc *v1.PersistentVolumeClaim) {
-	pvc, err := c7nclient.GetPvc(p.Namespace, p.RefPvName)
+	pvc, err := p.Client.GetPvc(p.Namespace, p.RefPvcName)
 
 	if err != nil {
-		if c7nctx.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return false, pvc
 		}
 	}

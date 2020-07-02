@@ -6,7 +6,7 @@ spec:
   resources:
     requests: 
       cpu: 4000m
-      memory: 40Gi
+      memory: 30Gi
   basic:
     repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
     slaver:
@@ -31,8 +31,8 @@ spec:
     resource:
       port: 3306
       # mysql 的 svc name 就是 release name
-      host: '{{ getReleaseName "mysql" }}'
-      password: '{{ getReleaseValue "mysql" "env.MYSQL_ROOT_PASSWORD"}}'
+      host: '{{ .getReleaseName "mysql" }}'
+      password: '{{ .getReleaseValue "mysql" "env.MYSQL_ROOT_PASSWORD"}}'
       username: root
     values:
     - name: "env.MYSQL_ROOT_PASSWORD"
@@ -50,7 +50,7 @@ spec:
     version: 0.2.5
     resource:
       # svc name = release name
-      host: '{{ getReleaseName "redis" }}'
+      host: '{{ .getReleaseName "redis" }}'
       port: 6379
     values:
     - name: "service.enabled"
@@ -62,10 +62,10 @@ spec:
     resource: 
       schema: http
       # 如下是自引用的 postgres 配置
-      host: '{{ getReleaseName "gitlab" }}-gitlab-database'
+      host: '{{ .getReleaseName "gitlab" }}-gitlab-database'
       port: 5432
       username: "gitlab"
-      password: '{{ getReleaseValue "gitlab" "database.internal.password"}}'
+      password: '{{ .getReleaseValue "gitlab" "database.internal.password"}}'
     values:
       - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
         value: '{{ generateAlphaNum 64 }}'
@@ -74,7 +74,7 @@ spec:
       - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
         value: '{{ generateAlphaNum 64 }}'
       - name: "expose.ingress.host"
-        value: '{{ ( getResource "gitlab").Domain }}'
+        value: '{{ ( .getResource "gitlab").Domain }}'
         check: clusterdomain
       - name: "database.internal.password"
         value: '{{ generateAlphaNum 10 }}'
@@ -96,7 +96,7 @@ spec:
     requirements:
     values:
     - name: "ingress.hosts[0]"
-      value: '{{ ( getResource "minio" ).Domain }}'
+      value: '{{ ( .getResource "minio" ).Domain }}'
       check: clusterdomain
     - name: "accessKey"
       value: "admin"
@@ -146,7 +146,7 @@ spec:
         - value: "\\d+"
           name: "必须包含数字"
     - name: "expose.ingress.hosts.core"
-      value: '{{ ( getResource "harbor" ).Domain }}'
+      value: '{{ ( .getResource "harbor" ).Domain }}'
       check: clusterdomain
   - name: chartmuseum
     chart: chartmuseum
@@ -158,7 +158,7 @@ spec:
     requirements:
     values:
     - name: "ingress.hosts[0].name"
-      value: '{{ ( getResource "chartmuseum" ).Domain }}'
+      value: '{{ ( .getResource "chartmuseum" ).Domain }}'
       check: clusterdomain
   - name: register-server
     chart: go-register-server
@@ -198,7 +198,7 @@ spec:
         web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
         object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
         "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
-        "{{ ( getResource "gitlab" ).Schema }}://{{ ( getResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
+        "{{ ( .getResource "gitlab" ).Schema }}://{{ ( .getResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
       infraRef: mysql
     values:
   - name: manager-service
@@ -262,7 +262,7 @@ spec:
       infraRef: mysql
     values:
     - name: "ingress.host"
-      value: '{{ ( getResource "notify-service" ).Domain }}'
+      value: '{{ ( .getResource "notify-service" ).Domain }}'
       check: clusterdomain
   - name: api-gateway
     chart: api-gateway
@@ -279,7 +279,7 @@ spec:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
     - name: "ingress.host"
-      value: '{{ (getResource "api-gateway" ).Domain }}'
+      value: '{{ (.getResource "api-gateway" ).Domain }}'
       check: clusterdomain
   - name: oauth-server
     chart: oauth-server
@@ -337,7 +337,7 @@ spec:
     - name: "env.open.JAVA_OPTS"
       value: "-Xms1024M -Xmx1024M"
     - name: "ingress.host"
-      value: '{{ ( getResource "devops-service" ).Domain }}'
+      value: '{{ ( .getResource "devops-service" ).Domain }}'
       check: clusterdomain
     - name: SERVICES_GITLAB_PASSWORD
       value: "password"
@@ -373,7 +373,7 @@ spec:
       psql:
       - |
         insert into personal_access_tokens (user_id, token_digest, name, expires_at, created_at, updated_at, scopes)
-        values (1, '{{ encryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
+        values (1, '{{ .encryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
         array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10)));
       infraRef: gitlab
       database: gitlabhq_production
@@ -385,8 +385,8 @@ spec:
           value: "application/json"
         # TODO get GITLAB_OAUTH_TOKEN
         - name: "private-token"
-          value: '{{ getReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN" }}'
-        url: '{{(getResource "gitlab").Schema }}://{{(getResource "gitlab").Domain}}/api/v4/application/settings'
+          value: '{{ .getReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN" }}'
+        url: '{{(.getResource "gitlab").Schema }}://{{(.getResource "gitlab").Domain}}/api/v4/application/settings'
         body: |
           {
                   "allow_local_requests_from_hooks_and_services": true
@@ -482,7 +482,7 @@ spec:
     health:
       socket:
       - name: base
-        host: '{{ getReleaseName "elasticsearch-kb" }}'
+        host: '{{ .getReleaseName "elasticsearch-kb" }}'
         port: 9200
   - name: knowledgebase-service
     chart: knowledgebase-service
@@ -536,14 +536,14 @@ spec:
             created_by,creation_date,last_updated_by,last_update_date)
           VALUES("choerodon",1,"default","secret","default",
                 "password,implicit,client_credentials,authorization_code,refresh_token",
-                '{{ ( getResource "choerodon-front").Schema }}://{{ ( getResource "choerodon-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+                '{{ ( .getResource "choerodon-front").Schema }}://{{ ( .getResource "choerodon-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
       infraRef: mysql
     values:
     - name: "ingress.host"
-      value: '{{ ( getResource "choerodon-front").Domain }}'
+      value: '{{ ( .getResource "choerodon-front").Domain }}'
       check: clusterdomain
     - name: "ingress.schema"
-      value: '{{ ( getResource "choerodon-front").Schema }}'
+      value: '{{ ( .getResource "choerodon-front").Schema }}'
       check: schema
   runner:
     name: gitlab-runner
@@ -560,12 +560,12 @@ spec:
     - name: "env.concurrent"
       value: "3"
     - name: "env.gitlabUrl"
-      value: '{{ ( getResource "gitlab" ).Schema }}://{{ ( getResource "gitlab" ).Domain }}/'
+      value: '{{ ( .getResource "gitlab" ).Schema }}://{{ ( .getResource "gitlab" ).Domain }}/'
     #  TODO
     - name: "env.runnerToken"
       value: "{{ ( generateAlphaNum 30) }}"
     - name: "env.environment.CHOERODON_URL"
-      value: '{{ ( getResource "api-gateway").Schema }}://{{ ( getResource "api-gateway").Domain }}'
+      value: '{{ ( .getResource "api-gateway").Schema }}://{{ ( .getResource "api-gateway").Domain }}'
       # TODO
     - name: "env.persistence.gitlab-runner-maven"
       value: "/root/.m2"
@@ -604,7 +604,7 @@ spec:
             ci_runners
             ( token, created_at, updated_at, description, is_shared, name, runner_type )
           VALUES
-            ( '{{ getReleaseValue "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
+            ( '{{ .getReleaseValue "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
       infraRef: gitlab
       database: gitlabhq_production
   component:
@@ -652,7 +652,7 @@ spec:
       version: 0.2.5
       resource:
         # svc name = release name
-        host: '{{ getReleaseName "redis" }}'
+        host: '{{ .getReleaseName "redis" }}'
         port: 6379
       values:
         - name: "service.enabled"

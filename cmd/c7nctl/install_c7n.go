@@ -5,7 +5,6 @@ import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/config"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
-	"github.com/choerodon/c7nctl/pkg/context"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
@@ -25,14 +24,18 @@ Ensure you run this within server can vista k8s.
 
 func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 	c := action.NewChoerodon(cfg)
+	c.Namespace = settings.Namespace
 
 	cmd := &cobra.Command{
 		Use:   "c7n",
 		Short: "One-click installation choerodon",
 		Long:  installC7nDesc,
 		Run: func(_ *cobra.Command, args []string) {
-			setUserConfig(c.SkipInput)
+			// TODO 临时取消
+			//setUserConfig(c.SkipInput)
 			if err := runInstallC7n(c); err != nil {
+
+				// TODO sendMecrics
 				log.Error(err) // errors.WithMessage(err, "Install Choerodon failed")
 			}
 			log.Info("Install Choerodon succeed")
@@ -70,12 +73,14 @@ func runInstallC7n(c *action.Choerodon) error {
 	} else {
 		c.RepoUrl = c7nconsts.DefaultRepoUrl
 	}
+	c.DefaultAccessModes = id.DefaultAccessModes
+	c.Slaver = &id.Spec.Basic.Slaver
 
-	// 检查硬件资源
-	if err := action.CheckResource(&id.Spec.Resources); err != nil {
+	// 检查资源
+	if err := c.CheckResource(&id.Spec.Resources); err != nil {
 		return err
 	}
-	if err := action.CheckNamespace(c.Namespace); err != nil {
+	if err := c.CheckNamespace(c.Namespace); err != nil {
 		return err
 	}
 
@@ -91,8 +96,11 @@ func runInstallC7n(c *action.Choerodon) error {
 
 	// 渲染 Release
 	for _, rls := range id.Spec.Release {
+		rls.Client = c.Cfg.KubeClient
+		rls.Namespace = c.Namespace
+		rls.Prefix = c.Prefix
 
-		// 传入参数的是 *Release
+		// rls.Prefix = c.Prefix
 		if err := id.RenderRelease(rls, userConfig); err != nil {
 			return err
 		}
@@ -107,9 +115,6 @@ func runInstallC7n(c *action.Choerodon) error {
 
 	for !installQueue.IsEmpty() {
 		rls := installQueue.Dequeue()
-		// TODO move to renderRelease
-		rls.Namespace = c.Namespace
-		rls.Prefix = c.Prefix
 
 		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
 		vals, err := id.RenderHelmValues(rls, userConfig)
@@ -124,7 +129,7 @@ func runInstallC7n(c *action.Choerodon) error {
 	c.Wg.Wait()
 	c.SendMetrics(err)
 	// 清理历史的job，cm，slaver 等
-	if err := action.CleanJobs(); err != nil {
+	if err := c.CleanJobs(); err != nil {
 		return err
 	}
 
@@ -160,7 +165,7 @@ func setUserConfig(skipInput bool) {
 }
 
 func inputUserMail() string {
-	mail, err := c7n_utils.AcceptUserInput(context.Input{
+	mail, err := c7n_utils.AcceptUserInput(c7n_utils.Input{
 		Password: false,
 		Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
 		Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
