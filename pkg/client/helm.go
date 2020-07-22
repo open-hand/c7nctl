@@ -65,6 +65,7 @@ func (h *Helm3Client) Install(cArgs ChartArgs, vals map[string]interface{}, out 
 		client.Version = ">0.0.0-0"
 	}
 	// TODO 移动到 helm3Client
+	os.Setenv("HELM_NAMESPACE", cArgs.Namespace)
 	settings := cli.New()
 	cp, err := client.ChartPathOptions.LocateChart(cArgs.ChartName, settings)
 	if err != nil {
@@ -214,7 +215,7 @@ func RunHelmInstall(client *action.Install, chart string, vals map[string]interf
 			}
 		}
 	}
-
+	client.Namespace = settings.Namespace()
 	return client.Run(chartRequested, vals)
 }
 

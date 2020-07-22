@@ -1,18 +1,18 @@
 env:
   open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .getResource "register-server").Url }}
-    SPRING_CLOUD_CONFIG_URI: {{ (.getResource "register-server").Schema }}://{{ (.getResource "register-server").Host }}:{{ (.getResource "register-server").Port }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
+    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_DATASOURCE_URL: {{ .getDatabaseUrl "base_service" }}
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "base_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_REDIS_DATABASE: 5
-    SPRING_REDIS_HOST: {{ ( .getResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .getResource "redis").Port }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
     SPRING_CACHE_MULTI_L1_ENABLED: true
     SPRING_CACHE_MULTI_L2_ENABLED: false
 ingress:
   enabled: true
-  host: {{ (.getResource "api-gateway").Domain }}
+  host: {{ (.GetResource "api-gateway").Domain }}
 preJob:
   timeout: 1800
 service:

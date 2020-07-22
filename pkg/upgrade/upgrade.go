@@ -1,10 +1,10 @@
 package upgrade
 
 import (
+	"context"
 	"fmt"
 	"github.com/buger/jsonparser"
-	c7n_helm "github.com/choerodon/c7nctl/pkg/client"
-	"github.com/choerodon/c7nctl/pkg/context"
+
 	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
@@ -15,10 +15,10 @@ import (
 )
 
 type Upgrader struct {
-	HelmClient *c7n_helm.HelmClient
-	Version    string
-	Metadata   Metadata
-	Spec       Spec
+	// HelmClient *c7n_helm.HelmClient
+	Version  string
+	Metadata Metadata
+	Spec     Spec
 }
 
 type Upgrade struct {
@@ -57,7 +57,7 @@ type Basic struct {
 type SetKey struct {
 	Name  string
 	Value string
-	Input context.Input
+	Input utils.Input
 }
 
 type ChangeKey struct {
@@ -156,7 +156,7 @@ func upgradeValues(upgrade *Upgrade) error {
 		value, e := getValueByKey(upgrade.Values, v.Old)
 		if e != nil {
 			log.Errorf("Key: %s not found", v.Old)
-			value, e = utils.AcceptUserInput(context.Input{
+			value, e = utils.AcceptUserInput(utils.Input{
 				Tip:   fmt.Sprintf("Please value for Key: %s\n", v.New),
 				Regex: ".+",
 			})
@@ -204,7 +204,7 @@ func (u *Upgrader) Uninstall() error {
 }
 
 func checkJobDeleted(jobInterface v1.JobInterface) {
-	jobList, err := jobInterface.List(meta_v1.ListOptions{})
+	jobList, err := jobInterface.List(context.Background(), meta_v1.ListOptions{})
 	if len(jobList.Items) > 0 || err != nil {
 		log.Infof("Deleting job,Please wait.")
 		time.Sleep(5 * time.Second)

@@ -60,7 +60,6 @@ type Request struct {
 
 // TODO 移动到 action 包
 func (r *Release) InstallComponent() error {
-
 	values := r.HelmValues()
 	releaseName := r.Name
 	if r.Prefix != "" {
@@ -91,11 +90,12 @@ func (r *Release) InstallComponent() error {
 // 执行 after Task，完成后更新任务状态，并执行 wg.done
 func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error {
 	// ti 一定存在
+	// 等待上一步的状态更新完成
+	time.Sleep(time.Second)
 	ti, err := r.Client.GetTaskInfoFromCM(r.Namespace, r.Name)
 	if err != nil {
 		return err
 	}
-	defer r.Client.SaveTaskInfoToCM(r.Namespace, ti)
 
 	r.CheckReleasePodRunning(r.Name)
 
@@ -104,12 +104,13 @@ func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error 
 	if err != nil {
 		log.Error(err)
 		ti.Status = consts.FailedStatus
-		return err
+	} else {
+		ti.Status = consts.SucceedStatus
 	}
-	ti.Status = consts.SucceedStatus
 	wg.Done()
-	return nil
+	return r.Client.SaveTaskInfoToCM(r.Namespace, ti)
 }
+
 func (r *Release) ExecutePreCommands(s *slaver.Slaver) error {
 	err := r.executeExternalFunc(r.PreInstall, s)
 	return err

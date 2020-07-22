@@ -1,22 +1,22 @@
 env:
   open:
-    API_HOST: {{ (.getResource "api-gateway").Schema }}://{{ (.getResource "api-gateway").Domain }}
+    API_HOST: {{ (.GetResource "api-gateway").Schema }}://{{ (.GetResource "api-gateway").Domain }}
     CLIENT_ID: choerodon
-    DEVOPS_HOST: ws://{{ (.getResource "devops-service").Domain }}
-    FILE_SERVER: {{ ( .getResource "minio").Schema }}://{{ ( .getResource "minio").Domain }}
+    DEVOPS_HOST: ws://{{ (.GetResource "devops-service").Domain }}
+    FILE_SERVER: {{ ( .GetResource "minio").Schema }}://{{ ( .GetResource "minio").Domain }}
     HEADER_TITLE_NAME: Choerodon
     HTTP: http
-    WEBSOCKET_SERVER: ws://{{ ( .getResource "notify-service").Domain }}
+    WEBSOCKET_SERVER: ws://{{ ( .GetResource "notify-service").Domain }}
 ingress:
   enabled: true
-  host: '{{ ( .getResource "choerodon-front").Domain }}'
+  host: '{{ ( .GetResource "choerodon-front").Domain }}'
 preJob:
   timeout: 1800
   preConfig:
     db:
       dbname: base_service
       enabledelete: true
-      host: {{ ( .getResource "mysql").Host }}
+      host: {{ ( .GetResource "mysql").Host }}
       password: "password"
       port: 3306
       upattrs: sort,parent_id

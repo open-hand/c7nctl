@@ -1,7 +1,7 @@
 env:
   open:
     # TODO change
-    REGISTER_SERVICE_NAMESPACE: {{ .getNamespace }}
+    REGISTER_SERVICE_NAMESPACE: {{ .GetNamespace }}
 rbac:
   create: true
 service:

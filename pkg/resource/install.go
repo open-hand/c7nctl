@@ -79,18 +79,16 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 	if t.Status == c7nconsts.UninitializedStatus {
 		// 传入的参数是指针
 		r.mergerResource(uc)
-		t.Resource = *r.Resource
-
 		if err = i.renderValues(r); err != nil {
 			return err
 		}
-		t.Values = r.Values
-
 		if err := i.render(r); err != nil {
 			return err
 		}
 
 		// 保存渲染完成的 r
+		t.Resource = *r.Resource
+		t.Values = r.Values
 		t.Status = c7nconsts.RenderedStatus
 		if err = r.Client.SaveTaskInfoToCM(i.Namespace, t); err != nil {
 			return err
@@ -98,7 +96,7 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 	}
 
 	// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-	if t.Status == c7nconsts.RenderedStatus || t.Status == c7nconsts.FailedStatus {
+	if t.Status == c7nconsts.RenderedStatus || t.Status == c7nconsts.FailedStatus || t.Status == c7nconsts.SucceedStatus {
 		r.Values = t.Values
 		r.Resource = &t.Resource
 		// 重新渲染 preCommand 等，避免在 TaskInfo 加入 PreCommand 导致循环依赖
@@ -122,14 +120,17 @@ func (i *InstallDefinition) RenderComponent(rls *Release) error {
 func (i *InstallDefinition) RenderHelmValues(r *Release, uc *c7ncfg.C7nConfig) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
 	var fileValsByte bytes.Buffer
-	if uc == nil {
+	if uc != nil {
 		fileVals, err := r.ValuesRaw(uc)
 		if err != nil {
 			return nil, err
 		}
 		fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
-
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return c7nutils.Vals(rlsVals, fileValsByte.String())
 }
 
@@ -152,7 +153,8 @@ func (i *InstallDefinition) render(r *Release) error {
 // 获取用户输入或者根据 value 的模版值渲染
 func (i *InstallDefinition) renderValues(rls *Release) error {
 	if rls.Values == nil {
-		return errors.New(fmt.Sprintf("release %s values is empty", rls.Name))
+		log.Debugf("release %s values is empty", rls.Name)
+		return nil
 	}
 	for idx, v := range rls.Values {
 		// 输入 value
@@ -198,32 +200,32 @@ func (i *InstallDefinition) renderTpl(name, tplStr string) (bytes.Buffer, error)
 /*
   template 内嵌函数
 */
-func (i *InstallDefinition) getNamespace() string {
+func (i *InstallDefinition) GetNamespace() string {
 	return i.Namespace
 }
 
-func (i *InstallDefinition) withPrefix() string {
+func (i *InstallDefinition) WithPrefix() string {
 	if i.Prefix == "" {
 		return ""
 	}
 	return i.Prefix + "-"
 }
 
-func (i *InstallDefinition) getReleaseName(rlsName string) string {
-	return i.withPrefix() + rlsName
+func (i *InstallDefinition) GetReleaseName(rlsName string) string {
+	return i.WithPrefix() + rlsName
 }
 
 // TODO add storageClassName()
-func (i *InstallDefinition) getStorageClass() string {
+func (i *InstallDefinition) GetStorageClass() string {
 	//return c7nctx.Ctx.UserConfig.GetStorageClassName()
 	return i.StorageClass
 }
 
-func (i *InstallDefinition) getDatabaseUrl(rls string) string {
-	return fmt.Sprintf(c7nconsts.DatabaseUrlTpl, i.getReleaseName("mysql"), i.getReleaseName(rls))
+func (i *InstallDefinition) GetDatabaseUrl(rls string) string {
+	return fmt.Sprintf(c7nconsts.DatabaseUrlTpl, i.GetReleaseName("mysql"), i.GetReleaseName(rls))
 }
 
-func (i *InstallDefinition) getResource(rls string) *c7ncfg.Resource {
+func (i *InstallDefinition) GetResource(rls string) *c7ncfg.Resource {
 	for _, r := range i.Spec.Release {
 		if r.Name == rls {
 			return r.Resource
@@ -233,7 +235,7 @@ func (i *InstallDefinition) getResource(rls string) *c7ncfg.Resource {
 	return nil
 }
 
-func (i *InstallDefinition) getReleaseValue(rls, value string) string {
+func (i *InstallDefinition) GetReleaseValue(rls, value string) string {
 	for _, r := range i.Spec.Release {
 		if r.Name == rls {
 			for _, v := range r.Values {
@@ -248,9 +250,9 @@ func (i *InstallDefinition) getReleaseValue(rls, value string) string {
 	return ""
 }
 
-func (i *InstallDefinition) encryptGitlabAccessToken() string {
-	token := i.getReleaseValue("gitlab-service", "env.open.GITLAB_PRIVATETOKEN")
-	dbKeyBase := i.getReleaseValue("gitlab", "core.env.GITLAB_SECRETS_DB_KEY_BASE")
+func (i *InstallDefinition) EncryptGitlabAccessToken() string {
+	token := i.GetReleaseValue("gitlab-service", "env.open.GITLAB_PRIVATETOKEN")
+	dbKeyBase := i.GetReleaseValue("gitlab", "core.env.GITLAB_SECRETS_DB_KEY_BASE")
 	str := fmt.Sprintf("%s%s", token, dbKeyBase[:32])
 
 	hash := sha256.New()

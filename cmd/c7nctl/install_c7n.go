@@ -31,14 +31,14 @@ func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comman
 		Short: "One-click installation choerodon",
 		Long:  installC7nDesc,
 		Run: func(_ *cobra.Command, args []string) {
-			// TODO 临时取消
-			//setUserConfig(c.SkipInput)
+			setUserConfig(c.SkipInput)
 			if err := runInstallC7n(c); err != nil {
-
-				// TODO sendMecrics
 				log.Error(err) // errors.WithMessage(err, "Install Choerodon failed")
+				c.Metrics.ErrorMsg[0] = err.Error()
+			} else {
+				log.Info("Install Choerodon succeed")
 			}
-			log.Info("Install Choerodon succeed")
+			c.Metrics.Send()
 		},
 	}
 
@@ -51,7 +51,6 @@ func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comman
 
 func runInstallC7n(c *action.Choerodon) error {
 	userConfig, err := action.GetUserConfig(settings.ConfigFile)
-
 	if err != nil {
 		return errors.WithMessage(err, "Failed to get user config file")
 	}
@@ -64,8 +63,10 @@ func runInstallC7n(c *action.Choerodon) error {
 	// config.yaml 的 version 配置不会生效
 	userConfig.Version = c.Version
 
-	id, _ := c.GetInstallDef(settings.ResourceFile)
-
+	id, err := c.GetInstallDef(settings.ResourceFile)
+	if err != nil {
+		return errors.WithMessage(err, "Failed to get install configration file")
+	}
 	// 初始化 helmInstall
 	// 只有 id 中用到了 RepoUrl
 	if id.Spec.Basic.RepoURL != "" {
@@ -100,7 +101,6 @@ func runInstallC7n(c *action.Choerodon) error {
 		rls.Namespace = c.Namespace
 		rls.Prefix = c.Prefix
 
-		// rls.Prefix = c.Prefix
 		if err := id.RenderRelease(rls, userConfig); err != nil {
 			return err
 		}

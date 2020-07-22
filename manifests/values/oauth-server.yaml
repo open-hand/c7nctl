@@ -1,12 +1,12 @@
 env:
   open:
-    CHOERODON_DEFAULT_REDIRECT_URL: {{ ( .getResource "choerodon-front").Schema }}://{{ ( .getResource "choerodon-front").Domain }}
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .getResource "register-server").Url }}
-    SPRING_CLOUD_CONFIG_URI: {{ (.getResource "register-server").Schema }}://{{ (.getResource "register-server").Host }}:{{ (.getResource "register-server").Port }}
+    CHOERODON_DEFAULT_REDIRECT_URL: {{ ( .GetResource "choerodon-front").Schema }}://{{ ( .GetResource "choerodon-front").Domain }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
+    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_DATASOURCE_URL: {{ .getDatabaseUrl "base_service" }}
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "base_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_REDIS_DATABASE: 6
-    SPRING_REDIS_HOST: {{ ( .getResource "redis").Host }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
 preJob:
   timeout: 1800

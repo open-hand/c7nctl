@@ -2,32 +2,32 @@ env:
   open:
     AGENT_CERTMANAGERURL: https://openchart.choerodon.com.cn/choerodon/c7n/
     AGENT_REPOURL: https://openchart.choerodon.com.cn/choerodon/c7n/
-    AGENT_SERVICEURL: ws://{{ ( .getResource "devops-service").Domain }}/agent/
+    AGENT_SERVICEURL: ws://{{ ( .GetResource "devops-service").Domain }}/agent/
     AGENT_VERSION: 0.21.0
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .getResource "register-server").Url }}
-    SERVICES_GATEWAY_URL: {{ ( .getResource "api-gateway").Schema }}://{{ (.getResource "api-gateway").Domain }}
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
+    SERVICES_GATEWAY_URL: {{ ( .GetResource "api-gateway").Schema }}://{{ (.GetResource "api-gateway").Domain }}
     # TODO add get values method
     SERVICES_GITLAB_PASSWORD: "password"
-    SERVICES_GITLAB_SSHURL: {{ ( .getResource "gitlab").Domain }}:32222
-    SERVICES_GITLAB_URL: {{ ( .getResource "gitlab").Schema }}://{{ ( .getResource "gitlab").Domain }}
-    SERVICES_HARBOR_BASEURL: {{ ( .getResource "harbor").Schema }}://{{ ( .getResource "harbor").Domain }}
-    SERVICES_HARBOR_PASSWORD: {{ .getReleaseValue "harbor" "harborAdminPassword" }}
-    SERVICES_HELM_URL: {{ ( .getResource "gitlab").Schema }}://{{ ( .getResource "gitlab").Domain }}
-    SPRING_CLOUD_CONFIG_URI: {{ ( .getResource "register-server").Schema }}://{{ ( .getResource "register-server").Host }}:{{ ( .getResource "register-server").Port }}
+    SERVICES_GITLAB_SSHURL: {{ ( .GetResource "gitlab").Domain }}:32222
+    SERVICES_GITLAB_URL: {{ ( .GetResource "gitlab").Schema }}://{{ ( .GetResource "gitlab").Domain }}
+    SERVICES_HARBOR_BASEURL: {{ ( .GetResource "harbor").Schema }}://{{ ( .GetResource "harbor").Domain }}
+    SERVICES_HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
+    SERVICES_HELM_URL: {{ ( .GetResource "gitlab").Schema }}://{{ ( .GetResource "gitlab").Domain }}
+    SPRING_CLOUD_CONFIG_URI: {{ ( .GetResource "register-server").Schema }}://{{ ( .GetResource "register-server").Host }}:{{ ( .GetResource "register-server").Port }}
     SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_DATASOURCE_URL: {{ .getDatabaseUrl "devops_service" }}
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "devops_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_REDIS_DATABASE: 7
-    SPRING_REDIS_HOST: {{ ( .getResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .getResource "redis").Port }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
 ingress:
   enabled: true
-  host: {{ ( .getResource "devops-service").Domain }}
+  host: {{ ( .GetResource "devops-service").Domain }}
 preJob:
   timeout: 1800
   preInitDB:
     datasource:
-      url: {{ .getDatabaseUrl "devops_service" }}
+      url: {{ .GetDatabaseUrl "devops_service" }}
       username: "choerodon"
       password: "password"
 service:

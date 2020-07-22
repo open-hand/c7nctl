@@ -2,14 +2,15 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/go-version"
 	"github.com/vinkdong/gox/log"
 	"golang.org/x/crypto/ssh/terminal"
+	"io"
 	"os"
 	"regexp"
 	"strings"
-	"syscall"
 )
 
 type Input struct {
@@ -55,7 +56,7 @@ start:
 	if err != nil {
 		return "", err
 	}
-	text = strings.Trim(text, "\r")
+	text = strings.Trim(text, "\n")
 
 	if !CheckMatch(text, input) {
 		goto start
@@ -66,7 +67,8 @@ start:
 func AcceptUserPassword(input Input) (string, error) {
 start:
 	fmt.Print(input.Tip)
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	// TODO
+	bytePassword, err := readPassword("") // terminal.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 	if err != nil {
 		return "", err
@@ -81,7 +83,7 @@ start:
 	}
 
 	fmt.Print("请再输入一次:")
-	bytePassword2, err := terminal.ReadPassword(int(syscall.Stdin))
+	bytePassword2, err := readPassword("") // terminal.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 	if err != nil {
 		return "", err
@@ -142,4 +144,38 @@ func CheckVersion(versionRaw, constraint string) (bool, error) {
 func ConditionSkip() bool {
 	//todo skip some test in conditions
 	return true
+}
+
+func readPassword(prompt string) (pw []byte, err error) {
+	fd := int(os.Stdin.Fd())
+	if terminal.IsTerminal(fd) {
+		fmt.Fprint(os.Stderr, prompt)
+		pw, err = terminal.ReadPassword(fd)
+		fmt.Fprintln(os.Stderr)
+		return
+	}
+
+	var b [1]byte
+	for {
+		n, err := os.Stdin.Read(b[:])
+		// terminal.ReadPassword discards any '\r', so we do the same
+		if n > 0 && b[0] != '\r' {
+			if b[0] == '\n' {
+				return pw, nil
+			}
+			pw = append(pw, b[0])
+			// limit size, so that a wrong input won't fill up the memory
+			if len(pw) > 1024 {
+				err = errors.New("password too long")
+			}
+		}
+		if err != nil {
+			// terminal.ReadPassword accepts EOF-terminated passwords
+			// if non-empty, so we do the same
+			if err == io.EOF && len(pw) > 0 {
+				err = nil
+			}
+			return pw, err
+		}
+	}
 }
