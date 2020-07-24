@@ -78,7 +78,6 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 	}
 	if t.Status == c7nconsts.UninitializedStatus {
 		// 传入的参数是指针
-		r.mergerResource(uc)
 		if err = i.renderValues(r); err != nil {
 			return err
 		}
@@ -104,6 +103,7 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 			return err
 		}
 	}
+	log.Infof("Successfully render Release %s", r.Name)
 	return nil
 }
 
@@ -263,4 +263,31 @@ func (i *InstallDefinition) EncryptGitlabAccessToken() string {
 
 	// to base64
 	return base64.StdEncoding.EncodeToString(hash.Sum(nil))
+}
+
+func (i *InstallDefinition) GetPersistence(rls string, index int) *Persistence {
+	for _, r := range i.Spec.Release {
+		if r.Name == rls && len(r.Persistence) > index {
+			return r.Persistence[index]
+		}
+	}
+	log.WithField("Release", rls).Fatal("Release cannot be empty")
+	return nil
+}
+
+func (i *InstallDefinition) GetRunnerPersistence(index int) *Persistence {
+	if len(i.Spec.Runner.Persistence) > index {
+		return i.Spec.Runner.Persistence[index]
+	}
+	log.WithField("Release", "gitlab-runner").Fatal("Release cannot be empty")
+	return nil
+}
+
+func (i *InstallDefinition) GetRunnerValues(values string) string {
+	for _, v := range i.Spec.Runner.Values {
+		if v.Name == values {
+			return v.Value
+		}
+	}
+	return ""
 }

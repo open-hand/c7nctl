@@ -105,6 +105,7 @@ func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error 
 		log.Error(err)
 		ti.Status = consts.FailedStatus
 	} else {
+		log.Infof("Successfully installed %s", r.Name)
 		ti.Status = consts.SucceedStatus
 	}
 	wg.Done()
@@ -289,7 +290,7 @@ func (r *Release) ValuesRaw(uc *config.C7nConfig) (string, error) {
 	if dir == "" {
 		dir = "values"
 	}
-	// values.yaml 与 rls 名一致
+	// values.yaml 与 r 名一致
 	valuesFilepath := fmt.Sprintf("%s/%s.yaml", dir, r.Name)
 
 	var data []byte
@@ -338,40 +339,42 @@ func (r *Release) CheckReleasePodRunning(rls string) {
 		fmt.Sprintf("choerodon.io/release=%s", rls),
 		fmt.Sprintf("app=%s", rls),
 	}
+
+	log.Infof("Waiting %s running", rls)
 	for {
 		for _, label := range labels {
 			deploy, err := clientset.AppsV1().Deployments(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
 			if errors.IsNotFound(err) {
-				log.Infof("Deployment %s in namespace %s not found\n", label, namespace)
+				log.Debugf("Deployment %s in namespace %s not found\n", label, namespace)
 			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Infof("Error getting deployment %s in namespace %s: %v\n",
+				log.Debugf("Error getting deployment %s in namespace %s: %v\n",
 					label, namespace, statusError.ErrStatus.Message)
 			} else if err != nil {
 				panic(err.Error())
 			} else {
 				for _, d := range deploy.Items {
 					if *d.Spec.Replicas != d.Status.ReadyReplicas {
-						log.Infof("Deployment %s is not ready\n", d.Name)
+						log.Debugf("Release %s is not ready\n", d.Name)
 					} else {
-						log.Infof("Deployment %s is Ready\n", d.Name)
+						log.Debugf("Release %s is Ready\n", d.Name)
 						return
 					}
 				}
 			}
 			ss, err := clientset.AppsV1().StatefulSets(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
 			if errors.IsNotFound(err) {
-				log.Infof("StatefulSet %s in namespace %s not found\n", label, namespace)
+				log.Debugf("StatefulSet %s in namespace %s not found\n", label, namespace)
 			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Infof("Error getting statefulSet %s in namespace %s: %v\n",
+				log.Debugf("Error getting statefulSet %s in namespace %s: %v\n",
 					label, namespace, statusError.ErrStatus.Message)
 			} else if err != nil {
 				panic(err.Error())
 			} else {
 				for _, s := range ss.Items {
 					if *s.Spec.Replicas != s.Status.ReadyReplicas {
-						log.Infof("StatefulSet %s is not ready\n", s.Name)
+						log.Debugf("Release %s is not ready\n", s.Name)
 					} else {
-						log.Infof("statefulSet %s is Ready\n", s.Name)
+						log.Debugf("Release %s is Ready\n", s.Name)
 						return
 					}
 				}

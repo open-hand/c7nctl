@@ -15,38 +15,53 @@
 package main
 
 import (
+	"fmt"
+	"github.com/choerodon/c7nctl/pkg/action"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
 )
 
-func newConfigCmd(out io.Writer) *cobra.Command {
+func newConfigCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "config Choerodon",
 		Long:  `Config Choerodon quickly.`,
 	}
-	cmd.AddCommand(newGitlabCmd(out))
+	cmd.AddCommand(newGitlabCmd(cfg, out))
 
 	return cmd
 }
 
-func newGitlabCmd(out io.Writer) *cobra.Command {
+func newGitlabCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gitlab",
 		Short: "config gitlab",
 		Long:  `Config gitlab quickly.`,
 	}
-	cmd.AddCommand(newGitlabRunnerCmd(out))
+	cmd.AddCommand(newGitlabRunnerCmd(cfg, out))
 	return cmd
 }
 
-func newGitlabRunnerCmd(out io.Writer) *cobra.Command {
+func newGitlabRunnerCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
+	c := action.NewChoerodon(cfg, settings)
+
 	cmd := &cobra.Command{
 		Use:   "runner",
 		Short: "config gitlab",
 		Long:  `Config gitlab quickly.`,
-		RunE:  grcRun,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := grcRun(c); err != nil {
+				log.Error(err)
+				log.Error("resource gitlab runner failed")
+			}
+			log.Info("config gitlab runner succeed")
+
+		},
 	}
 
 	flags := cmd.Flags()
@@ -55,35 +70,49 @@ func newGitlabRunnerCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func grcRun(cmd *cobra.Command, args []string) error {
-	/*	if debug, _ := cmd.Flags().GetBool("debug"); debug {
-			log.EnableDebug()
-		}
-		// TODO
-		installDef := app.GetInstall(nil, args)
+func grcRun(c *action.Choerodon) error {
+	id, err := c.GetInstallDef(settings.ConfigFile, settings.ResourceFile)
+	if err != nil {
+		return errors.WithMessage(err, "Failed to get install configration file")
+	}
+	if id.Spec.Basic.RepoURL != "" {
+		c.RepoUrl = id.Spec.Basic.RepoURL
+	} else {
+		c.RepoUrl = c7nconsts.DefaultRepoUrl
+	}
+	c.DefaultAccessModes = id.DefaultAccessModes
+	c.Slaver = &id.Spec.Basic.Slaver
 
-		ns, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return err
-		}
-		runner := gitlab.Runner{
-			InstallDef: installDef,
-			Namespace:  ns,
-		}
-		err = runner.InstallRunner()
-		if err != nil {
-			log.Error("resource gitlab runner failed")
-			return err
-		}
-		log.Success("config gitlab runner succeed")*/
+	stopCh := make(chan struct{})
+	_, err = c.PrepareSlaver(stopCh)
+	if err != nil {
+		return errors.WithMessage(err, "Create Slaver failed")
+	}
+	defer func() {
+		stopCh <- struct{}{}
+	}()
+
+	// 渲染 Release 和 runner
+	if err := c.RenderReleases(id); err != nil {
+		return err
+	}
+	if err := c.RenderGitlabRunner(id); err != nil {
+		return err
+	}
+	log.Infof("start install %s", id.Spec.Runner.Name)
+	// 获取的 values.yaml 必须经过渲染，只能放在 id 中
+	vals, err := id.RenderHelmValues(id.Spec.Runner, c.UserConfig)
+	if err != nil {
+		return err
+	}
+	if err = c.InstallRelease(id.Spec.Runner, vals); err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", id.Spec.Runner.Name))
+	}
 	return nil
 }
 
 func grcAddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
-	fs.StringVarP(&ConfigFile, "config-file", "c", "", "User Config file to read from, User define config by this file")
 	fs.Bool("debug", false, "enable debug output")
-	fs.StringP("namespace", "n", "c7n-system", "the namespace you resource choerodon")
 	fs.String("prefix", "", "add prefix to all helm release")
 	fs.String("version", "", "specify a version")
 	fs.Bool("skip-input", false, "use default username and password to avoid user input")

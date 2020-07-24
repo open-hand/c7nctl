@@ -20,10 +20,12 @@ import (
 	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/consts"
+	"github.com/docker/docker/pkg/fileutils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
+	"path/filepath"
 )
 
 var (
@@ -49,38 +51,40 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		log.Debug(err)
 	}
-	defer viper.WriteConfig()
 }
 
 // 初始化 config 与 c7n api 操作有关
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-
 	// set default configuration is $HOME/.c7n/config.yml
 	viper.AddConfigPath(consts.DefaultConfigPath)
 	viper.SetConfigName(consts.DefaultConfigFileName)
-	viper.SetConfigType("yml")
+	viper.SetConfigType("yaml")
 
 	// read in environment variables that match
 	viper.AutomaticEnv()
 
+	viper.SetDefault("version", consts.Version)
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; Set default config to predefined path
-			log.Warn(err)
-			if err = viper.Unmarshal(&config.Cfg); err != nil {
-				log.Error(err)
+			configPath := filepath.Join(consts.DefaultConfigPath, consts.DefaultConfigFileName+".yaml")
+			if err = fileutils.CreateIfNotExists(configPath, false); err != nil {
+				log.Debug(err)
 			}
-			viper.WriteConfig()
+			log.Infof("Created default config file %s", file)
 		} else {
 			// Config file was found but another error was produced
 			log.Error(err)
-			os.Exit(1)
+			os.Exit(consts.InitConfigErrorCode)
 		}
-	}
-	log.WithField("config", viper.ConfigFileUsed()).Info("using configuration file")
-	if err := viper.Unmarshal(&config.Cfg); err != nil {
-		log.Error(err)
+	} else {
+		var cfg config.Config
+		if err := viper.Unmarshal(&cfg); err != nil {
+			log.Error(err)
+			os.Exit(consts.InitConfigErrorCode)
+		}
+		// TODO 校验 c7n context 和 clientConfig.Name 等是否存在
 	}
 }

@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/buger/jsonparser v0.0.0-20191204142016-1a29609e0929
 	github.com/chr4/pwgen v1.1.0
+	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.0.0
 	github.com/golang/protobuf v1.3.2

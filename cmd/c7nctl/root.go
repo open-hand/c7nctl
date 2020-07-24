@@ -38,7 +38,7 @@ func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []str
 
 	// Add sub command
 	cmd.AddCommand(
-		newConfigCmd(out),
+		newConfigCmd(actionConfig, out),
 		newCreateCmd(out),
 		newDeleteCmd(out),
 		newGetCmd(out),

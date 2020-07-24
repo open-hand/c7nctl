@@ -13,7 +13,7 @@ const installComponentDesc = `
 `
 
 func newInstallComponentCmd(cfg *action.C7nConfiguration) *cobra.Command {
-	c7n := action.NewChoerodon(cfg)
+	c7n := action.NewChoerodon(cfg, settings)
 	cmd := &cobra.Command{
 		Use:   "component [ARG]",
 		Short: "Install common components to k8s",
@@ -36,7 +36,7 @@ func newInstallComponentCmd(cfg *action.C7nConfiguration) *cobra.Command {
 func InstallComponent(c *action.Choerodon, cname string) error {
 	c.Version = c7nutils.GetVersion(c.Version)
 
-	id, _ := c.GetInstallDef(c7nconsts.DefaultResource)
+	id, _ := c.GetInstallDef("", c7nconsts.DefaultResource)
 
 	for _, rls := range id.Spec.Component {
 		if rls.Name == cname {

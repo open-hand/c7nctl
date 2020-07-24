@@ -552,7 +552,6 @@ spec:
     resource:
       host: 
     requirements:
-    - postgresql
     - gitlab
     values:
     - name: "rbac.create"
@@ -567,9 +566,9 @@ spec:
     - name: "env.environment.CHOERODON_URL"
       value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
       # TODO
-    - name: "env.persistence.gitlab-runner-maven"
+    - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
       value: "/root/.m2"
-    - name: "env.persistence.gitlab-runner-cache"
+    - name: 'env.persistence.{{ (.GetRunnerPersistence 1 ).RefPvcName }}'
       value: "/cache"
     - name: "enabled_mount_host_docker_sock"
       value: "true"
@@ -604,7 +603,7 @@ spec:
             ci_runners
             ( token, created_at, updated_at, description, is_shared, name, runner_type )
           VALUES
-            ( '{{ .GetReleaseValue "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
+            ( '{{ .GetRunnerValues "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
       infraRef: gitlab
       database: gitlabhq_production
   component:
@@ -646,7 +645,6 @@ spec:
           value: "32M"
         - name: "config.max_connections"
           value: "1500"
-
     - name: redis
       chart: redis
       version: 0.2.5

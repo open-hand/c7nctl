@@ -129,11 +129,21 @@ func (k *K8sClient) CreateCM(namespace string, cmName string) (*v1.ConfigMap, er
 
 	cm, err := client.CoreV1().ConfigMaps(namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 	if err != nil {
-		err = stderrors.WithMessage(err, fmt.Sprintf("Failed to create namesapce %s", cmName))
+		err = stderrors.WithMessage(err, fmt.Sprintf("Failed to create configMap %s in namesapce %s", cmName, namespace))
 		return nil, err
 	}
 	log.Infof("Successfully created namespace %s in namespace %s", cmName, namespace)
 	return cm, err
+}
+
+func (k *K8sClient) DeleteCM(namespace string, cmName string) error {
+	client := *k.kubeInterface
+
+	if err := client.CoreV1().ConfigMaps(namespace).Delete(context.Background(), cmName, metav1.DeleteOptions{}); err != nil {
+		return stderrors.WithMessage(err, fmt.Sprintf("Failed to delete configMap %s in namesapce %s", cmName, namespace))
+	}
+	log.Infof("Successfully created configMap %s in namespace %s", cmName, namespace)
+	return nil
 }
 
 // Get exist pv
@@ -171,6 +181,15 @@ func (k *K8sClient) CreatePvc(namespace string, pvc *v1.PersistentVolumeClaim) (
 	return client.CoreV1().PersistentVolumeClaims(namespace).Create(context.Background(), pvc, metav1.CreateOptions{})
 }
 
+func (k *K8sClient) DeletePvc(namespace, pvc string) error {
+	client := *k.kubeInterface
+
+	if err := client.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), pvc, metav1.DeleteOptions{}); err != nil {
+		return stderrors.WithMessage(err, fmt.Sprintf("Failed to delete pvc %s in namesapce %s", pvc, namespace))
+	}
+	log.Infof("Successfully created pvc %s in namespace %s", pvc, namespace)
+	return nil
+}
 func (k *K8sClient) GetClusterResource() (int64, int64) {
 	client := *k.kubeInterface
 
@@ -245,5 +264,15 @@ func (k *K8sClient) SaveTaskInfoToCM(namespace string, task TaskInfo) error {
 	if err != nil {
 		log.Error(err)
 	}
+	return nil
+}
+
+func (k *K8sClient) DeleteDaemonSet(namespace, daemonSet string) error {
+	client := *k.kubeInterface
+
+	if err := client.AppsV1().DaemonSets(namespace).Delete(context.Background(), daemonSet, metav1.DeleteOptions{}); err != nil {
+		return stderrors.WithMessage(err, fmt.Sprintf("Failed to delete daemonSet %s in namesapce %s", daemonSet, namespace))
+	}
+	log.Infof("Successfully created daemonSet %s in namespace %s", daemonSet, namespace)
 	return nil
 }

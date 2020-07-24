@@ -3,7 +3,6 @@ package resource
 import (
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
-	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -30,10 +29,11 @@ type Persistence struct {
 	Mode         string
 	Own          string
 	MountOptions []string
+	StorageClass string
 }
 
 // check and create pv with defined pv schema
-func (p *Persistence) CheckOrCreatePv(per *c7ncfg.Persistence) error {
+func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
@@ -56,31 +56,6 @@ func (p *Persistence) CheckOrCreatePv(per *c7ncfg.Persistence) error {
 		return nil
 	}
 
-	// 当为NFS时可以忽略 PV，现在只支持 storage Class
-	/*
-		if context.Ctx.UserConfig.IgnorePv() {
-			p.RefPvName = ""
-			log.Debug("ignore create pv because specify storage class and no other persistence config")
-			return nil
-		}
-	*/
-
-	// 当 slaver 存在时，在它的 pvc 中创建 Persistence 挂载的目录？应该是在新建的 PVC 中创建目录
-	/*
-		dir := slaver.Dir{
-			Mode: p.Mode,
-			Path: p.Path,
-			Own:  p.Own,
-		}
-		if context.Ctx.Slaver == nil {
-			goto checkpv
-		}
-
-		if err := context.Ctx.Slaver.MakeDir(dir); dir.Path != "" && err != nil {
-			return err
-		}
-
-	*/
 	// 获得一个不重复的 pv name
 	for {
 		if got, _ := p.getPv(); got {
@@ -89,7 +64,7 @@ func (p *Persistence) CheckOrCreatePv(per *c7ncfg.Persistence) error {
 			break
 		}
 	}
-	return p.createPv(per.StorageClassName, per.GetPersistentVolumeSource(""))
+	return p.createPv(pvs)
 }
 
 func (p *Persistence) CheckOrCreatePvc(sc string) error {
@@ -111,6 +86,7 @@ func (p *Persistence) CheckOrCreatePvc(sc string) error {
 	}
 	if ti.Name != "" && ti.Status == c7nconsts.SucceedStatus {
 		p.RefPvcName = ti.RefName
+		log.Infof("using existing pvc %s", ti.RefName)
 		return nil
 	}
 	// 获得一个不重复的 pvc name
@@ -124,7 +100,7 @@ func (p *Persistence) CheckOrCreatePvc(sc string) error {
 	return p.createPvc(sc)
 }
 
-func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
+func (p *Persistence) createPv(pvs v1.PersistentVolumeSource) error {
 	log.Infof("creating pv %s", p.RefPvName)
 	if len(p.AccessModes) == 0 {
 		p.AccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
@@ -135,10 +111,6 @@ func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
 		q := resource.MustParse(p.Size)
 		p.Capacity["storage"] = q
 	}
-
-	mountOptions := p.MountOptions
-
-	storageClassName := sc
 
 	pv := &v1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
@@ -153,8 +125,8 @@ func (p *Persistence) createPv(sc string, pvs v1.PersistentVolumeSource) error {
 			AccessModes:            p.AccessModes,
 			Capacity:               p.Capacity,
 			PersistentVolumeSource: pvs,
-			MountOptions:           mountOptions,
-			StorageClassName:       storageClassName,
+			MountOptions:           p.MountOptions,
+			StorageClassName:       p.StorageClass,
 		},
 	}
 

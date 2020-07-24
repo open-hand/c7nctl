@@ -32,6 +32,7 @@ func GetInstallDefinition(file string, version string) (rd []byte, err error) {
 			return nil, errors.WithMessage(err, "Failed to Read install.yaml")
 		}
 	}
+	log.Info("")
 	return rd, nil
 }
 
