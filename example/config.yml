@@ -23,10 +23,10 @@ spec:
     chartmuseum:
       domain: chart.dev.yidaqiang.com
       schema: http
-    api-gateway:
+    hzero-gateway:
       domain: api.dev.yidaqiang.com
       schema: http
-    notify-service:
+    hzero-message:
       domain: notify.dev.yidaqiang.com
       schema: ws
     devops-service:
@@ -37,6 +37,9 @@ spec:
       schema: http
       username: admin   # 前端 默认用户名为admin，暂不能修改
       password: admin   # 前端 默认密码为admin，暂不能修改
+    hzero-front:
+      domain: hzero.dev.yidaqiang.com
+      schema: http
   helm:
     values:
       dir: manifests/values

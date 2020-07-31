@@ -1,0 +1,5 @@
+persistence:
+  enabled: true
+  storageClass: {{ .GetStorageClass }}
+service:
+  enabled: true

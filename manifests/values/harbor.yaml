@@ -1,4 +1,4 @@
-externalURL: {{ ( .GetResource "harbor" ).Schema }}://{{ ( .GetResource "harbor" ).Domain }}
+externalURL: {{ .GetResourceDomainUrl "harbor" }}
 
 persistence:
   persistentVolumeClaim:

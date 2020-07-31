@@ -78,6 +78,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 			rls.CheckReleasePodRunning(r)
 		}
 		if err := rls.ExecutePreCommands(c.Slaver); err != nil {
+			ti.Status = c7nconsts.FailedStatus
 			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", rls.Name))
 		}
 
@@ -92,7 +93,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 		log.Infof("installing %s", rls.Name)
 		// TODO 使用统一的 io.writer
 		// 使用 upgrade --install cmd
-		_, err := c.Cfg.HelmClient.Install(args, vals, os.Stdout)
+		_, err := c.Cfg.HelmClient.Upgrade(args, vals, os.Stdout)
 		if err != nil {
 			ti.Status = c7nconsts.FailedStatus
 			return err
@@ -100,13 +101,14 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 		ti.Status = c7nconsts.InstalledStatus
 
 		if len(rls.AfterInstall) > 0 {
-			c.Wg.Add(1)
-			go rls.ExecuteAfterTasks(c.Slaver, c.Wg)
-			// return std_errors.WithMessage(err, "Execute after task failed")
-		} else {
-			log.Infof("Successfully installed %s", rls.Name)
-			ti.Status = c7nconsts.SucceedStatus
+			//c.Wg.Add(1)
+			if err := rls.ExecuteAfterTasks(c.Slaver, c.Wg); err != nil {
+				ti.Status = c7nconsts.FailedStatus
+				return std_errors.WithMessage(err, "Execute after task failed")
+			}
 		}
+		ti.Status = c7nconsts.SucceedStatus
+		log.Infof("Successfully installed %s", rls.Name)
 	}
 	// 完成后更新 task 状态
 	return c.Cfg.KubeClient.SaveTaskInfoToCM(c.Namespace, ti)

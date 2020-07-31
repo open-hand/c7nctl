@@ -1,19 +1,25 @@
+preJob:
+  preInitDB:
+    datasource:
+      url: {{ .GetDatabaseUrl "" }}
+      username: "choerodon"
+      password: "password"
+    datasources:
+      # 多数据源初始化
+      # 支持框架数据和agile进行分库 指定菜单初始化地址
+      platform:
+        url: {{ .GetDatabaseUrl "" }}
+        username: "choerodon"
+        password: "password"
+        driver: "com.mysql.jdbc.Driver"
 env:
   open:
-    # TODO url support prefix
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
-    SPRING_CLOUD_CONFIG_URI: {{ ( .GetResource "register-server" ).Schema }}://{{ ( .GetResource "register-server" ).Host }}:{{ ( .GetResource "register-server" ).Port }}
+    SPRING_APPLICATION_NAME: agile-service
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SPRING_REDIS_DATABASE: 12
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "agile_service" }}
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_REDIS_DATABASE: 9
-    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
-    SERVICES_ATTACHMENT_URL: {{ ( .GetResource "minio").Schema }}://{{ ( .GetResource "minio").Domain }}
-preJob:
-  timeout: 1800
-  preInitDB:
-    datasource:
-      url: {{ .GetDatabaseUrl "agile_service" }}
-      username: "choerodon"
-      password: "password"
+    SERVICES_ATTACHMENT_URL: {{ .GetResourceDomainUrl "minio" }}

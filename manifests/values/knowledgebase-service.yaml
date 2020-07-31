@@ -1,18 +1,25 @@
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
-    SERVICES_ATTACHMENT_URL: {{ ( .GetResource "minio").Schema }}://{{ ( .GetResource "minio").Domain }}
-    SPRING_CLOUD_CONFIG_URI: {{ ( .GetResource "register-server").Schema }}://{{ ( .GetResource "register-server").Host }}:{{ ( .GetResource "register-server").Port }}
-    SPRING_DATASOURCE_PASSWORD: "password"
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "knowledgebase_service" }}
-    SPRING_DATASOURCE_USERNAME: "choerodon"
-    ELASTICSEARCH_IP: {{ ( .GetResource "elasticsearch-kb").Host }}:{{ ( .GetResource "elasticsearch-kb").Port }}
 preJob:
-  timeout: 1800
   preInitDB:
     datasource:
-      url: {{ .GetDatabaseUrl "knowledgebase_service" }}
-      username: "choerodon"
-      password: "password"
-  preConfig:
-    updatePolicy: override  
+      url: {{ .GetDatabaseUrl "" }}
+      username: choerodon
+      password: password
+    datasources:
+      # 多数据源初始化 初始化菜单数据
+      # 支持框架数据和agile进行分库 指定菜单初始化地址
+      platform:
+        url: {{ .GetDatabaseUrl "" }}
+        username: choerodon
+        password: password
+        driver: com.mysql.jdbc.Driver
+env:
+  open:
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SPRING_REDIS_DATABASE: 14
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "knowledgebase_service" }}
+    SPRING_DATASOURCE_USERNAME: choerodon
+    SPRING_DATASOURCE_PASSWORD: password
+    SERVICES_ATTACHMENT_URL: {{ .GetResourceDomainUrl "minio" }}/knowledgebase-service/
+    ELASTICSEARCH_IP: elasticsearch-kb:9200

@@ -5,10 +5,10 @@ metadata:
 spec:
   resources:
     requests: 
-      cpu: 4000m
-      memory: 30Gi
+      cpu: 6000m
+      memory: 38Gi
   basic:
-    repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
+    repoURL: http://charts.yidaqiang.com/c7n
     slaver:
       version: 0.1.0
       name: c7n-slaver
@@ -49,12 +49,9 @@ spec:
     chart: redis
     version: 0.2.5
     resource:
-      # svc name = release name
       host: '{{ .GetReleaseName "redis" }}'
       port: 6379
     values:
-    - name: "service.enabled"
-      value: "true"
   - name: gitlab
     chart: gitlab-ha
     version: 0.2.2
@@ -78,14 +75,8 @@ spec:
         check: clusterdomain
       - name: "database.internal.password"
         value: '{{ generateAlphaNum 10 }}'
-    ## exec some command when resource finished
-    afterInstall:
-    - name: create-gitlabadmin-binding
-      psql:
-      - CREATE EXTENSION IF NOT EXISTS pg_trgm;
-      - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
-      infraRef: gitlab
-      database: gitlabhq_production
+      - name: "redis.internal.password"
+        value: '{{ generateAlphaNum 10 }}'
   - name: minio
     chart: minio
     version: 5.0.5
@@ -160,80 +151,76 @@ spec:
     - name: "ingress.hosts[0].name"
       value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
       check: clusterdomain
-  - name: register-server
-    chart: go-register-server
-    version: "0.21.0"
+  - name: hzero-register
+    chart: hzero-register
+    version: "2020.7.20-173716-hotfix-0-22-2"
     resource:
-      # 默认 svc name 固定为 register-server
-      host: "register-server"
+      host: "hzero-register"
       port: 8000
       schema: http
-      url: "http://register-server:8000/eureka/"
+      url: "http://hzero-register:8000/eureka/"
     values:
-  - name: base-service
-    chart: base-service
-    version: "0.21.5"
+  - name: hzero-platform
+    chart: hzero-platform
+    version: "2020.7.27-155708-hotfix-0-22-1"
     resource:
-      host: base-service
+      host: hzero-platform
+      port: 8100
       schema: http
     requirements:
     - mysql
     - redis
-    - register-server
+    - hzero-register
     preInstall:
-    - name: base-service-predb
+    - name: hzero-platform-predb
       commands:
         - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS base_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON base_service.* TO choerodon@"%";
+        - CREATE DATABASE IF NOT EXISTS hzero_platform DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        - GRANT ALL PRIVILEGES ON hzero_platform.* TO choerodon@"%";
         - FLUSH PRIVILEGES;
       infraRef: mysql
     afterInstall:
-    - name: create-client
+    - name: create-gitlab-client
       commands:
-      - use base_service
+      - use hzero_platform
       # 子符串过长 yaml_v2 序列化时会自动换行
       - |
-        INSERT INTO base_service.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
+        INSERT INTO hzero_platform.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
         web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
         object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
         "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
         "{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
       infraRef: mysql
     values:
-  - name: manager-service
-    chart: manager-service
-    version: "0.21.0"
+  - name: hzero-admin
+    chart: hzero-admin
+    version: "2020.7.27-154748-hotfix-0-22-3"
     resource:
-      host: manager-service
-      port: 8964
+      host: hzero-admin
+      port: 8062
       schema: http
     requirements:
-    - mysql
-    - register-server
-    - base-service
+    - hzero-platform
     preInstall:
-    - name: manager-service-predb
+    - name: hzero-admin-predb
       commands:
         - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS manager_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON manager_service.* TO choerodon@"%";
+        - CREATE DATABASE IF NOT EXISTS hzero_admin DEFAULT CHARACTER SET utf8;
+        - GRANT ALL PRIVILEGES ON hzero_admin.* TO choerodon@"%";
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-  - name: asgard-service
-    chart: asgard-service
-    version: "0.21.1"
+  - name: hzero-asgard
+    chart: hzero-asgard
+    version: "2020.7.27-154903-hotfix-0-22-4-upgrade"
     resource:
       host: asgard-service
-      port: 18081
+      port: 8040
       schema: http
     requirements:
-    - mysql
-    - register-server
-    - base-service
+    - hzero-platform
     preInstall:
-    - name: asgard-service-predb
+    - name: hzero-asgard-predb
       commands:
         - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
         - CREATE DATABASE IF NOT EXISTS asgard_service DEFAULT CHARACTER SET utf8;
@@ -241,90 +228,124 @@ spec:
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-  - name: notify-service
-    chart: notify-service
-    version: "0.21.0"
+  - name: hzero-gateway
+    chart: hzero-gateway
+    version: "2020.7.30-110329-hotfix-0-22-4"
     resource:
-      host: notify-service
+      host: hzero-gateway
+      port: 8080
       schema: http
     requirements:
-    - mysql
-    - redis
-    - register-server
-    - manager-service
+      - hzero-admin
+      - hzero-asgard
+    values:
+      - name: "ingress.host"
+        value: '{{ (.GetResource "hzero-gateway" ).Domain }}'
+        check: clusterdomain
+  - name: hzero-iam
+    chart: hzero-iam
+    version: "2020.7.28-142420-hotfix-0-22-1"
+    resource:
+      host: hzero-iam
+      port: 8030
+      schema: http
+    requirements:
+      - hzero-admin
+      - hzero-asgard
+    values:
+  - name: hzero-oauth
+    chart: hzero-oauth
+    version: "2020.7.27-155556-hotfix-0-22-2"
+    resource:
+      host: hzero-oauth
+      port: 8020
+      schema: http
+    requirements:
+      - hzero-admin
+      - hzero-asgard
+    values:
+  - name: hzero-file
+    chart: hzero-file
+    version: "2020.7.29-165205-hotfix-0-22-4"
+    resource:
+      host: hzero-file
+      port: 8110
+      schema: http
+    requirements:
+      - hzero-oauth
+      - minio
     preInstall:
-    - name: notify-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS notify_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON notify_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
+      - name: hzero-file-predb
+        commands:
+          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+          - CREATE DATABASE IF NOT EXISTS hzero_file DEFAULT CHARACTER SET utf8;
+          - GRANT ALL PRIVILEGES ON hzero_file.* TO choerodon@"%";
+          - FLUSH PRIVILEGES;
+        infraRef: mysql
     values:
-    - name: "ingress.host"
-      value: '{{ ( .GetResource "notify-service" ).Domain }}'
-      check: clusterdomain
-  - name: api-gateway
-    chart: api-gateway
-    version: "0.21.0"
+  - name: hzero-swagger
+    chart: hzero-swagger
+    version: "2020.7.20-175114-hotfix-0-22-1"
     resource:
-      host: api-gateway
+      host: hzero-swagger
+      port:
       schema: http
     requirements:
-    - mysql
-    - redis
-    - register-server
-    - manager-service
+      - hzero-oauth
     values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
-    - name: "ingress.host"
-      value: '{{ (.GetResource "api-gateway" ).Domain }}'
-      check: clusterdomain
-  - name: oauth-server
-    chart: oauth-server
-    version: "0.21.0"
+  - name: hzero-message
+    chart: hzero-message
+    version: "2020.7.27-155327-hotfix-0-22-6"
     resource:
-      host: oauth-server
-      port: 8021
+      host: hzero-message
+      port: 8120
       schema: http
     requirements:
-    - mysql
-    - register-server
-    - manager-service
+      - hzero-oauth
+    preInstall:
+      - name: hzero-message-predb
+        commands:
+          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+          - CREATE DATABASE IF NOT EXISTS hzero_message DEFAULT CHARACTER SET utf8;
+          - GRANT ALL PRIVILEGES ON hzero_message.* TO choerodon@"%";
+          - FLUSH PRIVILEGES;
+        infraRef: mysql
     values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
-  - name: file-service
-    chart: file-service
-    version: "0.21.0"
-    resource: 
-      host: file-service
+      - name: "ingress.host"
+        value: '{{ (.GetResource "hzero-message" ).Domain }}'
+        check: clusterdomain
+  - name: hzero-monitor
+    chart: hzero-monitor
+    version: "2020.7.27-155455-hotfix-0-22-4-upgrade"
+    resource:
+      host: hzero-monitor
+      port: 8260
       schema: http
-    requirements: 
-    - mysql
-    - register-server
-    - manager-service
-    - minio
+    requirements:
+      - hzero-file
+      - hzero-swagger
+      - hzero-message
+    preInstall:
+      - name: hzero-monitor-predb
+        commands:
+          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+          - CREATE DATABASE IF NOT EXISTS hzero_monitor DEFAULT CHARACTER SET utf8;
+          - GRANT ALL PRIVILEGES ON hzero_monitor.* TO choerodon@"%";
+          - FLUSH PRIVILEGES;
+        infraRef: mysql
     values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
   - name: devops-service
     chart: devops-service
-    version: "0.21.1"
+    version: "2020.7.28-205431-hotfix-0-22-3"
     resource:
       host: devops-service
       port: 8061
       schema: ws
     requirements:
-    - mysql
-    - redis
+    - hzero-message
     - gitlab
     - harbor
     - chartmuseum
-    - register-server
-    - manager-service
-    - notify-service
     preInstall:
     - name: devops-service-predb
       commands:
@@ -334,50 +355,36 @@ spec:
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
     - name: "ingress.host"
       value: '{{ ( .GetResource "devops-service" ).Domain }}'
       check: clusterdomain
-    - name: SERVICES_GITLAB_PASSWORD
-      value: "password"
-      input:
-        enabled: true
-        password: true
-        regex: ".+"
-        tip: "请输入新用户默认Gitlab密码(不能为纯数字):"
-        exclude:
-          - value: "^\\d*$"
-            name: "不能为纯数字"
   - name: gitlab-service
     chart: gitlab-service
-    version: "0.21.0"
+    version: "2020.7.20-102851-hotfix-0-22-1"
     resource:
       host: gitlab-service
       port: 8071
       schema: http
     requirements:
-    - mysql
-    - gitlab
-    - register-server
-    - manager-service
+      - hzero-message
+      - gitlab
     preInstall:
-    - name: gitlab-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS gitlab_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON gitlab_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    - name: settoken
+    - name: gitlab-set-access-token
       psql:
       - |
         insert into personal_access_tokens (user_id, token_digest, name, expires_at, created_at, updated_at, scopes)
         values (1, '{{ .EncryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
-        array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10)));
+        array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10))) ON CONFLICT (token_digest)
+        DO UPDATE SET updated_at=NOW();
       infraRef: gitlab
       database: gitlabhq_production
     afterInstall:
+    - name: create-gitlabadmin-binding
+      psql:
+      - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
+      infraRef: gitlab
+      database: gitlabhq_production
     - name: enable_webhook
       request:
         header:
@@ -399,21 +406,13 @@ spec:
       value: "{{ generateAlphaNum 20 }}"
   - name: workflow-service
     chart: workflow-service
-    version: "0.21.1"
+    version: "2020.7.20-163240-hotfix-0-22-1"
     resource:
       host: workflow-service
       port: 8066
       schema: ws
     requirements:
-    - mysql
-    - redis
-    - gitlab
-    - harbor
-    - chartmuseum
-    - register-server
-    # - config-server
-    - manager-service
-    - notify-service
+      - hzero-message
     preInstall:
     - name: workflow-service-predb
       commands:
@@ -427,17 +426,13 @@ spec:
       value: "-Xms1024M -Xmx1024M"
   - name: agile-service
     chart: agile-service
-    version: "0.21.0"
+    version: "2020.7.29-100605-hotfix-0-22-2"
     resource:
       host: agile-service
       port: 8379
       schema: http
     requirements:
-    - mysql
-    - redis
-    - minio
-    - register-server
-    - manager-service
+      - hzero-message
     preInstall:
     - name: agile-service-predb
       commands:
@@ -447,20 +442,15 @@ spec:
         - FLUSH PRIVILEGES;
       infraRef: mysql
     values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
   - name: test-manager-service
     chart: test-manager-service
-    version: "0.21.1"
+    version: "2020.7.29-100535-hotfix-0-22-2"
     resource:
       host: test-manager-service
       port: 8394
       schema: http
     requirements:
-    - mysql
-    - redis
-    - register-server
-    - manager-service
+      - hzero-message
     preInstall:
     - name: test-manager-service-predb
       commands:
@@ -474,29 +464,21 @@ spec:
       value: "-Xms1024M -Xmx1024M"
   - name: elasticsearch-kb
     chart: elasticsearch-kb
-    version: 0.21.0
+    version: "0.22.1"
     resource:
       port: 9200
       host: "elasticsearch-kb"
     values:
-    health:
-      socket:
-      - name: base
-        host: '{{ .GetReleaseName "elasticsearch-kb" }}'
-        port: 9200
   - name: knowledgebase-service
     chart: knowledgebase-service
-    version: 0.21.0
+    version: "2020.7.29-100506-hotfix-0-22-1"
     resource:
       host: knowledgebase-service
       port: 8280
       schema: http
     requirements:
-    - mysql
-    - redis
-    - minio
-    - register-server
-    - manager-service
+    - hzero-message
+    - elasticsearch-kb
     preInstall:
     - name: knowledgebase-service-predb
       commands:
@@ -508,27 +490,49 @@ spec:
     values:
     - name: "env.open.JAVA_OPTS"
       value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+  - name: hzero-front
+    chart: hzero-front
+    version: "0.22.1"
+    resource:
+      host: hzero-front
+      schema: http
+    requirements:
+      - hzero-message
+    values:
+    - name: "ingress.host"
+      value: '{{ ( .GetResource "hzero-front" ).Domain }}'
+    preInstall:
+      - name: create-hzero-front-client
+        commands:
+          - USE hzero_platform;
+          - |
+            INSERT INTO hzero_platform.oauth_client (
+              name,organization_id,resource_ids,secret,scope,
+              authorized_grant_types,web_server_redirect_uri,
+              access_token_validity,refresh_token_validity,
+              additional_information,auto_approve,object_version_number,
+              created_by,creation_date,last_updated_by,last_update_date)
+            VALUES("hzero",1,"default","secret","default",
+                  "password,implicit,client_credentials,authorization_code,refresh_token",
+                  '{{ ( .GetResource "hzero-front").Schema }}://{{ ( .GetResource "hzero-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+        infraRef: mysql
   - name: choerodon-front
     chart: choerodon-front
-    version: "0.21.2"
+    version: "2020.7.28-111115-release-0-22-0"
     resource:
       host: "choerodon-front"
       port: 80
       schema: http
     requirements:
-    - mysql
-    - minio
-    - api-gateway
-    - notify-service
-    - harbor
-    - base-service
+    - agile-service
+    - gitlab-service
     - devops-service
     preInstall:
-    - name: create-front-client
+    - name: create-choerodon-front-client
       commands:
-        - USE base_service;
+        - USE hzero_platform;
         - |
-          INSERT INTO base_service.oauth_client (
+          INSERT INTO hzero_platform.oauth_client (
             name,organization_id,resource_ids,secret,scope,
             authorized_grant_types,web_server_redirect_uri,
             access_token_validity,refresh_token_validity,
@@ -542,9 +546,6 @@ spec:
     - name: "ingress.host"
       value: '{{ ( .GetResource "choerodon-front").Domain }}'
       check: clusterdomain
-    - name: "ingress.schema"
-      value: '{{ ( .GetResource "choerodon-front").Schema }}'
-      check: schema
   runner:
     name: gitlab-runner
     chart: gitlab-runner

@@ -1,0 +1,12 @@
+env:
+  open:
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    # 此db不可更改
+    SPRING_REDIS_DATABASE: 4
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
+    SPRING_DATASOURCE_USERNAME: choerodon
+    SPRING_DATASOURCE_PASSWORD: password
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+ingress:
+  enabled: true

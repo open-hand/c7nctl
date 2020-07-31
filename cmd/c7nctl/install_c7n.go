@@ -34,7 +34,7 @@ func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comman
 			if err := runInstallC7n(c); err != nil {
 				log.Error(err)
 				log.Error("Install Choerodon failed")
-				c.Metrics.ErrorMsg[0] = err.Error()
+				c.Metrics.ErrorMsg = []string{err.Error()}
 			} else {
 				log.Info("Install Choerodon succeed")
 			}

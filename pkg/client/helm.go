@@ -13,6 +13,7 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/strvals"
 	"io"
 	"os"
@@ -47,10 +48,10 @@ func NewHelm3Client(cfg *action.Configuration) *Helm3Client {
 func InitConfiguration(kubeconfig, namespace string) *action.Configuration {
 	actionConfig := new(action.Configuration)
 	helmDriver := os.Getenv("HELM_DRIVER")
+
 	// TODO 是否
-	if err := actionConfig.Init(kube.GetConfig(kubeconfig, "", namespace), namespace, helmDriver, func(format string, v ...interface{}) {
-		log.Warnf(format, v)
-	}); err != nil {
+
+	if err := actionConfig.Init(kube.GetConfig(kubeconfig, "", namespace), namespace, helmDriver, log.Debugf); err != nil {
 		log.Fatal(err)
 	}
 	return actionConfig
@@ -148,6 +149,34 @@ func (h *Helm3Client) newHelm3Install(cfg *action.Configuration, args ChartArgs)
 	return install
 }
 
+func (h *Helm3Client) newHelm3Upgrade(cfg *action.Configuration, args ChartArgs) *action.Upgrade {
+	upgrade := action.NewUpgrade(cfg)
+	upgrade.ChartPathOptions = action.ChartPathOptions{
+		CaFile:   args.CaFile,
+		CertFile: args.CertFile,
+		KeyFile:  args.KeyFile,
+		Keyring:  args.Keyring,
+		RepoURL:  args.RepoUrl,
+		Verify:   args.Verify,
+		Version:  args.Version,
+	}
+	// 默认更新或者安装
+	upgrade.Install = true
+	//upgrade.CreateNamespace = createNamespace
+	//upgrade.DryRun = false
+	//upgrade.DisableHooks = false
+	//upgrade.SkipCRDs = false
+	//upgrade.Timeout = xx
+	//upgrade.Wait = false
+	//upgrade.Devel = false
+	upgrade.Namespace = args.Namespace
+	//upgrade.Atomic = client.Atomic
+	//upgrade.PostRenderer = client.PostRenderer
+	//upgrade.DisableOpenAPIValidation = client.DisableOpenAPIValidation
+	//upgrade.SubNotes = client.SubNotes
+	return upgrade
+}
+
 func RunHelmInstall(client *action.Install, chart string, vals map[string]interface{}, out io.Writer) (*release.Release, error) {
 	log.Debugf("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
@@ -217,6 +246,77 @@ func RunHelmInstall(client *action.Install, chart string, vals map[string]interf
 	}
 	client.Namespace = settings.Namespace()
 	return client.Run(chartRequested, vals)
+}
+
+func (h *Helm3Client) Upgrade(cArgs ChartArgs, vals map[string]interface{}, out io.Writer) (*release.Release, error) {
+	client := h.newHelm3Upgrade(h.Configuration, cArgs)
+	// Fixes #7002 - Support reading values from STDIN for `upgrade` command
+	// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
+	if client.Install {
+		// If a release does not exist, install it.
+		histClient := action.NewHistory(h.Configuration)
+		histClient.Max = 1
+		if _, err := histClient.Run(cArgs.ReleaseName); err == driver.ErrReleaseNotFound {
+			// Only print this to stdout for table output
+
+			instClient := action.NewInstall(h.Configuration)
+			instClient.CreateNamespace = true
+			instClient.ChartPathOptions = client.ChartPathOptions
+			instClient.DryRun = client.DryRun
+			instClient.DisableHooks = client.DisableHooks
+			instClient.SkipCRDs = client.SkipCRDs
+			instClient.Timeout = client.Timeout
+			instClient.Wait = client.Wait
+			instClient.Devel = client.Devel
+			instClient.Namespace = client.Namespace
+			instClient.Atomic = client.Atomic
+			instClient.PostRenderer = client.PostRenderer
+			instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
+			instClient.SubNotes = client.SubNotes
+
+			rel, err := h.Install(cArgs, vals, out)
+			if err != nil {
+				return nil, err
+			}
+			return rel, nil
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	log.Debugf("Original chart version: %q", client.Version)
+	if client.Version == "" && client.Devel {
+		log.Debugf("setting version to >0.0.0-0")
+		client.Version = ">0.0.0-0"
+	}
+	settings := cli.New()
+
+	chartPath, err := client.ChartPathOptions.LocateChart(cArgs.ChartName, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check chart dependencies to make sure all are present in /charts
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, err
+	}
+	if req := ch.Metadata.Dependencies; req != nil {
+		if err := action.CheckDependencies(ch, req); err != nil {
+			return nil, err
+		}
+	}
+
+	if ch.Metadata.Deprecated {
+		fmt.Fprintln(out, "WARNING: This chart is deprecated")
+	}
+
+	rel, err := client.Run(cArgs.ReleaseName, ch, vals)
+	if err != nil {
+		return nil, liberrors.Wrap(err, "UPGRADE FAILED")
+	}
+
+	return rel, nil
 }
 
 // isChartInstallable validates if a chart can be installed

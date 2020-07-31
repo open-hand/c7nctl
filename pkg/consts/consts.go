@@ -33,3 +33,13 @@ const (
 	SuccessCode int = iota
 	InitConfigErrorCode
 )
+
+// 服务列表
+const (
+	ChartMuseum   = "chartmuseum"
+	Redis         = "redis"
+	mysql         = "mysql"
+	Gitlab        = "gitlab"
+	Harbor        = "harbor"
+	HzeroRegister = "hzero-register"
+)

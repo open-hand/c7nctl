@@ -89,30 +89,13 @@ func (r *Release) InstallComponent() error {
 
 // 执行 after Task，完成后更新任务状态，并执行 wg.done
 func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error {
-	// ti 一定存在
-	// 等待上一步的状态更新完成
-	time.Sleep(time.Second)
-	ti, err := r.Client.GetTaskInfoFromCM(r.Namespace, r.Name)
-	if err != nil {
-		return err
-	}
-
-	r.CheckReleasePodRunning(r.Name)
 
 	log.Infof("%s: started, will execute required commands and requests", r.Name)
-	err = r.executeExternalFunc(r.AfterInstall, s)
-	if err != nil {
-		log.Error(err)
-		ti.Status = consts.FailedStatus
-	} else {
-		log.Infof("Successfully installed %s", r.Name)
-		ti.Status = consts.SucceedStatus
-	}
-	wg.Done()
-	return r.Client.SaveTaskInfoToCM(r.Namespace, ti)
+	return r.executeExternalFunc(r.AfterInstall, s)
 }
 
 func (r *Release) ExecutePreCommands(s *slaver.Slaver) error {
+	log.Infof("%s: started, will execute required commands and requests", r.Name)
 	err := r.executeExternalFunc(r.PreInstall, s)
 	return err
 }
@@ -248,7 +231,7 @@ func (pi *ReleaseJob) executeRequests(rls *Release, s *slaver.Slaver) error {
 func (r *Release) mergerResource(uc *config.C7nConfig) {
 	cnf := uc
 	if res := cnf.GetResource(r.Name); res == nil {
-		log.Warnf("There is no resource in config.yaml of Release %s", r.Name)
+		log.Debugf("There is no resource in config.yaml of Release %s", r.Name)
 	} else {
 		// 直接使用外部配置
 		if res.External {
@@ -333,7 +316,6 @@ func (r *Release) HelmValues() []string {
 func (r *Release) CheckReleasePodRunning(rls string) {
 	clientset := r.Client.GetClientSet()
 	namespace := r.Namespace
-	time.Sleep(time.Second * 3)
 
 	labels := []string{
 		fmt.Sprintf("choerodon.io/release=%s", rls),
@@ -380,7 +362,7 @@ func (r *Release) CheckReleasePodRunning(rls string) {
 				}
 			}
 		}
-		time.Sleep(7 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 

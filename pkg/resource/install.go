@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+const (
+	eurekaClientServerUrlTpl = "%s://%s:8000/eureka/"
+	resourceDomainUrlTpl     = "%s://%s"
+)
+
 type InstallDefinition struct {
 	// api 版本
 	Version string
@@ -78,6 +83,7 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 	}
 	if t.Status == c7nconsts.UninitializedStatus {
 		// 传入的参数是指针
+		r.mergerResource(uc)
 		if err = i.renderValues(r); err != nil {
 			return err
 		}
@@ -92,10 +98,8 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 		if err = r.Client.SaveTaskInfoToCM(i.Namespace, t); err != nil {
 			return err
 		}
-	}
-
-	// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-	if t.Status == c7nconsts.RenderedStatus || t.Status == c7nconsts.FailedStatus || t.Status == c7nconsts.SucceedStatus {
+	} else {
+		// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
 		r.Values = t.Values
 		r.Resource = &t.Resource
 		// 重新渲染 preCommand 等，避免在 TaskInfo 加入 PreCommand 导致循环依赖
@@ -287,6 +291,24 @@ func (i *InstallDefinition) GetRunnerValues(values string) string {
 	for _, v := range i.Spec.Runner.Values {
 		if v.Name == values {
 			return v.Value
+		}
+	}
+	return ""
+}
+
+func (i *InstallDefinition) GetEurekaUrl() string {
+	for _, r := range i.Spec.Release {
+		if r.Name == c7nconsts.HzeroRegister {
+			return fmt.Sprintf(eurekaClientServerUrlTpl, r.Resource.Schema, r.Resource.Host)
+		}
+	}
+	return ""
+}
+
+func (i *InstallDefinition) GetResourceDomainUrl(rls string) string {
+	for _, r := range i.Spec.Release {
+		if r.Name == rls {
+			return fmt.Sprintf(resourceDomainUrlTpl, r.Resource.Schema, r.Resource.Domain)
 		}
 	}
 	return ""

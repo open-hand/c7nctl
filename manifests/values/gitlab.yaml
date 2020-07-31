@@ -7,18 +7,16 @@ core:
     OAUTH_BLOCK_AUTO_CREATED_USERS: false
     OAUTH_GENERIC_API_KEY: "gitlab"
     OAUTH_GENERIC_APP_SECRET: "secret"
-    OAUTH_GENERIC_SITE: {{ (.GetResource "api-gateway").Schema }}://{{ (.GetResource "api-gateway").Domain }}
+    OAUTH_GENERIC_SITE: {{ .GetResourceDomainUrl "hzero-gateway" }}
     OAUTH_GENERIC_USER_INFO_URL: "/oauth/api/user"
     OAUTH_GENERIC_AUTHORIZE_URL: "/oauth/oauth/authorize"
     OAUTH_GENERIC_TOKEN_URL: "/oauth/oauth/token"
     OAUTH_GENERIC_ROOT_PATH: '"userAuthentication","principal"'
     OAUTH_GENERIC_ID_PATH: '"userAuthentication","principal","userId"'
-    OAUTH_GENERIC_USER_NICKNAME: "choerodon"
-    OAUTH_GENERIC_USER_NAME: "choerodon"
-imagePullPolicy: IfNotPresent
+    OAUTH_GENERIC_USER_NICKNAME: "username"
+    OAUTH_GENERIC_USER_NAME: "username"
 redis:
-  internal:
-    password: {{ generateAlphaNum 10 }}
+  internal: {}
 database:
   internal:
     size: 20Gi
