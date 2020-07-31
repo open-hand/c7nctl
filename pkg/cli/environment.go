@@ -28,7 +28,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.Namespace, "namespace", "n", "c7n-system", "namespace scope for this request")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVarP(&s.ConfigFile, "config", "c", "config.yaml", "choerodon configuration file")
-	fs.StringVarP(&s.ResourceFile, "resource", "r", "install.yaml", "choerodon install definition file")
+	fs.StringVarP(&s.ResourceFile, "resource", "r", "", "choerodon install definition file")
 
 	fs.StringVar(&s.KubeConfig, "kubeconfig", defaultKubeconfigPath, "(optional) absolute path to the kubeconfig file")
 }

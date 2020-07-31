@@ -56,7 +56,7 @@ start:
 	if err != nil {
 		return "", err
 	}
-	text = strings.Trim(text, "\n")
+	text = strings.Trim(text, "\r")
 
 	if !CheckMatch(text, input) {
 		goto start

@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"io"
 )
 
@@ -65,12 +65,19 @@ func newGitlabRunnerCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comm
 	}
 
 	flags := cmd.Flags()
-	grcAddFlags(flags)
+	addInstallFlags(flags, c)
+	//grcAddFlags(flags)
 
 	return cmd
 }
 
 func grcRun(c *action.Choerodon) error {
+	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
+	if c.Version == "" {
+		c.Version = c7nutils.GetVersion(c7nconsts.DefaultGitBranch)
+	}
+	log.Infof("The current installing version is %s", c.Version)
+
 	id, err := c.GetInstallDef(settings.ConfigFile, settings.ResourceFile)
 	if err != nil {
 		return errors.WithMessage(err, "Failed to get install configration file")
@@ -109,11 +116,4 @@ func grcRun(c *action.Choerodon) error {
 		return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", id.Spec.Runner.Name))
 	}
 	return nil
-}
-
-func grcAddFlags(fs *pflag.FlagSet) {
-	fs.Bool("debug", false, "enable debug output")
-	fs.String("prefix", "", "add prefix to all helm release")
-	fs.String("version", "", "specify a version")
-	fs.Bool("skip-input", false, "use default username and password to avoid user input")
 }

@@ -565,7 +565,7 @@ spec:
     - name: "env.runnerToken"
       value: "{{ ( generateAlphaNum 30) }}"
     - name: "env.environment.CHOERODON_URL"
-      value: '{{ ( .GetResource "api-gateway").Schema }}://{{ ( .GetResource "api-gateway").Domain }}'
+      value: '{{ ( .GetResource "hzero-gateway").Schema }}://{{ ( .GetResource "hzero-gateway").Domain }}'
       # TODO
     - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
       value: "/root/.m2"
