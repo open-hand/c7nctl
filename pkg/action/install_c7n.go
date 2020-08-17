@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/cli"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
@@ -51,10 +50,9 @@ type Choerodon struct {
 	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
 }
 
-func NewChoerodon(cfg *C7nConfiguration, settings *cli.EnvSettings) *Choerodon {
+func NewChoerodon(cfg *C7nConfiguration) *Choerodon {
 	return &Choerodon{
-		Cfg:       cfg,
-		Namespace: settings.Namespace,
+		Cfg: cfg,
 		CommonLabels: map[string]string{
 			c7nconsts.C7nLabelKey: c7nconsts.C7nLabelValue,
 		},
@@ -72,6 +70,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 		log.Infof("Release %s is already installed", rls.Name)
 		return nil
 	}
+
 	if ti.Status == c7nconsts.RenderedStatus || ti.Status == c7nconsts.FailedStatus {
 		// 等待依赖项安装完成
 		for _, r := range rls.Requirements {
@@ -99,9 +98,8 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 			return err
 		}
 		ti.Status = c7nconsts.InstalledStatus
-
+		// 将异步的 afterInstall 改为同步，AfterInstall 其依赖检查依靠 release
 		if len(rls.AfterInstall) > 0 {
-			//c.Wg.Add(1)
 			if err := rls.ExecuteAfterTasks(c.Slaver, c.Wg); err != nil {
 				ti.Status = c7nconsts.FailedStatus
 				return std_errors.WithMessage(err, "Execute after task failed")

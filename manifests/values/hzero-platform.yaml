@@ -7,7 +7,7 @@ preJob:
       driver: com.mysql.jdbc.Driver
 env:
   open:
-    HZERO_PLATFORM_HTTP_PROTOCOL: {{ ( .GetResource "harbor").Schema }}
+    HZERO_PLATFORM_HTTP_PROTOCOL: http
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
     SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
     SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}

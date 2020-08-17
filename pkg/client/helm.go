@@ -49,8 +49,6 @@ func InitConfiguration(kubeconfig, namespace string) *action.Configuration {
 	actionConfig := new(action.Configuration)
 	helmDriver := os.Getenv("HELM_DRIVER")
 
-	// TODO 是否
-
 	if err := actionConfig.Init(kube.GetConfig(kubeconfig, "", namespace), namespace, helmDriver, log.Debugf); err != nil {
 		log.Fatal(err)
 	}

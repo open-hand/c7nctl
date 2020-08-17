@@ -8,7 +8,7 @@ spec:
       cpu: 6000m
       memory: 38Gi
   basic:
-    repoURL: http://charts.yidaqiang.com/c7n
+    repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
     slaver:
       version: 0.1.0
       name: c7n-slaver
@@ -153,7 +153,7 @@ spec:
       check: clusterdomain
   - name: hzero-register
     chart: hzero-register
-    version: "2020.7.20-173716-hotfix-0-22-2"
+    version: "0.22.2"
     resource:
       host: "hzero-register"
       port: 8000
@@ -162,7 +162,7 @@ spec:
     values:
   - name: hzero-platform
     chart: hzero-platform
-    version: "2020.7.27-155708-hotfix-0-22-1"
+    version: "0.22.1"
     resource:
       host: hzero-platform
       port: 8100
@@ -194,7 +194,7 @@ spec:
     values:
   - name: hzero-admin
     chart: hzero-admin
-    version: "2020.7.27-154748-hotfix-0-22-3"
+    version: "0.22.3"
     resource:
       host: hzero-admin
       port: 8062
@@ -212,7 +212,7 @@ spec:
     values:
   - name: hzero-asgard
     chart: hzero-asgard
-    version: "2020.7.27-154903-hotfix-0-22-4-upgrade"
+    version: "0.22.4"
     resource:
       host: asgard-service
       port: 8040
@@ -230,7 +230,7 @@ spec:
     values:
   - name: hzero-gateway
     chart: hzero-gateway
-    version: "2020.7.30-110329-hotfix-0-22-4"
+    version: "0.22.4"
     resource:
       host: hzero-gateway
       port: 8080
@@ -244,7 +244,7 @@ spec:
         check: clusterdomain
   - name: hzero-iam
     chart: hzero-iam
-    version: "2020.7.28-142420-hotfix-0-22-1"
+    version: "0.22.1"
     resource:
       host: hzero-iam
       port: 8030
@@ -255,7 +255,7 @@ spec:
     values:
   - name: hzero-oauth
     chart: hzero-oauth
-    version: "2020.7.27-155556-hotfix-0-22-2"
+    version: "0.22.2"
     resource:
       host: hzero-oauth
       port: 8020
@@ -266,7 +266,7 @@ spec:
     values:
   - name: hzero-file
     chart: hzero-file
-    version: "2020.7.29-165205-hotfix-0-22-4"
+    version: "0.22.4"
     resource:
       host: hzero-file
       port: 8110
@@ -285,7 +285,7 @@ spec:
     values:
   - name: hzero-swagger
     chart: hzero-swagger
-    version: "2020.7.20-175114-hotfix-0-22-1"
+    version: "0.22.1"
     resource:
       host: hzero-swagger
       port:
@@ -295,7 +295,7 @@ spec:
     values:
   - name: hzero-message
     chart: hzero-message
-    version: "2020.7.27-155327-hotfix-0-22-6"
+    version: "0.22.7"
     resource:
       host: hzero-message
       port: 8120
@@ -316,7 +316,7 @@ spec:
         check: clusterdomain
   - name: hzero-monitor
     chart: hzero-monitor
-    version: "2020.7.27-155455-hotfix-0-22-4-upgrade"
+    version: "0.22.4"
     resource:
       host: hzero-monitor
       port: 8260
@@ -336,7 +336,7 @@ spec:
     values:
   - name: devops-service
     chart: devops-service
-    version: "2020.7.28-205431-hotfix-0-22-3"
+    version: "0.22.3"
     resource:
       host: devops-service
       port: 8061
@@ -360,7 +360,7 @@ spec:
       check: clusterdomain
   - name: gitlab-service
     chart: gitlab-service
-    version: "2020.7.20-102851-hotfix-0-22-1"
+    version: "0.22.1"
     resource:
       host: gitlab-service
       port: 8071
@@ -406,7 +406,7 @@ spec:
       value: "{{ generateAlphaNum 20 }}"
   - name: workflow-service
     chart: workflow-service
-    version: "2020.7.20-163240-hotfix-0-22-1"
+    version: "0.22.2"
     resource:
       host: workflow-service
       port: 8066
@@ -426,7 +426,7 @@ spec:
       value: "-Xms1024M -Xmx1024M"
   - name: agile-service
     chart: agile-service
-    version: "2020.7.29-100605-hotfix-0-22-2"
+    version: "0.22.2"
     resource:
       host: agile-service
       port: 8379
@@ -444,7 +444,7 @@ spec:
     values:
   - name: test-manager-service
     chart: test-manager-service
-    version: "2020.7.29-100535-hotfix-0-22-2"
+    version: "0.22.1"
     resource:
       host: test-manager-service
       port: 8394
@@ -471,7 +471,7 @@ spec:
     values:
   - name: knowledgebase-service
     chart: knowledgebase-service
-    version: "2020.7.29-100506-hotfix-0-22-1"
+    version: "0.22.1"
     resource:
       host: knowledgebase-service
       port: 8280
@@ -518,7 +518,7 @@ spec:
         infraRef: mysql
   - name: choerodon-front
     chart: choerodon-front
-    version: "2020.7.28-111115-release-0-22-0"
+    version: "0.22.1"
     resource:
       host: "choerodon-front"
       port: 80

@@ -13,6 +13,7 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-version v1.2.0
+	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect

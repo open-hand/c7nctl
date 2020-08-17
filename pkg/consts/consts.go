@@ -25,7 +25,7 @@ var (
 
 // c7nctl 默认信息
 const (
-	Version = 0.21
+	Version = 0.22
 )
 
 // 退出码

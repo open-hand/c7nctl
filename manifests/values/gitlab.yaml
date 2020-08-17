@@ -15,6 +15,7 @@ core:
     OAUTH_GENERIC_ID_PATH: '"userAuthentication","principal","userId"'
     OAUTH_GENERIC_USER_NICKNAME: "username"
     OAUTH_GENERIC_USER_NAME: "username"
+    RACK_ATTACK_WHITELIST: 0.0.0.0/0
 redis:
   internal: {}
 database:

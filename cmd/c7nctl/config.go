@@ -48,7 +48,7 @@ func newGitlabCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 }
 
 func newGitlabRunnerCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
-	c := action.NewChoerodon(cfg, settings)
+	c := action.NewChoerodon(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "runner",
@@ -72,6 +72,7 @@ func newGitlabRunnerCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comm
 }
 
 func grcRun(c *action.Choerodon) error {
+	c.Namespace = settings.Namespace
 	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
 	if c.Version == "" {
 		c.Version = c7nutils.GetVersion(c7nconsts.DefaultGitBranch)

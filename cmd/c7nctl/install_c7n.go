@@ -23,7 +23,7 @@ Ensure you run this within server can vista k8s.
 `
 
 func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
-	c := action.NewChoerodon(cfg, settings)
+	c := action.NewChoerodon(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "c7n",
@@ -32,8 +32,7 @@ func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comman
 		Run: func(_ *cobra.Command, args []string) {
 			setUserConfig(c.SkipInput)
 			if err := runInstallC7n(c); err != nil {
-				log.Error(err)
-				log.Error("Install Choerodon failed")
+				log.Errorf("Install Choerodon failed: %s", err)
 				c.Metrics.ErrorMsg = []string{err.Error()}
 			} else {
 				log.Info("Install Choerodon succeed")
@@ -50,15 +49,16 @@ func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Comman
 }
 
 func runInstallC7n(c *action.Choerodon) error {
+	c.Namespace = settings.Namespace
 	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
 	if c.Version == "" {
 		c.Version = c7nutils.GetVersion(c7nconsts.DefaultGitBranch)
 	}
-	log.Infof("The current installing version is %s", c.Version)
+	log.Infof("The current installing choerodon version is %s", c.Version)
 
 	id, err := c.GetInstallDef(settings.ConfigFile, settings.ResourceFile)
 	if err != nil {
-		return errors.WithMessage(err, "Failed to get install configration file")
+		return errors.WithMessage(err, "Failed to get install configuration file")
 	}
 	// TODO 当 repoUrl 优先级 flag -> config.yaml -> install.yaml -> default
 	// 初始化 helmInstall
@@ -98,7 +98,7 @@ func runInstallC7n(c *action.Choerodon) error {
 
 	for !installQueue.IsEmpty() {
 		rls := installQueue.Dequeue()
-		log.Infof("start install %s", rls.Name)
+		log.Infof("start installing release %s", rls.Name)
 		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
 		vals, err := id.RenderHelmValues(rls, c.UserConfig)
 		if err != nil {
@@ -108,10 +108,8 @@ func runInstallC7n(c *action.Choerodon) error {
 			return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
 		}
 	}
-	// 等待所有 afterTask 执行完成。
-	c.Wg.Wait()
-	// c.SendMetrics(err)
-	// 清理历史的job，cm，slaver 等
+
+	// 清理历史的job
 	return c.Clean()
 }
 
