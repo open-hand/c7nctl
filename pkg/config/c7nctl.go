@@ -4,15 +4,15 @@ var Cfg Config
 
 // c7nctl 默认的配置项，包括安装的基本信息和连接c7n的信息
 type Config struct {
-	Version string
+	Version string `yaml:"version"`
 	// 安装 c7n 时，用户需要输入的邮箱信息
-	Terms   Terms
+	Terms   Terms  `yaml:"terms"`
 	OpsMail string `yaml:"opsMail"`
 
 	// 暂时不知道有什么用处
-	Clusters       []*NamedCluster
-	CurrentCluster string `yaml:"current-cluster"`
-	Users          []*NamedUser
+	Clusters       []*NamedCluster `yaml:"clusters"`
+	CurrentCluster string          `yaml:"current-cluster"`
+	Users          []*NamedUser    `yaml:"users"`
 
 	// 连接 c7n 的上下文信息
 	Contexts       []C7NContext `yaml:"contexts"`
@@ -20,7 +20,7 @@ type Config struct {
 }
 
 type Terms struct {
-	Accepted bool
+	Accepted bool `yaml:"accepted"`
 }
 
 type NamedUser struct {
@@ -34,16 +34,16 @@ type NamedCluster struct {
 }
 
 type User struct {
-	Mail       string
-	Token      string
-	Name       string
-	ValidUntil int64
+	Mail       string `yaml:"mail"`
+	Token      string `yaml:"token"`
+	Name       string `yaml:"name"`
+	ValidUntil int64  `yaml:"valid-until"`
 }
 
 type Cluster struct {
-	Server       string
-	User         *User  `yaml:"-"`
-	SelectedUser string `yaml:"user"`
+	Server       string `yaml:"server"`
+	User         *User  `yaml:"user"`
+	SelectedUser string `yaml:"selected-user"`
 }
 
 // C7n 的连接上下文
@@ -54,10 +54,10 @@ type C7NContext struct {
 }
 
 type C7NUser struct {
-	UserName         string `yaml:"userName"`
+	UserName         string `yaml:"user-name"`
 	Token            string `yaml:"token"`
-	ProjectId        int    `yaml:"projectId"`
-	OrganizationId   int    `yaml:"organizationId"`
-	OrganizationCode string `yaml:"organizationCode"`
-	ProjectCode      string `yaml:"projectCode"`
+	ProjectId        int    `yaml:"project-id"`
+	OrganizationId   int    `yaml:"organization-id"`
+	OrganizationCode string `yaml:"organization-code"`
+	ProjectCode      string `yaml:"project-code"`
 }

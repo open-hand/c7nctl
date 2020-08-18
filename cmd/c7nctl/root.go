@@ -25,7 +25,7 @@ var c7nctlDesc = `c7nctl is a powerful command line tool contains Choerodon rela
 Complete sources is available at https://github.com/choerodon/c7nctl/.
 `
 
-func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "c7nctl",
 		Short: "The Choerodon Command Tool Line",
@@ -33,15 +33,16 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 
 	flags := cmd.PersistentFlags()
-	envSettings.AddFlags(flags)
+
+	settings.AddFlags(flags)
 
 	// Add sub command
 	cmd.AddCommand(
-		newConfigCmd(out),
+		newConfigCmd(actionConfig, out),
 		newCreateCmd(out),
 		newDeleteCmd(out),
 		newGetCmd(out),
-		newInstallCmd(actionConfig, out, args),
+		newInstallCmd(actionConfig, out),
 		newKubernetesCmd(out, args),
 		newLoginCmd(out),
 		newLogoutCmd(out),
@@ -49,6 +50,8 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newUpgradeCmd(out),
 		newUseCmd(out),
 	)
+
+	// TODO  完成命令自动补全功能
 
 	return cmd
 }

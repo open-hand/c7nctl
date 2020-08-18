@@ -1,11 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/context"
-	c7n_ctx "github.com/choerodon/c7nctl/pkg/context"
-	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	"github.com/choerodon/c7nctl/pkg/resource"
+	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -21,76 +22,138 @@ and specify the file with "--c7n-config <install-c7n-config.yaml>".
 Ensure you run this within server can vista k8s.
 `
 
-func newInstallC7nCmd(cfg *action.Configuration, out io.Writer, args []string) *cobra.Command {
-	install := action.NewInstall(cfg)
+func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
+	c := action.NewChoerodon(cfg)
 
 	cmd := &cobra.Command{
-		Use:              "c7n",
-		Short:            "One-click installation choerodon",
-		Long:             installC7nDesc,
-		PreRunE:          func(_ *cobra.Command, _ []string) error { return cfg.HelmClient.SetupConnection() },
-		PersistentPreRun: func(*cobra.Command, []string) { cfg.HelmClient.InitSettings() },
-		RunE: func(_ *cobra.Command, args []string) error {
-			cfg.InitCfg()
-			err := installC7n(install)
-			c7n_ctx.Ctx.SendMetrics(err)
-			return err
+		Use:   "c7n",
+		Short: "One-click installation choerodon",
+		Long:  installC7nDesc,
+		Run: func(_ *cobra.Command, args []string) {
+			setUserConfig(c.SkipInput)
+			if err := runInstallC7n(c); err != nil {
+				log.Errorf("Install Choerodon failed: %s", err)
+				c.Metrics.ErrorMsg = []string{err.Error()}
+			} else {
+				log.Info("Install Choerodon succeed")
+			}
+			c.Metrics.Send()
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) { cfg.HelmClient.Teardown() },
 	}
 
-	settings := cfg.HelmClient.Settings()
-
-	addInstallFlags(cmd.Flags(), install)
-
 	flags := cmd.PersistentFlags()
-	settings.AddFlags(flags)
-	_ = flags.Parse(args)
+	addInstallFlags(flags, c)
 
 	// set defaults from environment
-	settings.Init(flags)
-
 	return cmd
 }
 
-func installC7n(install *action.Choerodon) error {
-	if err := install.Run(); err != nil {
-		return errors.WithMessage(err, "Install Choerodon failed")
+func runInstallC7n(c *action.Choerodon) error {
+	c.Namespace = settings.Namespace
+	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
+	if c.Version == "" {
+		c.Version = c7nutils.GetVersion(c7nconsts.DefaultGitBranch)
 	}
-	log.Info("Install Choerodon succeed")
-	return nil
+	log.Infof("The current installing choerodon version is %s", c.Version)
+
+	id, err := c.GetInstallDef(settings.ConfigFile, settings.ResourceFile)
+	if err != nil {
+		return errors.WithMessage(err, "Failed to get install configuration file")
+	}
+	// TODO 当 repoUrl 优先级 flag -> config.yaml -> install.yaml -> default
+	// 初始化 helmInstall
+	// 只有 id 中用到了 RepoUrl
+	if id.Spec.Basic.RepoURL != "" {
+		c.RepoUrl = id.Spec.Basic.RepoURL
+	} else {
+		c.RepoUrl = c7nconsts.DefaultRepoUrl
+	}
+	c.DefaultAccessModes = id.DefaultAccessModes
+	c.Slaver = &id.Spec.Basic.Slaver
+
+	// 检查资源
+	if err := c.CheckResource(&id.Spec.Resources); err != nil {
+		return err
+	}
+	if err := c.CheckNamespace(c.Namespace); err != nil {
+		return err
+	}
+
+	stopCh := make(chan struct{})
+	_, err = c.PrepareSlaver(stopCh)
+	if err != nil {
+		return errors.WithMessage(err, "Create Slaver failed")
+	}
+	defer func() {
+		stopCh <- struct{}{}
+	}()
+
+	// 渲染 Release
+	if err := c.RenderReleases(id); err != nil {
+		return nil
+	}
+
+	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
+	installQueue := releaseGraph.TopoSortByKahn()
+
+	for !installQueue.IsEmpty() {
+		rls := installQueue.Dequeue()
+		log.Infof("start installing release %s", rls.Name)
+		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
+		vals, err := id.RenderHelmValues(rls, c.UserConfig)
+		if err != nil {
+			return err
+		}
+		if err = c.InstallRelease(rls, vals); err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
+		}
+	}
+
+	// 清理历史的job
+	return c.Clean()
 }
 
 func addInstallFlags(fs *pflag.FlagSet, client *action.Choerodon) {
-	fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
-	fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
+	// moved to EnvSettings
+	//fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
+	//fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
+	//fs.StringVarP(&client.Namespace, "namespace", "n", "c7n-system", "set namespace which install choerodon")
+
 	fs.StringVar(&client.Version, "version", "", "specify a version")
-	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
+
+	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
 	fs.BoolVar(&client.SkipInput, "skip-input", false, "use default username and password to avoid user input")
 }
 
-func setUserConfig(client *action.Choerodon) {
+func setUserConfig(skipInput bool) {
 	// 在 c7nctl.initConfig() 中 viper 获取了默认的配置文件
-	c := config.Cfg
-	if !c.Terms.Accepted && !client.SkipInput {
-		c7n_utils.AskAgreeTerms()
-		mail := inputUserMail()
-		c.Terms.Accepted = true
-		c.OpsMail = mail
-		viper.Set("terms", c.Terms)
-		viper.Set("opsMail", mail)
+	var cfg config.Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		log.Debug(err)
+	}
+	if !skipInput {
+		// 当用户没有接受条款时，让其输入
+		if !cfg.Terms.Accepted {
+			c7nutils.AskAgreeTerms()
+			mail := inputUserMail()
+			cfg.Terms.Accepted = true
+			cfg.OpsMail = mail
+			viper.Set("terms", cfg.Terms)
+			viper.Set("opsMail", cfg.OpsMail)
+			viper.WriteConfig()
+		}
 	} else {
 		log.Info("your are execute job by skip input option, so we think you had allowed we collect your information")
 	}
 }
 
 func inputUserMail() string {
-	mail, err := c7n_utils.AcceptUserInput(context.Input{
+	mail, err := c7nutils.AcceptUserInput(c7nutils.Input{
 		Password: false,
 		Tip:      "请输入您的邮箱以便通知您重要的更新(Please enter your email address):  ",
 		Regex:    "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
 	})
-	c7n_utils.CheckErr(err)
+	c7nutils.CheckErr(err)
 	return mail
 }

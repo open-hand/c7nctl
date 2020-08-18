@@ -1,0 +1,17 @@
+preJob:
+  preInitDB:
+    datasource:
+      url: {{ .GetDatabaseUrl "" }}
+      username: choerodon
+      password: password
+env:
+  open:
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+    HZERO_AUTO_REFRESH_SWAGGER_ENABLE: true
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    # 此db不可更改
+    SPRING_REDIS_DATABASE: 1
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_monitor" }}
+    SPRING_DATASOURCE_USERNAME: choerodon
+    SPRING_DATASOURCE_PASSWORD: password

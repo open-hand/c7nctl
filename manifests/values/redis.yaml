@@ -1,7 +1,5 @@
-mode: distributed
 persistence:
   enabled: true
   storageClass: {{ .GetStorageClass }}
-  size: 50Gi
-ingress:
+service:
   enabled: true

@@ -1,9 +1,0 @@
-env:
-  open:
-    # TODO change
-    REGISTER_SERVICE_NAMESPACE: {{ getNamespace }}
-rbac:
-  create: true
-service:
-  enabled: true
-  name: register-server

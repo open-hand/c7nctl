@@ -6,5 +6,5 @@ import "github.com/choerodon/c7nctl/pkg/config"
 type Interface interface {
 	GetConfig() *config.C7nConfig
 
-	GetHelmClient() *HelmClient
+	GetHelmClient() *Helm3Client
 }

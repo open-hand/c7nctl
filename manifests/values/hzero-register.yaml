@@ -1,4 +1,6 @@
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    GITLAB_URL: {{ .GetResourceDomainUrl "gitlab" }}
+# TODO 确认是否需要域名
+ingress:
+  enabled: false

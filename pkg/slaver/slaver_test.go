@@ -2,7 +2,6 @@ package slaver
 
 import (
 	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/kube"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	"github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/vinkdong/gox/log"
@@ -23,7 +22,7 @@ func TestInstall(t *testing.T) {
 	labels := make(map[string]string)
 	labels[C7nLabelKey] = C7nLabelValue
 	slaver := Slaver{
-		Client:       kube.GetClient(),
+		// Client:       kube.GetClient(),
 		Version:      "0.1",
 		Namespace:    "resource",
 		Name:         "c7n-slaver",
@@ -48,7 +47,7 @@ func TestPortForward(t *testing.T) {
 	labels := make(map[string]string)
 	labels[C7nLabelKey] = C7nLabelValue
 	slaver := Slaver{
-		Client:       kube.GetClient(),
+		// Client:       kube.GetClient(),
 		Version:      "0.1",
 		Namespace:    "resource",
 		Name:         "c7n-slaver",
@@ -156,8 +155,8 @@ func TestSendAll(t *testing.T) {
 	log.EnableDebug()
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
-		Client:      kube.GetClient(),
-		Namespace:   "resource",
+		// Client:      kube.GetClient(),
+		Namespace: "resource",
 	}
 	request := &pb.RouteRequest{
 		Method: "GET",
@@ -185,9 +184,9 @@ func TestCheckClusterDomain(t *testing.T) {
 	labels["app"] = "c7n-slaver"
 	slaver := Slaver{
 		GRpcAddress: "127.0.0.1:9001",
-		Client:      kube.GetClient(),
-		Namespace:   "resource",
-		Name:        "c7n-slaver",
+		// Client:      kube.GetClient(),
+		Namespace: "resource",
+		Name:      "c7n-slaver",
 		Ports: []v1.ContainerPort{
 			v1.ContainerPort{
 				Name:          "http",

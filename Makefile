@@ -92,8 +92,8 @@ dist:
 		cd _dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+		$(DIST_DIRS) tar -zcf c7nctl-${VERSION}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r c7nctl-${VERSION}-{}.zip {} \; \
 	)
 # The contents of the .sha256sum file are compatible with tools like
 # shasum. For example, using the following command will verify

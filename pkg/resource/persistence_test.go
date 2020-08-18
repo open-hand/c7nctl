@@ -2,14 +2,14 @@ package resource
 
 import (
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/kube"
+	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 )
 
 func TestCreatePv(t *testing.T) {
-	client := kube.GetClient()
+	client, _ := c7nclient.GetKubeClient("")
 
 	pvLabels := make(map[string]string)
 	pvLabels["usage"] = "test"
@@ -33,11 +33,11 @@ func TestCreatePv(t *testing.T) {
 		Capacity:     pvCapacity,
 		Name:         "test-pv",
 	}
-	p.CreatePv(pvs)
+	p.createPv(pvs)
 }
 
 func TestCreatePvc(t *testing.T) {
-	client := kube.GetClient()
+	client, _ := c7nclient.GetKubeClient("")
 
 	pvLabels := make(map[string]string)
 	pvLabels["usage"] = "test"
@@ -50,5 +50,5 @@ func TestCreatePvc(t *testing.T) {
 		Namespace:    "default",
 		Size:         "10Gi",
 	}
-	p.CreatePvc()
+	p.createPvc()
 }

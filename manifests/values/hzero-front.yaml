@@ -1,0 +1,6 @@
+ingress:
+  enabled: true
+env:
+  open:
+    BUILD_CLIENT_ID: hzero
+    BUILD_API_HOST: {{ .GetResourceDomainUrl "hzero-gateway" }}

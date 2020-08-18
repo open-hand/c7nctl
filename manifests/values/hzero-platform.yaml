@@ -1,0 +1,19 @@
+preJob:
+  preInitDB:
+    datasource:
+      url: {{ .GetDatabaseUrl "" }}
+      username: choerodon
+      password: password
+      driver: com.mysql.jdbc.Driver
+env:
+  open:
+    HZERO_PLATFORM_HTTP_PROTOCOL: http
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    # 此db不可更改
+    SPRING_REDIS_DATABASE: 1
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
+    SPRING_DATASOURCE_USERNAME: choerodon
+    SPRING_DATASOURCE_PASSWORD: password
+    HZERO_EXPORT_COREPOOLSIZE: 1

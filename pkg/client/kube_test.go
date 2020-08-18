@@ -1,30 +1,34 @@
 package client
 
 import (
-	"github.com/choerodon/c7nctl/pkg/kube"
-	"github.com/vinkdong/gox/log"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/consts"
+	"github.com/mitchellh/go-homedir"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
-func TestGetConfig(t *testing.T) {
-	c, err := getConfig()
-	if err != nil {
-		log.Error(err)
-	}
-	log.Info(c.Host)
-}
+func TestK8sClient_SaveTaskInfoToCM(t *testing.T) {
+	home, _ := homedir.Dir()
+	kubeconfig := filepath.Join(home, ".kube", "config")
+	client, _ := GetKubeClient(kubeconfig)
 
-func TestGetClientset(t *testing.T) {
-	//config,_ := getConfig()
-	//_ ,client, _ := getClientset(config)
-	client := kube.GetClient()
-	_, err := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
-	//for _, v := range list.Items {
-	//	//fmt.Printf("node %s: %d \n",v.Name,v.Status.Capacity.Memory().Value())
-	//	fmt.Printf("node %s: %d \n", v.Name, v.Status.Capacity.Cpu().Value())
-	//}
-	if err != nil {
-		t.Error("get node failed")
+	localClient := NewK8sClient(client)
+
+	task := TaskInfo{
+		Name:      "test",
+		Namespace: "default",
+		RefName:   "qwer",
+		Type:      consts.TaskType,
+		Status:    consts.SucceedStatus,
+		Reason:    "",
+		Date:      time.Time{},
+		Values:    nil,
+		Resource:  config.Resource{},
+		TaskType:  consts.PvType,
+		Version:   "",
+		Prefix:    "",
 	}
+	_ = localClient.SaveTaskInfoToCM("test", task)
 }

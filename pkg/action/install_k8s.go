@@ -38,7 +38,7 @@ var (
 )
 
 type InstallK8s struct {
-	Cfg       Configuration
+	Cfg       C7nConfiguration
 	Ssh       client.Host
 	Hosts     []string
 	MasterIPs []string

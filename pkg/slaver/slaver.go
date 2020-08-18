@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	sys_errors "errors"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/kube"
+	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/vinkdong/gox/random"
 	"google.golang.org/grpc"
 	"io/ioutil"
@@ -63,7 +62,7 @@ type Dir struct {
 Type: httpGet or socket
 */
 func (s *Slaver) CheckInstall() (*v1.DaemonSet, error) {
-	ds, err := s.Client.AppsV1().DaemonSets(s.Namespace).Get(s.Name, meta_v1.GetOptions{})
+	ds, err := s.Client.AppsV1().DaemonSets(s.Namespace).Get(context.Background(), s.Name, meta_v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Infof("deploying daemonSet %s", s.Name)
@@ -129,7 +128,7 @@ func (s *Slaver) Install() (*v1.DaemonSet, error) {
 			Selector: selector,
 		},
 	}
-	daemonSet, err := s.Client.AppsV1().DaemonSets(s.Namespace).Create(ds)
+	daemonSet, err := s.Client.AppsV1().DaemonSets(s.Namespace).Create(context.Background(), ds, meta_v1.CreateOptions{})
 
 	if err != nil {
 		return nil, err
@@ -142,7 +141,7 @@ func (s *Slaver) GetPods() (*core_v1.PodList, error) {
 	opts := meta_v1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
 	}
-	return s.Client.CoreV1().Pods(s.Namespace).List(opts)
+	return s.Client.CoreV1().Pods(s.Namespace).List(context.Background(), opts)
 }
 
 func (s *Slaver) CheckRunning() bool {
@@ -195,7 +194,7 @@ loop:
 		Name(pod.Name).
 		SubResource("portforward")
 
-	config, err := kube.GetConfig()
+	config, err := c7nclient.GetConfig()
 	if err != nil {
 		log.Error(err)
 	}
@@ -227,6 +226,7 @@ getFreePort:
 	return port
 }
 
+// 在 slaver 挂载的pvc 中创建目录
 func (s *Slaver) MakeDir(dir Dir) error {
 	log.Infof("create dir %s with mode %s own %s ", dir.Path, dir.Mode, dir.Own)
 
@@ -326,7 +326,7 @@ func (s *Slaver) ExecuteRemoteRequest(f Forward) (string, error) {
 	return string(data), nil
 }
 
-func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *config.Resource, database, sqlType string) error {
+func (s *Slaver) ExecuteRemoteSql(sqlList []string, resource *c7ncfg.Resource, database, sqlType string) error {
 	conn, err := s.connectGRpc()
 	if err != nil {
 		r := fmt.Sprintf("connect %s grpc path  failed", s.GRpcAddress)
@@ -421,7 +421,7 @@ func (s *Slaver) ExecuteRemoteCommand(commands []string) bool {
 func (s *Slaver) InstallService() (*core_v1.Service, error) {
 	svcInterface := s.Client.CoreV1().Services(s.Namespace)
 
-	svc, err := svcInterface.Get(s.Name, meta_v1.GetOptions{})
+	svc, err := svcInterface.Get(context.Background(), s.Name, meta_v1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -454,7 +454,7 @@ func (s *Slaver) InstallService() (*core_v1.Service, error) {
 		},
 	}
 
-	return svcInterface.Create(service)
+	return svcInterface.Create(context.Background(), service, meta_v1.CreateOptions{})
 }
 
 func (s *Slaver) UpdateIngress(ingress *v1beta1.Ingress, domain string) error {
@@ -472,7 +472,7 @@ func (s *Slaver) UpdateIngress(ingress *v1beta1.Ingress, domain string) error {
 
 	ingressInterface := s.Client.ExtensionsV1beta1().Ingresses(s.Namespace)
 
-	_, err = ingressInterface.Update(ingress)
+	_, err = ingressInterface.Update(context.Background(), ingress, meta_v1.UpdateOptions{})
 	return err
 }
 
@@ -513,7 +513,7 @@ func (s *Slaver) InstallIngress(domain string) error {
 
 	ingressInterface := s.Client.ExtensionsV1beta1().Ingresses(s.Namespace)
 
-	ing, err := ingressInterface.Get(s.Name+"checker", meta_v1.GetOptions{})
+	ing, err := ingressInterface.Get(context.Background(), s.Name+"checker", meta_v1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -544,7 +544,7 @@ func (s *Slaver) InstallIngress(domain string) error {
 			Rules: []v1beta1.IngressRule{ingressRule},
 		},
 	}
-	_, err = ingressInterface.Create(ingress)
+	_, err = ingressInterface.Create(context.Background(), ingress, meta_v1.CreateOptions{})
 	return err
 }
 
@@ -676,5 +676,5 @@ retry:
 }
 
 func (s *Slaver) Uninstall() error {
-	return s.Client.AppsV1().DaemonSets(s.Namespace).Delete(s.Name, &meta_v1.DeleteOptions{})
+	return s.Client.AppsV1().DaemonSets(s.Namespace).Delete(context.Background(), s.Name, meta_v1.DeleteOptions{})
 }

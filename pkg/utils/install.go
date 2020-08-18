@@ -3,9 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
+	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -21,16 +19,21 @@ const (
 	fileResourceUrl   = "https://file.choerodon.com.cn/choerodon-install/%s/%s"
 )
 
-func GetInstallDefinition(file string, version string) (rd []byte) {
+func GetInstallDefinition(file string, version string) (rd []byte, err error) {
 	if file == "" {
 		url := fmt.Sprintf(githubResourceUrl, version, InstallConfigPath)
-		rd = GetRemoteResource(url)
+		rd, err = GetRemoteResource(url)
+		if err != nil {
+			return nil, errors.WithMessage(err, "Failed to get install.yaml")
+		}
 	} else {
-		var err error
 		rd, err = ioutil.ReadFile(file)
-		CheckErrAndExit(err, 127)
+		if err != nil {
+			return nil, errors.WithMessage(err, "Failed to Read install.yaml")
+		}
 	}
-	return rd
+	log.Info("")
+	return rd, nil
 }
 
 func GetResourceFile(isRemote bool, version, filepath string) (rd []byte) {
@@ -39,7 +42,7 @@ func GetResourceFile(isRemote bool, version, filepath string) (rd []byte) {
 			version = GetVersion("")
 		}
 		url := fmt.Sprintf(githubResourceUrl, version, filepath)
-		rd = GetRemoteResource(url)
+		rd, _ = GetRemoteResource(url)
 	} else {
 		var err error
 		// TODO resolve filepath separator error
@@ -59,7 +62,7 @@ func GetVersion(branch string) string {
 		branch = "master"
 	}
 	url := fmt.Sprintf(githubResourceUrl, branch, VersionPath)
-	vd := GetRemoteResource(url)
+	vd, _ := GetRemoteResource(url)
 	versions := config.Versions{}
 	err := yaml_v2.Unmarshal(vd, &versions)
 	CheckErr(err)
@@ -70,15 +73,4 @@ func GetVersion(branch string) string {
 		}
 	}
 	return ""
-}
-
-func GetClusterResource(client kubernetes.Interface) (int64, int64) {
-	var sumMemory int64
-	var sumCpu int64
-	list, _ := client.CoreV1().Nodes().List(meta_v1.ListOptions{})
-	for _, v := range list.Items {
-		sumMemory += v.Status.Capacity.Memory().Value()
-		sumCpu += v.Status.Capacity.Cpu().Value()
-	}
-	return sumMemory, sumCpu
 }
