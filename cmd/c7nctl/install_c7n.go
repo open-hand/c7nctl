@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
+	"github.com/choerodon/c7nctl/pkg/common/graph"
 	"github.com/choerodon/c7nctl/pkg/config"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
-	"github.com/choerodon/c7nctl/pkg/resource"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -93,7 +93,7 @@ func runInstallC7n(c *action.Choerodon) error {
 		return nil
 	}
 
-	releaseGraph := resource.NewReleaseGraph(id.Spec.Release)
+	releaseGraph := graph.NewReleaseGraph(id.Spec.Release)
 	installQueue := releaseGraph.TopoSortByKahn()
 
 	for !installQueue.IsEmpty() {

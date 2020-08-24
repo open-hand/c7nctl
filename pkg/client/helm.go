@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"github.com/ghodss/yaml"
 	liberrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/action"
@@ -14,7 +13,6 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/strvals"
 	"io"
 	"os"
 )
@@ -326,16 +324,4 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 		return true, nil
 	}
 	return false, liberrors.Errorf("%s charts are not installable", ch.Metadata.Type)
-}
-
-// TODO 移动到 渲染 vals 的地方
-func prepareValues(values []string) ([]byte, error) {
-	// User specified a value via --set
-	base := map[string]interface{}{}
-	for _, value := range values {
-		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
-		}
-	}
-	return yaml.Marshal(base)
 }

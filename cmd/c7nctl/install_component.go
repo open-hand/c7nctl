@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"

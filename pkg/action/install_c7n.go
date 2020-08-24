@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
@@ -25,7 +25,7 @@ import (
 
 type Choerodon struct {
 	Cfg        *C7nConfiguration
-	Metrics    resource.Metrics
+	Metrics    c7nclient.Metrics
 	Slaver     *slaver.Slaver
 	UserConfig *c7ncfg.C7nConfig
 
@@ -56,7 +56,6 @@ func NewChoerodon(cfg *C7nConfiguration) *Choerodon {
 		CommonLabels: map[string]string{
 			c7nconsts.C7nLabelKey: c7nconsts.C7nLabelValue,
 		},
-		Wg: &sync.WaitGroup{},
 	}
 }
 
@@ -100,7 +99,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 		ti.Status = c7nconsts.InstalledStatus
 		// 将异步的 afterInstall 改为同步，AfterInstall 其依赖检查依靠 release
 		if len(rls.AfterInstall) > 0 {
-			if err := rls.ExecuteAfterTasks(c.Slaver, c.Wg); err != nil {
+			if err := rls.ExecuteAfterTasks(c.Slaver); err != nil {
 				ti.Status = c7nconsts.FailedStatus
 				return std_errors.WithMessage(err, "Execute after task failed")
 			}

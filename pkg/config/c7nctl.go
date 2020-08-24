@@ -1,7 +1,5 @@
 package config
 
-var Cfg Config
-
 // c7nctl 默认的配置项，包括安装的基本信息和连接c7n的信息
 type Config struct {
 	Version string `yaml:"version"`

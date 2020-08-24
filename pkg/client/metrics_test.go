@@ -1,4 +1,4 @@
-package resource
+package client
 
 import (
 	"github.com/ugorji/go/codec"

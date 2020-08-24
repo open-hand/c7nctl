@@ -1,35 +1,37 @@
-package resource
+package queue
+
+import "github.com/choerodon/c7nctl/pkg/resource"
 
 type QueueRelease struct {
-	items []*Release
+	items []*resource.Release
 }
 
 type QueuerRelease interface {
 	New() *QueueRelease
-	Enqueue(t *Release)
-	Dequeue() *Release
+	Enqueue(t *resource.Release)
+	Dequeue() *resource.Release
 	IsEmpty() bool
 	Size() int
 }
 
 func (q *QueueRelease) New() *QueueRelease {
-	q.items = []*Release{}
+	q.items = []*resource.Release{}
 	return q
 }
 
-func (q *QueueRelease) Enqueue(r *Release) {
+func (q *QueueRelease) Enqueue(r *resource.Release) {
 	q.items = append(q.items, r)
 }
 
 // 考虑了出对的两种情况：为空，长度为一
-func (q *QueueRelease) Dequeue() *Release {
+func (q *QueueRelease) Dequeue() *resource.Release {
 	if q.IsEmpty() {
 		return nil
 	}
 	item := q.items[0]
 
 	if q.Size() == 1 {
-		q.items = []*Release{}
+		q.items = []*resource.Release{}
 	} else if q.Size() > 1 {
 		q.items = q.items[1:]
 	}

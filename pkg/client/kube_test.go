@@ -1,8 +1,8 @@
 package client
 
 import (
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/mitchellh/go-homedir"
 	"path/filepath"
 	"testing"
