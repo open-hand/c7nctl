@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/choerodon/c7nctl/pkg/consts"
 	"github.com/choerodon/c7nctl/pkg/slaver"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -15,7 +15,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -88,7 +87,7 @@ func (r *Release) InstallComponent() error {
 }
 
 // 执行 after Task，完成后更新任务状态，并执行 wg.done
-func (r *Release) ExecuteAfterTasks(s *slaver.Slaver, wg *sync.WaitGroup) error {
+func (r *Release) ExecuteAfterTasks(s *slaver.Slaver) error {
 
 	log.Infof("%s: started, will execute required commands and requests", r.Name)
 	return r.executeExternalFunc(r.AfterInstall, s)

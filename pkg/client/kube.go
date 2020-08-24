@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/consts"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	stderrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"

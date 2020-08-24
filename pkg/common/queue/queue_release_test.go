@@ -1,6 +1,9 @@
-package resource
+package queue
 
-import "testing"
+import (
+	"github.com/choerodon/c7nctl/pkg/resource"
+	"testing"
+)
 
 var q QueueRelease
 
@@ -10,8 +13,8 @@ func initQueue() *QueueRelease {
 		q.New()
 	}
 
-	rls1 := new(Release)
-	rls2 := new(Release)
+	rls1 := new(resource.Release)
+	rls2 := new(resource.Release)
 
 	q.Enqueue(rls1)
 	q.Enqueue(rls2)

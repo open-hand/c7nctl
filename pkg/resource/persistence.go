@@ -3,7 +3,7 @@ package resource
 import (
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/consts"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"

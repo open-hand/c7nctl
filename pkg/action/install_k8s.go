@@ -1,15 +1,12 @@
 package action
 
 import (
-	"bytes"
 	"github.com/choerodon/c7nctl/pkg/client"
-	"github.com/choerodon/c7nctl/pkg/consts"
 	c7n_utils "github.com/choerodon/c7nctl/pkg/utils"
 	"github.com/go-git/go-git/v5"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
-	"html/template"
 	"io/ioutil"
 	"net"
 	"os"
@@ -163,21 +160,6 @@ func checkMasterIP(m []string) {
 		log.Error("The number of master nodes must be odd")
 		os.Exit(1)
 	}
-}
-
-func (i InstallK8s) renderHosts() string {
-	tpl, err := template.New("hosts").Parse(consts.HostFile)
-	if err != nil {
-		log.Error(err)
-		os.Exit(255)
-	}
-	var result bytes.Buffer
-	err = tpl.Execute(&result, i)
-	if err != nil {
-		log.Error(err)
-		os.Exit(255)
-	}
-	return result.String()
 }
 
 func checkIP(ips []string) {
