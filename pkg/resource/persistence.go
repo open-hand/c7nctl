@@ -139,7 +139,7 @@ func (p *Persistence) createPv(pvs v1.PersistentVolumeSource) error {
 		news.Reason = err.Error()
 		return err
 	}
-	log.Info("created pv [%s]", p.RefPvName)
+	//log.Info("created pv [%s]", p.RefPvName)
 	return nil
 }
 

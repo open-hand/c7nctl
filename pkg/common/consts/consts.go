@@ -9,6 +9,7 @@ const (
 	// 默认的获取远程资源文件的 url
 	DefaultResource              = "https://cdn.jsdelivr.net/gh/yidaqiang/c7nctl@master/manifests/install.yaml"
 	RemoteInstallResourceRootUrl = "https://cdn.jsdelivr.net/gh/yidaqiang/c7nctl@%s/manifests/values/%s.yaml"
+
 	// 默认数据库连接信息
 	DatabaseUrlTpl = "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
 
@@ -21,7 +22,12 @@ const (
 	C7nLabelKey      = "c7n-usage"
 	C7nLabelValue    = "c7n-installer"
 
-	Version = 0.22
+	Version = "0.22"
+
+	ResourcePath    = "https://cdn.jsdelivr.net/gh/yidaqiang/c7nctl@%s/manifests/values/"
+	ImageRepository = "registry.cn-shanghai.aliyuncs.com/c7n"
+	ChartRepository = "https://openchart.choerodon.com.cn/choerodon/c7n/"
+	DatasourceTpl   = "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
 )
 
 var (
@@ -33,7 +39,12 @@ var (
 	DefaultConfigFileName = "config"
 )
 
-const ()
+// 默认的资源文件名
+const (
+	VersionPath       = "version.yml"
+	InstallConfigPath = "install.yml"
+	UpgradeConfigPath = "upgrade.yml"
+)
 
 // TaskInfo 常量
 const (

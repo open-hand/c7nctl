@@ -11,6 +11,58 @@ persistence:
     redis:
       storageClass: {{ .GetStorageClass }}
 
+nginx:
+{{- if ne .GetImageRepository "" }}
+  image:
+    repository: {{ .GetImageRepository }}/nginx-photon
+{{- end }}
+
+portal:
+{{- if ne .GetImageRepository "" }}
+  image:
+    repository: {{ .GetImageRepository }}/harbor-portal
+{{- end }}
+
+core:
+{{- if ne .GetImageRepository "" }}
+  image:
+    repository: {{ .GetImageRepository }}/harbor-core
+{{- end }}
+
+jobservice:
+{{- if ne .GetImageRepository "" }}
+  image:
+    repository: {{ .GetImageRepository }}/harbor-jobservice
+{{- end }}
+
+registry:
+  registry:
+{{- if ne .GetImageRepository "" }}
+    image:
+      repository: {{ .GetImageRepository }}/registry-photon
+{{- end }}
+  controller:
+{{- if ne .GetImageRepository "" }}
+    image:
+      repository: {{ .GetImageRepository }}/harbor-registryctl
+{{- end }}
+
+database:
+  internal:
+{{- if ne .GetImageRepository "" }}
+    image:
+      repository: {{ .GetImageRepository }}/harbor-db
+    initContainerImage:
+      repository: {{ .GetImageRepository }}/busybox
+{{- end }}
+
+redis:
+  internal:
+{{- if ne .GetImageRepository "" }}
+  image:
+    repository: {{ .GetImageRepository }}/redis-photon
+{{- end }}
+
 chartmuseum:
   enabled: false
 notary:

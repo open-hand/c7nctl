@@ -1,4 +1,8 @@
 core:
+{{- if ne .GetImageRepository "" -}}
+  image:
+    repository: {{ .GetImageRepository }}/docker-gitlab
+{{- end -}}
   env:
     GITLAB_HOST: {{ (.GetResource "gitlab").Domain }}
     OAUTH_ENABLED: true
@@ -17,9 +21,18 @@ core:
     OAUTH_GENERIC_USER_NAME: "username"
     RACK_ATTACK_WHITELIST: 0.0.0.0/0
 redis:
-  internal: {}
+  internal:
+{{- if ne .GetImageRepository "" -}}
+    image:
+      repository: {{ .GetImageRepository }}/redis
+{{- end -}}
+    size: 5Gi
 database:
   internal:
+{{- if ne .GetImageRepository "" -}}
+    image:
+      repository: {{ .GetImageRepository }}/postgresql
+{{- end -}}
     size: 20Gi
 persistence:
   enabled: true

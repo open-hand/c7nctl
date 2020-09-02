@@ -1,4 +1,19 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/devops-service
+{{- end }}
+
+{{- if ne .GetImageRepository "" }}
+## 插件相关配置
+plugins:
+  # skywalking agent 镜像地址
+  skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
+{{- end }}
+
 preJob:
+{{- if ne .GetImageRepository "" }}
+  image: {{ .GetImageRepository }}/dbtool:0.7.1
+{{- end }}
   preInitDB:
     datasource:
       url: {{ .GetDatabaseUrl "" }}
@@ -21,7 +36,7 @@ env:
     SPRING_DATASOURCE_USERNAME: "choerodon"
     SPRING_DATASOURCE_PASSWORD: "password"
     SERVICES_GITLAB_URL: {{ .GetResourceDomainUrl "gitlab" }}
-    SERVICES_GITLAB_SSHURL: {{ .GetResourceDomainUrl "gitlab" }}:30022
+    SERVICES_GITLAB_SSHURL: ssh://{{ ( .GetResource "gitlab").Domain }}:30022
     SERVICES_GITLAB_PROJECTLIMIT: 100
     SERVICES_HELM_URL: {{ .GetResourceDomainUrl "chartmuseum" }}
     SERVICES_HARBOR_BASEURL: {{ .GetResourceDomainUrl "harbor" }}
@@ -41,3 +56,13 @@ env:
     #OGGING_LEVEL_IO_CHOERODON_DEVOPS_INFRA_HANDLER: debug
 ingress:
   enabled: true
+
+{{- if .IsThinMode }}
+resources:
+  limits:
+    # cpu: 100m
+    memory: 1Gi
+  requests:
+    # cpu: 100m
+    memory: 1Gi
+{{- end }}

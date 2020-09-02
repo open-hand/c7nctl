@@ -41,6 +41,7 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(
 		newInstallC7nCmd(cfg, out),
+		NewGitlabRunnerCmd(cfg, out),
 		newInstallComponentCmd(cfg),
 	)
 

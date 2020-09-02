@@ -1,3 +1,15 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/hzero_oauth
+{{- end }}
+
+{{- if ne .GetImageRepository "" }}
+## 插件相关配置
+plugins:
+  # skywalking agent 镜像地址
+  skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
+{{- end }}
+
 env:
   open:
     # 如果使用https 该参数设置为true
@@ -13,3 +25,12 @@ env:
     SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
     # 此db不可更改
     SPRING_REDIS_DATABASE: 3
+{{- if .IsThinMode }}
+resources:
+  limits:
+    # cpu: 100m
+    memory: 1Gi
+  requests:
+    # cpu: 100m
+    memory: 1Gi
+{{- end }}

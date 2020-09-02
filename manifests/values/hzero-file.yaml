@@ -1,4 +1,19 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/hzero-file
+{{- end }}
+
+{{- if ne .GetImageRepository "" }}
+## 插件相关配置
+plugins:
+  # skywalking agent 镜像地址
+  skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
+{{- end }}
+
 preJob:
+{{- if ne .GetImageRepository "" }}
+  image: {{ .GetImageRepository }}/dbtool:0.7.1
+{{- end }}
   preInitDB:
     datasource:
       url: {{ .GetDatabaseUrl "" }}
@@ -21,3 +36,12 @@ env:
     MINIO_ACCESSKEY: {{ .GetReleaseValue "minio" "accessKey" }}
     MINIO_ENDPOINT: {{ .GetResourceDomainUrl "minio" }}
     MINIO_SECRETKEY: {{ .GetReleaseValue "minio" "secretKey" }}
+{{- if .IsThinMode }}
+resources:
+  limits:
+    # cpu: 100m
+    memory: 1Gi
+  requests:
+    # cpu: 100m
+    memory: 1Gi
+{{- end }}

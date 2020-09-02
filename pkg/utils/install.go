@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/pkg/errors"
@@ -73,4 +74,16 @@ func GetVersion(branch string) string {
 		}
 	}
 	return ""
+}
+
+// print the contents of the obj
+func PrettyPrint(data interface{}) {
+	var p []byte
+	//    var err := error
+	p, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("%s \n", p)
 }

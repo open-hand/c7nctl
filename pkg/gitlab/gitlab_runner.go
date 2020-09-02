@@ -34,7 +34,7 @@ func (runner *Runner) InstallRunner() error {
 
 		installDef := runner.InstallDef
 		runnerConfig := installDef.Spec.Runner
-		err = installDef.Install([]*resource.Release{runnerConfig})
+		err = installDef.InstallChoerodon([]*resource.Release{runnerConfig})
 
 		defer func() {
 			stopCh <- struct{}{}

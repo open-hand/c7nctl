@@ -1,3 +1,10 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/minio
+mcImage:
+   repository: {{ .GetImageRepository }}/mc
+{{- end }}
+
 mode: distributed
 persistence:
   enabled: true

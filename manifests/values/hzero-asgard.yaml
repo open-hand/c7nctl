@@ -1,4 +1,19 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/hzero-asgard
+{{- end }}
+
+{{- if ne .GetImageRepository "" }}
+## 插件相关配置
+plugins:
+  # skywalking agent 镜像地址
+  skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
+{{- end }}
+
 preJob:
+{{- if ne .GetImageRepository "" }}
+  image: {{ .GetImageRepository }}/dbtool:0.7.1
+{{- end }}
   preInitDB:
     datasource:
       url: {{ .GetDatabaseUrl "" }}
@@ -17,3 +32,13 @@ env:
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "asgard_service" }}
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password
+
+{{- if .IsThinMode }}
+resources:
+  limits:
+    # cpu: 100m
+    memory: 1Gi
+  requests:
+    # cpu: 100m
+    memory: 1Gi
+{{- end }}

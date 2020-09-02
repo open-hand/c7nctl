@@ -41,6 +41,9 @@ func main() {
 	cmd := newRootCmd(c7nCfg, os.Stdout, os.Args[1:])
 	cobra.OnInitialize(func() {
 		initConfig()
+		if settings.Debug {
+			log.SetLevel(log.DebugLevel)
+		}
 		// 初始化 helm3Client
 		cfg := client.InitConfiguration(settings.KubeConfig, settings.Namespace)
 		c7nCfg.HelmClient = client.NewHelm3Client(cfg)

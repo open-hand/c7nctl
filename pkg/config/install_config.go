@@ -25,9 +25,9 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Persistence Persistence
-	Resources   map[string]*Resource
-	HelmConfig  HelmConfig `yaml:"helm"`
+	Persistence
+	Resources map[string]*Resource
+	Option    `yaml:"option"`
 }
 
 type Resource struct {
@@ -42,12 +42,15 @@ type Resource struct {
 	Persistence *Persistence `yaml:"persistence"`
 }
 
-type HelmConfig struct {
-	Values ValuesConfig `yaml:"values"`
-}
+type Option struct {
+	ResourcePath string `yaml:"resource-path"`
+	HelmValue    string `yaml:"helm-value"`
 
-type ValuesConfig struct {
-	Dir string `yaml:"dir"`
+	Prefix          string `yaml:"prefix"`
+	ImageRepository string `yaml:"image-repo"`
+	ChartRepository string `yaml:"chart-repo"`
+	DatasourceTpl   string `yaml:"datasource-tpl"`
+	ThinMode        bool   `yaml:"thin-mode"`
 }
 
 type Persistence struct {
@@ -97,11 +100,34 @@ func (c *C7nConfig) GetResource(key string) *Resource {
 	return nil
 }
 
+func (c *C7nConfig) GetPrefix() string {
+	return c.Spec.Prefix
+}
+func (c *C7nConfig) GetImageRepository() string {
+	return c.Spec.ImageRepository
+}
+
+func (c *C7nConfig) GetChartRepository() string {
+	return c.Spec.ImageRepository
+}
+
+func (c *C7nConfig) GetDatasourceTpl() string {
+	return c.Spec.DatasourceTpl
+}
+
+func (c *C7nConfig) GetThinMode() bool {
+	return c.Spec.ThinMode
+}
+
+func (c *C7nConfig) GetStorageClass() string {
+	return c.Spec.Persistence.StorageClassName
+}
+
 func (c *C7nConfig) GetHelmValuesTpl(key string) ([]byte, error) {
 	if c == nil {
 		return nil, nil
 	}
-	dir := c.Spec.HelmConfig.Values.Dir
+	dir := c.Spec.Option.HelmValue
 	if dir == "" {
 		dir = "values"
 	}
