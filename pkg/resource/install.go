@@ -5,18 +5,21 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
+	c7nerrors "github.com/choerodon/c7nctl/pkg/common/errors"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	c7nslaver "github.com/choerodon/c7nctl/pkg/slaver"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/pkg/errors"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"path/filepath"
 	"text/template"
-	"time"
 )
 
 const (
@@ -31,15 +34,6 @@ type InstallDefinition struct {
 	PaaSVersion string
 	Metadata    Metadata
 	Spec        Spec
-	// TODO REMOVE
-	CommonLabels       map[string]string
-	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"accessModes"`
-	StorageClass       string
-	SkipInput          bool
-	Timeout            int
-	Prefix             string
-	Namespace          string
-	Mail               string
 }
 
 type Metadata struct {
@@ -56,34 +50,54 @@ type Spec struct {
 }
 
 type Basic struct {
-	RepoURL string
-	Slaver  c7nslaver.Slaver
+	CommonLabels       map[string]string
+	DefaultAccessModes []v1.PersistentVolumeAccessMode
+	StorageClass       string
+
+	Prefix string
+	// 默认为空
+	ImageRepository string
+	ChartRepository string
+	DatasourceTpl   string
+	ThinMode        bool
+
+	SkipInput bool
+	Timeout   int
+	Slaver    c7nslaver.Slaver
 }
 
-// TODO 需要初始化 namespace prefix 等参数
-func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) error {
-	t, err := r.Client.GetTaskInfoFromCM(i.Namespace, r.Name)
-
+func (i *InstallDefinition) GetInstallDefinition(resource string) error {
+	// TODO 如果 resource 是域名形式, https:// 会变成 https:/
+	res, err := c7nutils.GetResource(filepath.Join(resource, c7nconsts.InstallConfigPath))
 	if err != nil {
-		// 创建一些基本错误类型
-		if err.Error() == "Task info is not found" {
-			t = c7nclient.TaskInfo{
-				Name:      r.Name,
-				Namespace: r.Namespace,
-				RefName:   "",
-				Status:    c7nconsts.UninitializedStatus,
-				Type:      c7nconsts.StaticReleaseKey,
-				Date:      time.Now(),
-				Version:   r.Version,
-				Prefix:    r.Prefix,
-			}
+		return err
+	}
+
+	rdJson, err := yaml.ToJSON(res)
+	if err != nil {
+		panic(err)
+	}
+	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
+	_ = json.Unmarshal(rdJson, i)
+
+	if i.Spec.Basic.DefaultAccessModes == nil {
+		i.Spec.Basic.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+	}
+	return nil
+}
+
+// TODO 渲染也是有先后顺序的
+func (i *InstallDefinition) RenderRelease(r *Release) error {
+	task, err := c7nclient.GetTask(r.Name)
+	if err != nil {
+		if std_errors.Is(err, c7nerrors.TaskInfoIsNotFoundError) {
+			task = c7nclient.NewReleaseTask(r.Name, r.Namespace, r.Version, r.Prefix)
 		} else {
-			return err
+			return std_errors.WithMessage(err, fmt.Sprintf("render release %s failed", r.Name))
 		}
 	}
-	if t.Status == c7nconsts.UninitializedStatus {
-		// 传入的参数是指针
-		r.mergerResource(uc)
+	if task.Status == c7nconsts.UninitializedStatus {
+		// TODO 将合并 config.yaml 移到获取 installDef 中
 		if err = i.renderValues(r); err != nil {
 			return err
 		}
@@ -92,22 +106,20 @@ func (i *InstallDefinition) RenderRelease(r *Release, uc *c7ncfg.C7nConfig) erro
 		}
 
 		// 保存渲染完成的 r
-		t.Resource = *r.Resource
-		t.Values = r.Values
-		t.Status = c7nconsts.RenderedStatus
-		if err = r.Client.SaveTaskInfoToCM(i.Namespace, t); err != nil {
+		task.Values = r.Values
+		task.Status = c7nconsts.RenderedStatus
+		if _, err = c7nclient.SaveTask(*task); err != nil {
 			return err
 		}
 	} else {
 		// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
-		r.Values = t.Values
-		r.Resource = &t.Resource
+		r.Values = task.Values
 		// 重新渲染 preCommand 等，避免在 TaskInfo 加入 PreCommand 导致循环依赖
 		if err := i.render(r); err != nil {
 			return err
 		}
 	}
-	log.Infof("Successfully render Release %s", r.Name)
+	log.Infof("Successfully rendered the Release %s", r.Name)
 	return nil
 }
 
@@ -120,22 +132,115 @@ func (i *InstallDefinition) RenderComponent(rls *Release) error {
 	return yaml_v2.Unmarshal(renderedRls.Bytes(), rls)
 }
 
-//
-func (i *InstallDefinition) RenderHelmValues(r *Release, uc *c7ncfg.C7nConfig) (map[string]interface{}, error) {
+// 必须基于 InstallDefinition 渲染 value.yaml 文件
+func (i *InstallDefinition) RenderHelmValues(r *Release, resource, helmValues string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
 	var fileValsByte bytes.Buffer
-	if uc != nil {
-		fileVals, err := r.ValuesRaw(uc)
-		if err != nil {
-			return nil, err
-		}
-		fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
-		if err != nil {
-			return nil, err
-		}
+	fileVals, err := r.ValuesRaw(resource, helmValues)
+	if err != nil {
+		return nil, err
+	}
+	fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
+	if err != nil {
+		return nil, err
 	}
 
 	return c7nutils.Vals(rlsVals, fileValsByte.String())
+}
+
+func (i *InstallDefinition) SetPrefix(prefix string) {
+	i.Spec.Basic.Prefix = prefix
+}
+func (i *InstallDefinition) SetImageRepository(imageRepo string) {
+	i.Spec.Basic.ImageRepository = imageRepo
+}
+func (i *InstallDefinition) SetChartRepository(chartRepo string) {
+	i.Spec.Basic.ChartRepository = chartRepo
+}
+func (i *InstallDefinition) SetDatasourceTpl(dsTpl string) {
+	i.Spec.Basic.DatasourceTpl = dsTpl
+}
+func (i *InstallDefinition) SetThinMode(thinMode bool) {
+	i.Spec.Basic.ThinMode = thinMode
+}
+func (i *InstallDefinition) SetStorageClass(sc string) {
+	i.Spec.Basic.StorageClass = sc
+}
+
+// 将 config.yml 中的值合并到 Release.Resource
+func (i *InstallDefinition) MergerConfig(uc *c7ncfg.C7nConfig) {
+	i.mergerResource(uc)
+
+	if uc.GetStorageClass() != "" {
+		i.SetStorageClass(uc.GetStorageClass())
+	}
+	if uc.GetPrefix() != "" {
+		i.SetPrefix(uc.GetPrefix())
+	}
+	if uc.GetImageRepository() != "" {
+		i.SetImageRepository(uc.GetImageRepository())
+	}
+	if uc.GetChartRepository() != "" {
+		i.SetChartRepository(uc.GetChartRepository())
+	}
+	if uc.GetDatasourceTpl() != "" {
+		i.SetDatasourceTpl(uc.GetDatasourceTpl())
+	}
+	if uc.Spec.ThinMode {
+		i.SetThinMode(true)
+	}
+}
+
+func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
+	for _, rls := range i.Spec.Release {
+		if res := uc.GetResource(rls.Name); res == nil {
+			log.Debugf("There is no resource in config.yaml of Release %s", rls.Name)
+		} else {
+			// 直接使用外部配置
+			if res.External {
+				rls.Resource = res
+			} else {
+				if res.Domain != "" {
+					rls.Resource.Domain = res.Domain
+				}
+				if res.Schema != "" {
+					rls.Resource.Schema = res.Schema
+				}
+				if res.Username != "" {
+					rls.Resource.Username = res.Username
+				}
+				if res.Password != "" {
+					rls.Resource.Password = res.Password
+				}
+				// TODO 其他的配置项是否需要初始化到 rls 中
+				/*
+					rlsType := reflect.TypeOf(*rls.Resource)
+					rlsValue := reflect.ValueOf(rls.Resource).Elem()
+					resType := reflect.TypeOf(*res)
+					resValue := reflect.ValueOf(*res)
+					for i := 0; i < resType.NumField(); i ++ {
+						if f, ok := rlsType.FieldByName(resType.Field(i).Name); ok {
+							switch resValue.Field(i).Kind() {
+							case reflect.String: {
+								rlsValue.FieldByName(f.Name).SetString(resValue.FieldByName(f.Name).String())
+							}
+							case reflect.Bool: {
+								rlsValue.FieldByName(f.Name).SetBool(resValue.FieldByName(f.Name).Bool())
+							}
+							case reflect.Int32: {
+								rlsValue.FieldByName(f.Name).SetInt(resValue.FieldByName(f.Name).Int())
+							}
+							default:
+								log.Debugf("can't convert Field %s from C7nConfig to InstallDefinition", f.Name)
+							}
+						} else {
+							log.Debugf("Resource of C7nConfig field %s isn't in Release of InstallDefinition", resType.Field(i).Name)
+						}
+					}
+				*/
+			}
+		}
+	}
 }
 
 // 渲染 release
@@ -146,7 +251,7 @@ func (i *InstallDefinition) render(r *Release) error {
 		return err
 	}
 	if err := yaml_v2.Unmarshal(renderedRls.Bytes(), r); err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("Unmarshal Release %s failed", r))
+		return std_errors.WithMessage(err, fmt.Sprintf("Unmarshal Release %s failed", r))
 	}
 	return nil
 }
@@ -162,7 +267,7 @@ func (i *InstallDefinition) renderValues(rls *Release) error {
 	}
 	for idx, v := range rls.Values {
 		// 输入 value
-		if v.Input.Enabled && !i.SkipInput {
+		if v.Input.Enabled && !i.Spec.Basic.SkipInput {
 			var err error
 			var value string
 			if v.Input.Password {
@@ -196,7 +301,7 @@ func (i *InstallDefinition) renderTpl(name, tplStr string) (bytes.Buffer, error)
 	var result bytes.Buffer
 	err = tpl.Execute(&result, i)
 	if err != nil {
-		return bytes.Buffer{}, errors.WithMessage(err, fmt.Sprintf("Failed to render release %s", name))
+		return bytes.Buffer{}, std_errors.WithMessage(err, fmt.Sprintf("Failed to render release %s", name))
 	}
 	return result, nil
 }
@@ -204,15 +309,11 @@ func (i *InstallDefinition) renderTpl(name, tplStr string) (bytes.Buffer, error)
 /*
   template 内嵌函数
 */
-func (i *InstallDefinition) GetNamespace() string {
-	return i.Namespace
-}
-
 func (i *InstallDefinition) WithPrefix() string {
-	if i.Prefix == "" {
+	if i.Spec.Basic.Prefix == "" {
 		return ""
 	}
-	return i.Prefix + "-"
+	return i.Spec.Basic.Prefix + "-"
 }
 
 func (i *InstallDefinition) GetReleaseName(rlsName string) string {
@@ -222,11 +323,11 @@ func (i *InstallDefinition) GetReleaseName(rlsName string) string {
 // TODO add storageClassName()
 func (i *InstallDefinition) GetStorageClass() string {
 	//return c7nctx.Ctx.UserConfig.GetStorageClassName()
-	return i.StorageClass
+	return i.Spec.Basic.StorageClass
 }
 
 func (i *InstallDefinition) GetDatabaseUrl(rls string) string {
-	return fmt.Sprintf(c7nconsts.DatabaseUrlTpl, i.GetReleaseName("mysql"), i.GetReleaseName(rls))
+	return fmt.Sprintf(i.Spec.Basic.DatasourceTpl, i.GetReleaseName("mysql"), i.GetReleaseName(rls))
 }
 
 func (i *InstallDefinition) GetResource(rls string) *c7ncfg.Resource {
@@ -296,6 +397,10 @@ func (i *InstallDefinition) GetRunnerValues(values string) string {
 	return ""
 }
 
+func (i *InstallDefinition) IsThinMode() bool {
+	return i.Spec.Basic.ThinMode
+}
+
 func (i *InstallDefinition) GetEurekaUrl() string {
 	for _, r := range i.Spec.Release {
 		if r.Name == c7nconsts.HzeroRegister {
@@ -312,4 +417,8 @@ func (i *InstallDefinition) GetResourceDomainUrl(rls string) string {
 		}
 	}
 	return ""
+}
+
+func (i *InstallDefinition) GetImageRepository() string {
+	return i.Spec.Basic.ImageRepository
 }

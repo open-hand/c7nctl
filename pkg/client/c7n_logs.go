@@ -63,6 +63,30 @@ func InitC7nLogs(client *kubernetes.Clientset, namespace string) {
 	})
 }
 
+func NewReleaseTask(release, namespace, version, prefix string) *TaskInfo {
+	return &TaskInfo{
+		Name:      release,
+		Namespace: namespace,
+		Type:      consts.StaticReleaseKey,
+		Status:    consts.UninitializedStatus,
+		Date:      time.Now(),
+		Version:   version,
+		Prefix:    prefix,
+	}
+}
+
+func NewReleaseJobTask(rlsJob, taskType, version string) *TaskInfo {
+	return &TaskInfo{
+		Name:      rlsJob,
+		Namespace: c7nLogs.namespace,
+		Type:      consts.StaticTaskKey,
+		Status:    consts.UninitializedStatus,
+		Date:      time.Now(),
+		TaskType:  taskType,
+		Version:   version,
+	}
+}
+
 func GetTask(task string) (*TaskInfo, error) {
 	if err := getC7nLogs(c7nLogs.namespace, c7nLogs.Name); err != nil {
 		panic(err)
@@ -137,7 +161,7 @@ func saveC7nLogs(namespace, cmName string) error {
 			cm.Data = map[string]string{}
 		}
 		cm.Data[key] = string(tbyte)
-		log.Debugf("ConfigMaps key %s is %+v", key, c7nLogs.Tasks[key])
+		log.Debugf("Saving ConfigMaps key", key)
 	}
 	if _, err = c7nLogs.client.CoreV1().ConfigMaps(c7nLogs.namespace).Update(context.Background(), cm,
 		metav1.UpdateOptions{}); err != nil {
@@ -162,7 +186,7 @@ func getC7nLogs(namespace, cmName string) error {
 		if err = yaml.Unmarshal([]byte(cm.Data[key]), c7nLogs.Tasks[key]); err != nil {
 			panic(err)
 		}
-		log.Debugf("ConfigMaps key %s is %+v", key, c7nLogs.Tasks[key])
+		log.Debugf("Getting ConfigMaps key %s", key)
 	}
 	return nil
 }

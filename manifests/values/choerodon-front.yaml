@@ -1,9 +1,14 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/chartmuseum
+{{- end }}
+
 env:
   open:
     LOCAL: false
     CLIENT_ID: choerodon
     API_HOST: {{ .GetResourceDomainUrl "hzero-gateway" }}
-    DEVOPS_HOST: {{ .GetResourceDomainUrl "devops-serivce" }}
+    DEVOPS_HOST: {{ .GetResourceDomainUrl "devops-service" }}
     HEADER_TITLE_NAME: Choerodon | 多云应用技术集成平台
     COOKIE_SERVER: {{ .GetResourceDomainUrl "choerodon-front" }}
     TITLE_NAME: Choerodon | 多云应用技术集成平台

@@ -7,15 +7,17 @@ import (
 )
 
 type EnvSettings struct {
-	Namespace    string
-	Debug        bool
-	ConfigFile   string
-	ResourceFile string
-	KubeConfig   string
+	Namespace  string
+	ConfigFile string
+	KubeConfig string
+	Debug      bool
+	SkipInput  bool
+	Timeout    int
 }
 
 func New() *EnvSettings {
 	return &EnvSettings{
+		// TODO complete env default setting
 		Namespace: os.Getenv("C7N_NAMESPACE"),
 	}
 }
@@ -26,11 +28,11 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 		defaultKubeconfigPath = filepath.Join(home, ".kube", "config")
 	}
 	fs.StringVarP(&s.Namespace, "namespace", "n", "c7n-system", "namespace scope for this request")
-	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
-	fs.StringVarP(&s.ConfigFile, "config", "c", "config.yaml", "choerodon configuration file")
-	fs.StringVarP(&s.ResourceFile, "resource", "r", "", "choerodon install definition file")
-
+	fs.StringVarP(&s.ConfigFile, "config", "c", "config.yaml", "choerodon install configuration file")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", defaultKubeconfigPath, "(optional) absolute path to the kubeconfig file")
+	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
+	fs.BoolVar(&s.SkipInput, "skip-input", false, "skip up unnecessary input")
+	fs.IntVar(&s.Timeout, "timeout", 0, "the number of seconds the Operation has time out")
 }
 
 func homeDir() string {

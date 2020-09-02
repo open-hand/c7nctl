@@ -1,3 +1,9 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/redis
+metrics:
+  image: {{ .GetImageRepository }}/redis_exporter:latest
+{{- end }}
 persistence:
   enabled: true
   storageClass: {{ .GetStorageClass }}

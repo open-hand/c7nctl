@@ -1,3 +1,10 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/mysql
+metrics:
+  image: {{ .GetImageRepository }}/mysqld-exporter:latest
+{{- end }}
+
 config:
   character_set_server: utf8mb4
   collation_server: utf8mb4_general_ci

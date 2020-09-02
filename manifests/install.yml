@@ -8,7 +8,16 @@ spec:
       cpu: 6000m
       memory: 38Gi
   basic:
-    repoURL: https://openchart.choerodon.com.cn/choerodon/c7n/
+    commonLabels:
+      choerodon-version: "0.22"
+    # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
+    chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
+    datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
+    # prefix: ""
+    # helmValues: "values"
+    # thinMode: false
+    # skipInput: false
+    # timeout: 0
     slaver:
       version: 0.1.0
       name: c7n-slaver

@@ -1,3 +1,15 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/hzero-gateway
+{{- end }}
+
+{{- if ne .GetImageRepository "" }}
+## 插件相关配置
+plugins:
+  # skywalking agent 镜像地址
+  skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
+{{- end }}
+
 env:
   open:
     SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
@@ -10,3 +22,12 @@ env:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
 ingress:
   enabled: true
+{{- if .IsThinMode }}
+resources:
+  limits:
+    # cpu: 100m
+    memory: 1Gi
+  requests:
+    # cpu: 100m
+    memory: 1Gi
+{{- end }}

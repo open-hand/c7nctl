@@ -2,18 +2,19 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
+	c7nerrors "github.com/choerodon/c7nctl/pkg/common/errors"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/slaver"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/vinkdong/gox/http/downloader"
-	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -126,25 +127,19 @@ func (r *Release) executeExternalFunc(c []ReleaseJob, s *slaver.Slaver) error {
 }
 
 func (pi *ReleaseJob) executeSql(rls *Release, sqlType string, s *slaver.Slaver) error {
-	task, err := rls.Client.GetTaskInfoFromCM(rls.Namespace, pi.Name)
+
+	task, err := c7nclient.GetTask(pi.Name)
 	if err != nil {
-		if err.Error() == "Task info is not found" {
-			task = c7nclient.TaskInfo{
-				Name:     pi.Name,
-				RefName:  rls.Name,
-				Type:     consts.TaskType,
-				Status:   consts.UninitializedStatus,
-				TaskType: consts.SqlTask,
-				Version:  rls.Version,
-			}
+		if std_errors.Is(err, c7nerrors.TaskInfoIsNotFoundError) {
+			task = c7nclient.NewReleaseJobTask(pi.Name, consts.SqlTask, consts.Version)
 		} else {
 			return err
 		}
 	}
-	defer rls.Client.SaveTaskInfoToCM(rls.Namespace, task)
+	defer c7nclient.SaveTask(*task)
 
-	if task.Name != "" && task.Status == consts.SucceedStatus {
-		log.Infof("task %s had executed", pi.Name)
+	if task.Status == consts.SucceedStatus {
+		log.Infof("task %s of %s had executed", pi.Name, rls.Name)
 		return nil
 	}
 
@@ -159,12 +154,11 @@ func (pi *ReleaseJob) executeSql(rls *Release, sqlType string, s *slaver.Slaver)
 	for _, v := range pi.Psql {
 		sqlList = append(sqlList, v)
 	}
-	rlsRef, err := rls.Client.GetTaskInfoFromCM(rls.Namespace, pi.InfraRef)
+	rlsRef, err := c7nclient.GetTask(pi.InfraRef)
 	if err != nil {
 		return err
 	}
-	res := rlsRef.Resource
-	if err := s.ExecuteRemoteSql(sqlList, &res, pi.Database, sqlType); err != nil {
+	if err := s.ExecuteRemoteSql(sqlList, &rlsRef.Resource, pi.Database, sqlType); err != nil {
 		task.Status = consts.FailedStatus
 		task.Reason = err.Error()
 		return err
@@ -177,10 +171,10 @@ func (pi *ReleaseJob) executeRequests(rls *Release, s *slaver.Slaver) error {
 	if pi.Request == nil {
 		return nil
 	}
-	task, err := rls.Client.GetTaskInfoFromCM(rls.Namespace, pi.Name)
+	task, err := c7nclient.GetTask(pi.Name)
 	if err != nil {
-		if err.Error() == "Task info is not found" {
-			task = c7nclient.TaskInfo{
+		if std_errors.Is(err, c7nerrors.TaskInfoIsNotFoundError) {
+			task = &c7nclient.TaskInfo{
 				Name:     pi.Name,
 				RefName:  rls.Name,
 				Type:     consts.TaskType,
@@ -188,15 +182,16 @@ func (pi *ReleaseJob) executeRequests(rls *Release, s *slaver.Slaver) error {
 				TaskType: consts.HttpGetTask,
 				Version:  rls.Version,
 			}
+			task = c7nclient.NewReleaseJobTask(pi.Name, consts.HttpGetTask, consts.Version)
 		} else {
 			return err
 		}
 	}
-	if task.Name != "" && task.Type == consts.SucceedStatus {
+	if task.Type == consts.SucceedStatus {
 		log.Infof("task %s had executed", pi.Name)
 		return nil
 	}
-	defer rls.Client.SaveTaskInfoToCM(rls.Name, task)
+	defer c7nclient.SaveTask(*task)
 
 	req := pi.Request
 	header := make(map[string][]string)
@@ -266,37 +261,16 @@ func (r *Release) mergerResource(uc *config.C7nConfig) {
 }
 
 // convert yml format values template to yaml raw data
-func (r *Release) ValuesRaw(uc *config.C7nConfig) (string, error) {
-	dir := uc.Spec.HelmConfig.Values.Dir
-	c7nversion := uc.Version
-	if dir == "" {
-		dir = "values"
-	}
+// 获取 resourcePath 路径下的 values 文件
+func (r *Release) ValuesRaw(resourcePath, helmValue string) (string, error) {
 	// values.yaml 与 r 名一致
-	valuesFilepath := fmt.Sprintf("%s/%s.yaml", dir, r.Name)
-
-	var data []byte
-	_, err := os.Stat(valuesFilepath)
-	// 当本地文件不存在时拉取远程文件
+	valuesFilepath := fmt.Sprintf(filepath.Join(resourcePath, helmValue, r.Name) + ".yaml")
+	data, err := utils.GetResource(valuesFilepath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			url := fmt.Sprintf(consts.RemoteInstallResourceRootUrl, c7nversion, r.Name)
-			nData, statusCode, err := downloader.GetFileContent(url)
-			if statusCode == 200 && err == nil {
-				data = nData
-			}
-		} else {
-			return "", std_errors.WithMessage(err, fmt.Sprintf("get user values for %s failed", r.Name))
-		}
+		log.Debugf("load helm values file %s failed: %+v", valuesFilepath, err)
 	}
-	if err == nil {
-		data, _ = ioutil.ReadFile(valuesFilepath)
-	}
-
-	if len(data) > 0 {
-		return string(data[:]), nil
-	}
-	return "", nil
+	// 不存在配置文件的返回空字符串
+	return string(data[:]), nil
 }
 
 // convert yml values to values list as xxx=yyy
@@ -383,5 +357,6 @@ func (r *Request) parserUrl() string {
 }
 
 func (r *Release) String() string {
-	return r.Name
+	b, _ := json.MarshalIndent(*r, "\t", "\t")
+	return string(b)
 }

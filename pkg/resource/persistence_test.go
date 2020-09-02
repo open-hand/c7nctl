@@ -2,14 +2,13 @@ package resource
 
 import (
 	"fmt"
-	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 )
 
 func TestCreatePv(t *testing.T) {
-	client, _ := c7nclient.GetKubeClient("")
+	//client, _ := c7nclient.GetKubeClient("")
 
 	pvLabels := make(map[string]string)
 	pvLabels["usage"] = "test"
@@ -27,7 +26,6 @@ func TestCreatePv(t *testing.T) {
 		},
 	}
 	p := Persistence{
-		Client:       client,
 		CommonLabels: pvLabels,
 		AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteOnce"},
 		Capacity:     pvCapacity,
@@ -37,18 +35,20 @@ func TestCreatePv(t *testing.T) {
 }
 
 func TestCreatePvc(t *testing.T) {
-	client, _ := c7nclient.GetKubeClient("")
+	/*
+		client, _ := c7nclient.GetKubeClient("")
 
-	pvLabels := make(map[string]string)
-	pvLabels["usage"] = "test"
+		pvLabels := make(map[string]string)
+		pvLabels["usage"] = "test"
 
-	p := Persistence{
-		Client:       client,
-		CommonLabels: pvLabels,
-		AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteMany"},
-		Name:         "test-pv998",
-		Namespace:    "default",
-		Size:         "10Gi",
-	}
-	p.createPvc()
+		_ := Persistence{
+			CommonLabels: pvLabels,
+			AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteMany"},
+			Name:         "test-pv998",
+			Namespace:    "default",
+			Size:         "10Gi",
+		}
+		p.createPvc()
+
+	*/
 }

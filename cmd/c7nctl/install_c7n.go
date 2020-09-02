@@ -1,18 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"github.com/choerodon/c7nctl/pkg/action"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
-	"github.com/choerodon/c7nctl/pkg/common/graph"
+	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
+	"github.com/choerodon/c7nctl/pkg/resource"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/pkg/errors"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	yaml_v2 "gopkg.in/yaml.v2"
 	"io"
+	"io/ioutil"
 )
 
 const installC7nDesc = `One-click installation choerodon, When your prepared k8s, helm and NFS.
@@ -23,107 +24,91 @@ Ensure you run this within server can vista k8s.
 `
 
 func newInstallC7nCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
-	c := action.NewChoerodon(cfg)
+	i := action.NewInstall(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "c7n",
 		Short: "One-click installation choerodon",
 		Long:  installC7nDesc,
 		Run: func(_ *cobra.Command, args []string) {
-			setUserConfig(c.SkipInput)
-			if err := runInstallC7n(c); err != nil {
-				log.Errorf("Install Choerodon failed: %s", err)
-				c.Metrics.ErrorMsg = []string{err.Error()}
+			setUserConfig(settings.SkipInput)
+			metrics := client.Metrics{}
+			if err := runInstallC7n(i, &metrics); err != nil {
+				log.Errorf("InstallChoerodon Choerodon failed: %s", err)
+				metrics.ErrorMsg = []string{err.Error()}
 			} else {
-				log.Info("Install Choerodon succeed")
+				log.Info("InstallChoerodon Choerodon succeed")
 			}
-			c.Metrics.Send()
+			metrics.Send()
 		},
 	}
 
 	flags := cmd.PersistentFlags()
-	addInstallFlags(flags, c)
+	addInstallFlags(flags, i)
 
 	// set defaults from environment
 	return cmd
 }
 
-func runInstallC7n(c *action.Choerodon) error {
-	c.Namespace = settings.Namespace
-	// 当 version 没有设置时，从 git repo 获取最新版本(本地的 config.yaml 也有配置 version ？)
-	if c.Version == "" {
-		c.Version = c7nutils.GetVersion(c7nconsts.DefaultGitBranch)
-	}
-	log.Infof("The current installing choerodon version is %s", c.Version)
-
-	id, err := c.GetInstallDef(settings.ConfigFile, settings.ResourceFile)
+func runInstallC7n(client *action.Install, metrics *client.Metrics) error {
+	userConfig, err := getUserConfig(settings.ConfigFile)
 	if err != nil {
-		return errors.WithMessage(err, "Failed to get install configuration file")
-	}
-	// TODO 当 repoUrl 优先级 flag -> config.yaml -> install.yaml -> default
-	// 初始化 helmInstall
-	// 只有 id 中用到了 RepoUrl
-	if id.Spec.Basic.RepoURL != "" {
-		c.RepoUrl = id.Spec.Basic.RepoURL
-	} else {
-		c.RepoUrl = c7nconsts.DefaultRepoUrl
-	}
-	c.DefaultAccessModes = id.DefaultAccessModes
-	c.Slaver = &id.Spec.Basic.Slaver
-
-	// 检查资源
-	if err := c.CheckResource(&id.Spec.Resources); err != nil {
 		return err
 	}
-	if err := c.CheckNamespace(c.Namespace); err != nil {
+	client.InitInstall(userConfig)
+	log.Infof("The current installing choerodon version is %s", client.Version)
+
+	instDef := &resource.InstallDefinition{
+		Version:     client.Version,
+		PaaSVersion: client.Version,
+	}
+
+	if err = instDef.GetInstallDefinition(client.ResourcePath); err != nil {
+		return std_errors.WithMessage(err, "Failed to get install configuration file")
+	}
+	instDef.MergerConfig(userConfig)
+
+	// 检查资源，并将现有集群的硬件信息保存到 metrics
+	if err := client.CheckResource(&instDef.Spec.Resources, metrics); err != nil {
+		return err
+	}
+	if err := client.CheckNamespace(settings.Namespace); err != nil {
 		return err
 	}
 
 	stopCh := make(chan struct{})
-	_, err = c.PrepareSlaver(stopCh)
-	if err != nil {
-		return errors.WithMessage(err, "Create Slaver failed")
+	if _, err = instDef.Spec.Basic.Slaver.InitSalver(client.GetClientSet(), settings.Namespace, stopCh); err != nil {
+		return std_errors.WithMessage(err, "Create Slaver failed")
 	}
 	defer func() {
 		stopCh <- struct{}{}
 	}()
 
 	// 渲染 Release
-	if err := c.RenderReleases(id); err != nil {
-		return nil
+	if _, err := client.RenderChoerodon(instDef, settings.Namespace); err != nil {
+		return err
 	}
 
-	releaseGraph := graph.NewReleaseGraph(id.Spec.Release)
-	installQueue := releaseGraph.TopoSortByKahn()
-
-	for !installQueue.IsEmpty() {
-		rls := installQueue.Dequeue()
-		log.Infof("start installing release %s", rls.Name)
-		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
-		vals, err := id.RenderHelmValues(rls, c.UserConfig)
-		if err != nil {
-			return err
-		}
-		if err = c.InstallRelease(rls, vals); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("Release %s install failed", rls.Name))
-		}
+	// 安装 release
+	if err := client.InstallChoerodon(instDef, settings.Namespace); err != nil {
+		return err
 	}
 
 	// 清理历史的job
-	return c.Clean()
+	// c.Clean()
+	return nil
 }
 
-func addInstallFlags(fs *pflag.FlagSet, client *action.Choerodon) {
-	// moved to EnvSettings
-	//fs.StringVarP(&client.ResourceFile, "resource-file", "r", "", "Resource file to read from, It provide which app should be installed")
-	//fs.StringVarP(&client.ConfigFile, "c7n-config", "c", "", "User Config file to read from, User define config by this file")
-	//fs.StringVarP(&client.Namespace, "namespace", "n", "c7n-system", "set namespace which install choerodon")
-
-	fs.StringVar(&client.Version, "version", "", "specify a version")
+func addInstallFlags(fs *pflag.FlagSet, client *action.Install) {
+	fs.StringVarP(&client.ResourcePath, "resource-path", "r", "", "choerodon install definition file")
+	fs.StringVarP(&client.Version, "version", "v", "0.22", "version of choerodon which will installation")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
+	fs.StringVar(&client.ImageRepository, "image-repo", "", "default image repository of all release")
+	fs.StringVar(&client.ChartRepository, "chart-repo", "", "chart repository url")
+	fs.StringVar(&client.DatasourceTpl, "datasource-url", "", "datasource url template")
 
-	fs.BoolVar(&client.NoTimeout, "no-timeout", false, "disable resource job timeout")
-	fs.BoolVar(&client.SkipInput, "skip-input", false, "use default username and password to avoid user input")
+	fs.BoolVar(&client.ThinMode, "thin-mode", false, "install choerodon using Low resource consumption")
+	fs.BoolVar(&client.ClientOnly, "client-only", false, "simulate an install")
 }
 
 func setUserConfig(skipInput bool) {
@@ -156,4 +141,22 @@ func inputUserMail() string {
 	})
 	c7nutils.CheckErr(err)
 	return mail
+}
+
+func getUserConfig(filePath string) (*config.C7nConfig, error) {
+	if filePath == "" {
+		return nil, std_errors.New("No user config defined by `-c`")
+	}
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, std_errors.WithMessage(err, "Read config file failed: ")
+	}
+
+	userConfig := &config.C7nConfig{}
+	if err = yaml_v2.Unmarshal(data, userConfig); err != nil {
+		return nil, std_errors.WithMessage(err, "Unmarshal config failed")
+	}
+	log.WithField("profile", filePath).Info("The user profile was read successfully")
+
+	return userConfig, nil
 }

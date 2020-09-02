@@ -81,7 +81,6 @@ start:
 
 	fmt.Print("请再输入一次:")
 	bytePassword2, err := gopass.GetPasswd() // terminal.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Println()
 	if err != nil {
 		return "", err
 	}

@@ -1,9 +1,8 @@
-ingress:
-  enabled: true
-env:
-  open:
-    BUILD_CLIENT_ID: hzero
-    BUILD_API_HOST: {{ .GetResourceDomainUrl "hzero-gateway" }}
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/workflow_service
+{{- end }}
+
 {{- if .IsThinMode }}
 resources:
   limits:

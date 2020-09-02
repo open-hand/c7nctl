@@ -90,7 +90,7 @@ func TestRenderRelease(t *testing.T) {
 		// 渲染 Release
 		for _, rls := range id.Spec.Release {
 			// 传入参数的是 *Release
-			RenderRelease(rls)
+			RenderRelease_old(rls)
 		}
 		for _, rls := range id.Spec.Release {
 			t.Log(rls.Name)

@@ -1,3 +1,8 @@
+{{- if ne .GetImageRepository "" }}
+image:
+  repository: {{ .GetImageRepository }}/chartmuseum
+{{- end }}
+
 env:
   open:
     STORAGE: local

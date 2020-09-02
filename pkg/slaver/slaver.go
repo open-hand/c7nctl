@@ -7,6 +7,7 @@ import (
 	sys_errors "errors"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	pb "github.com/choerodon/c7nctl/pkg/protobuf"
 	log "github.com/sirupsen/logrus"
@@ -56,6 +57,21 @@ type Dir struct {
 	Mode string
 	Own  string
 	Path string
+}
+
+func (s *Slaver) InitSalver(clientset *kubernetes.Clientset, namespace string, stopCh <-chan struct{}) (*Slaver, error) {
+	s.CommonLabels = c7nconsts.CommonLabels
+	s.Namespace = namespace
+	s.Client = clientset
+
+	if _, err := s.CheckInstall(); err != nil {
+		return s, err
+	}
+	port := s.ForwardPort("http", stopCh)
+	grpcPort := s.ForwardPort("grpc", stopCh)
+	s.Address = fmt.Sprintf("http://127.0.0.1:%d", port)
+	s.GRpcAddress = fmt.Sprintf("127.0.0.1:%d", grpcPort)
+	return s, nil
 }
 
 /**

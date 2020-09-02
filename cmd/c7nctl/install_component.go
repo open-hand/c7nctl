@@ -2,9 +2,8 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
-	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
-	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
-	"github.com/pkg/errors"
+	"github.com/choerodon/c7nctl/pkg/resource"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -13,19 +12,19 @@ const installComponentDesc = `
 `
 
 func newInstallComponentCmd(cfg *action.C7nConfiguration) *cobra.Command {
-	c7n := action.NewChoerodon(cfg)
+	c7n := action.NewInstallComponent(cfg)
 	cmd := &cobra.Command{
 		Use:   "component [ARG]",
-		Short: "Install common components to k8s",
+		Short: "InstallChoerodon common components to k8s",
 		Long:  installComponentDesc,
 		Args:  minimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log.Info("Starting install component ", args[0])
-			if err := InstallComponent(c7n, args[0]); err != nil {
-				log.Error("Install component failed")
+			if err := runInstallComponent(c7n, args[0]); err != nil {
+				log.Error("InstallChoerodon component failed")
 				return err
 			}
-			log.Info("Install component succeed")
+			log.Info("InstallChoerodon component succeed")
 			return nil
 		},
 	}
@@ -33,35 +32,37 @@ func newInstallComponentCmd(cfg *action.C7nConfiguration) *cobra.Command {
 	return cmd
 }
 
-func InstallComponent(c *action.Choerodon, cname string) error {
-	c.Namespace = settings.Namespace
-	c.Version = c7nutils.GetVersion(c.Version)
+func runInstallComponent(client *action.InstallComponent, cname string) error {
 
-	id, _ := c.GetInstallDef("", c7nconsts.DefaultResource)
+	instDef := &resource.InstallDefinition{
+		Version:     client.Version,
+		PaaSVersion: client.Version,
+	}
 
-	for _, rls := range id.Spec.Component {
+	if err := instDef.GetInstallDefinition(client.ResourcePath); err != nil {
+		return std_errors.WithMessage(err, "Failed to get install configuration file")
+	}
+
+	for _, rls := range instDef.Spec.Component {
 		if rls.Name == cname {
-			err := id.RenderComponent(rls)
+			err := instDef.RenderComponent(rls)
 			if err != nil {
 				return err
 			}
-			vals, err := id.RenderHelmValues(rls, nil)
-			rls.Name = rls.Name + "-" + c7nutils.RandomString(5)
-			if err := c.InstallRelease(rls, vals); err != nil {
+			if err := client.InstallComponent(rls, settings.Namespace); err != nil {
 				return err
-			} else {
-				break
 			}
+			return nil
 		}
 	}
-	return nil
+	return std_errors.New("Please make sure the release name is right.")
 }
 
 // minimumNArgs returns an error if there is not at least N args.
 func minimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < n {
-			return errors.Errorf(
+			return std_errors.Errorf(
 				"%q requires at least %d %s\n\nUsage:  %s",
 				cmd.CommandPath(),
 				n,

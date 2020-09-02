@@ -2,23 +2,20 @@ package action
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	c7ncfg "github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	"github.com/choerodon/c7nctl/pkg/slaver"
-	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/kubernetes/pkg/util/maps"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"sync"
 )
@@ -111,6 +108,7 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 	return c.Cfg.KubeClient.SaveTaskInfoToCM(c.Namespace, ti)
 }
 
+/*
 func (c *Choerodon) InstallComponent(cname string) error {
 	c.Version = c7nutils.GetVersion(c.Version)
 	// TODO
@@ -143,52 +141,7 @@ func (c *Choerodon) CheckReleaseDomain(rls *resource.Release) error {
 	}
 	return nil
 }
-
-// 为了避免循环依赖，从 resource.install.go 移到这里
-func (c *Choerodon) GetInstallDef(cfg, res string) (*resource.InstallDefinition, error) {
-	userConfig, err := GetUserConfig(cfg)
-	if err != nil {
-		return nil, std_errors.WithMessage(err, "Failed to get user config file")
-	}
-	c.UserConfig = userConfig
-
-	// 在 getVersion 之后执行，已经确保了 i.Version 一定有值
-	rd, err := c7nutils.GetInstallDefinition(res, c.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	installDef := &resource.InstallDefinition{
-		Namespace:    c.Namespace,
-		Prefix:       c.Prefix,
-		Timeout:      c.Timeout,
-		SkipInput:    c.SkipInput,
-		StorageClass: c.UserConfig.Spec.Persistence.StorageClassName,
-		Version:      c.Version,
-		CommonLabels: c.CommonLabels,
-	}
-	rdJson, err := yaml.ToJSON(rd)
-	if err != nil {
-		panic(err)
-	}
-	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
-	_ = json.Unmarshal(rdJson, installDef)
-
-	installDef.PaaSVersion = c.Version
-	if c.NoTimeout {
-		installDef.Timeout = 60 * 60 * 24
-	}
-
-	if c.UserConfig != nil {
-		if accessModes := c.UserConfig.Spec.Persistence.AccessModes; len(accessModes) > 0 {
-			installDef.DefaultAccessModes = accessModes
-		} else {
-			installDef.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
-		}
-	}
-
-	return installDef, nil
-}
+*/
 
 func GetUserConfig(filePath string) (*c7ncfg.C7nConfig, error) {
 	if filePath == "" {
@@ -205,37 +158,6 @@ func GetUserConfig(filePath string) (*c7ncfg.C7nConfig, error) {
 	}
 	log.WithField("profile", filePath).Info("The user profile was read successfully")
 	return userConfig, nil
-}
-
-func (c *Choerodon) RenderReleases(id *resource.InstallDefinition) error {
-	for _, rls := range id.Spec.Release {
-		rls.Client = c.Cfg.KubeClient
-		rls.Namespace = c.Namespace
-		rls.Prefix = c.Prefix
-
-		if err := id.RenderRelease(rls, c.UserConfig); err != nil {
-			return err
-		}
-		// 检测域名
-		if err := c.CheckReleaseDomain(rls); err != nil {
-			return std_errors.WithMessage(err, fmt.Sprintf("Release %s's domain is invalid", rls.Name))
-		}
-	}
-	return nil
-}
-
-func (c *Choerodon) RenderGitlabRunner(id *resource.InstallDefinition) error {
-	rls := id.Spec.Runner
-	rls.Client = c.Cfg.KubeClient
-	rls.Namespace = c.Namespace
-	rls.Prefix = c.Prefix
-	for _, p := range rls.Persistence {
-		if _, err := c.PreparePvc(p); err != nil {
-			return err
-		}
-	}
-
-	return id.RenderRelease(rls, c.UserConfig)
 }
 
 func (c *Choerodon) Clean() error {
@@ -310,7 +232,7 @@ func (c *Choerodon) CheckResource(resources *v1.ResourceRequirements) error {
 func (c *Choerodon) CheckNamespace(namespace string) error {
 	_, err := c.Cfg.KubeClient.GetNamespace(namespace)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return c.Cfg.KubeClient.CreateNamespace(namespace)
 		}
 		return err
@@ -346,6 +268,7 @@ func (c *Choerodon) PrepareSlaver(stopCh <-chan struct{}) (*slaver.Slaver, error
 }
 
 /**
+
  */
 func (c *Choerodon) prepareSlaverPvc(p *c7ncfg.Persistence) (string, error) {
 	if c.UserConfig == nil {
