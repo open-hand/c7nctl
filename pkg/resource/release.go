@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
@@ -12,15 +11,11 @@ import (
 	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type Release struct {
-	Client       *c7nclient.K8sClient
 	Name         string
 	Chart        string
 	Version      string
@@ -282,61 +277,6 @@ func (r *Release) HelmValues() []string {
 		values[k] = fmt.Sprintf("%s=%s", v.Name, v.Value)
 	}
 	return values
-}
-
-// 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
-// TODO 去掉 app label
-func (r *Release) CheckReleasePodRunning(rls string) {
-	clientset := r.Client.GetClientSet()
-	namespace := r.Namespace
-
-	labels := []string{
-		fmt.Sprintf("choerodon.io/release=%s", rls),
-		fmt.Sprintf("app=%s", rls),
-	}
-
-	log.Infof("Waiting %s running", rls)
-	for {
-		for _, label := range labels {
-			deploy, err := clientset.AppsV1().Deployments(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
-			if errors.IsNotFound(err) {
-				log.Debugf("Deployment %s in namespace %s not found\n", label, namespace)
-			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Debugf("Error getting deployment %s in namespace %s: %v\n",
-					label, namespace, statusError.ErrStatus.Message)
-			} else if err != nil {
-				panic(err.Error())
-			} else {
-				for _, d := range deploy.Items {
-					if *d.Spec.Replicas != d.Status.ReadyReplicas {
-						log.Debugf("Release %s is not ready\n", d.Name)
-					} else {
-						log.Debugf("Release %s is Ready\n", d.Name)
-						return
-					}
-				}
-			}
-			ss, err := clientset.AppsV1().StatefulSets(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
-			if errors.IsNotFound(err) {
-				log.Debugf("StatefulSet %s in namespace %s not found\n", label, namespace)
-			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Debugf("Error getting statefulSet %s in namespace %s: %v\n",
-					label, namespace, statusError.ErrStatus.Message)
-			} else if err != nil {
-				panic(err.Error())
-			} else {
-				for _, s := range ss.Items {
-					if *s.Spec.Replicas != s.Status.ReadyReplicas {
-						log.Debugf("Release %s is not ready\n", s.Name)
-					} else {
-						log.Debugf("Release %s is Ready\n", s.Name)
-						return
-					}
-				}
-			}
-		}
-		time.Sleep(5 * time.Second)
-	}
 }
 
 func (r *Request) parserParams() string {

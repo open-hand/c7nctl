@@ -69,9 +69,9 @@ func (c *Choerodon) InstallRelease(rls *resource.Release, vals map[string]interf
 
 	if ti.Status == c7nconsts.RenderedStatus || ti.Status == c7nconsts.FailedStatus {
 		// 等待依赖项安装完成
-		for _, r := range rls.Requirements {
-			rls.CheckReleasePodRunning(r)
-		}
+		// for _, r := range rls.Requirements {
+		// 	rls.CheckReleasePodRunning(r)
+		// }
 		if err := rls.ExecutePreCommands(c.Slaver); err != nil {
 			ti.Status = c7nconsts.FailedStatus
 			return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", rls.Name))

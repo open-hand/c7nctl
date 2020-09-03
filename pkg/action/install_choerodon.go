@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
@@ -13,9 +14,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"reflect"
+	"time"
 )
 
 type Install struct {
@@ -129,7 +133,7 @@ func (i *Install) InstallChoerodon(inst *resource.InstallDefinition, namespace s
 			return err
 		}
 		args := c7nclient.ChartArgs{
-			RepoUrl:     i.ChartRepository,
+			RepoUrl:     inst.Spec.Basic.ChartRepository,
 			Namespace:   namespace,
 			ReleaseName: inst.GetReleaseName(rls.Name),
 			ChartName:   rls.Chart,
@@ -165,7 +169,7 @@ func (i *Install) InstallRelease(rls *resource.Release, vals map[string]interfac
 	if task.Status == c7nconsts.RenderedStatus || task.Status == c7nconsts.FailedStatus {
 		// 等待依赖项安装完成
 		for _, r := range rls.Requirements {
-			rls.CheckReleasePodRunning(r)
+			i.CheckReleasePodRunning(r, args.Namespace)
 		}
 		if err := rls.ExecutePreCommands(slaver); err != nil {
 			task.Status = c7nconsts.FailedStatus
@@ -215,6 +219,10 @@ func (i *Install) CheckResource(resources *v1.ResourceRequirements, metrics *c7n
 		log.Info("Running Client only, So skip up check cluster resource")
 		return nil
 	}
+	// thin 不检查硬件资源大小
+	if i.ThinMode {
+		return nil
+	}
 	if clusterMemory < reqMemory {
 		return std_errors.New(fmt.Sprintf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024)))
 	}
@@ -234,6 +242,60 @@ func (i *Install) CheckNamespace(namespace string) error {
 	}
 	log.Infof("namespace %s already exists", namespace)
 	return nil
+}
+
+// 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
+// TODO 去掉 app label
+func (i *Install) CheckReleasePodRunning(rls, namespace string) {
+	clientset := i.GetClientSet()
+
+	labels := []string{
+		fmt.Sprintf("choerodon.io/release=%s", rls),
+		fmt.Sprintf("app=%s", rls),
+	}
+
+	log.Infof("Waiting %s running", rls)
+	for {
+		for _, label := range labels {
+			deploy, err := clientset.AppsV1().Deployments(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
+			if errors.IsNotFound(err) {
+				log.Debugf("Deployment %s in namespace %s not found\n", label, namespace)
+			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
+				log.Debugf("Error getting deployment %s in namespace %s: %v\n",
+					label, namespace, statusError.ErrStatus.Message)
+			} else if err != nil {
+				panic(err.Error())
+			} else {
+				for _, d := range deploy.Items {
+					if *d.Spec.Replicas != d.Status.ReadyReplicas {
+						log.Debugf("Release %s is not ready\n", d.Name)
+					} else {
+						log.Debugf("Release %s is Ready\n", d.Name)
+						return
+					}
+				}
+			}
+			ss, err := clientset.AppsV1().StatefulSets(namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
+			if errors.IsNotFound(err) {
+				log.Debugf("StatefulSet %s in namespace %s not found\n", label, namespace)
+			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
+				log.Debugf("Error getting statefulSet %s in namespace %s: %v\n",
+					label, namespace, statusError.ErrStatus.Message)
+			} else if err != nil {
+				panic(err.Error())
+			} else {
+				for _, s := range ss.Items {
+					if *s.Spec.Replicas != s.Status.ReadyReplicas {
+						log.Debugf("Release %s is not ready\n", s.Name)
+					} else {
+						log.Debugf("Release %s is Ready\n", s.Name)
+						return
+					}
+				}
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func (i *Install) GetClientSet() *kubernetes.Clientset {

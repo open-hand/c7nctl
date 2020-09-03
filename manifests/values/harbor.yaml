@@ -10,55 +10,48 @@ persistence:
       storageClass: {{ .GetStorageClass }}
     redis:
       storageClass: {{ .GetStorageClass }}
-
-nginx:
 {{- if ne .GetImageRepository "" }}
+nginx:
   image:
     repository: {{ .GetImageRepository }}/nginx-photon
 {{- end }}
-
-portal:
 {{- if ne .GetImageRepository "" }}
+portal:
   image:
     repository: {{ .GetImageRepository }}/harbor-portal
 {{- end }}
-
-core:
 {{- if ne .GetImageRepository "" }}
+core:
   image:
     repository: {{ .GetImageRepository }}/harbor-core
 {{- end }}
 
-jobservice:
 {{- if ne .GetImageRepository "" }}
+jobservice:
   image:
     repository: {{ .GetImageRepository }}/harbor-jobservice
 {{- end }}
-
+{{- if ne .GetImageRepository "" }}
 registry:
   registry:
-{{- if ne .GetImageRepository "" }}
     image:
       repository: {{ .GetImageRepository }}/registry-photon
-{{- end }}
   controller:
-{{- if ne .GetImageRepository "" }}
     image:
       repository: {{ .GetImageRepository }}/harbor-registryctl
 {{- end }}
 
+{{- if ne .GetImageRepository "" }}
 database:
   internal:
-{{- if ne .GetImageRepository "" }}
     image:
       repository: {{ .GetImageRepository }}/harbor-db
     initContainerImage:
       repository: {{ .GetImageRepository }}/busybox
 {{- end }}
-
+{{- if ne .GetImageRepository "" }}
 redis:
   internal:
-{{- if ne .GetImageRepository "" }}
   image:
     repository: {{ .GetImageRepository }}/redis-photon
 {{- end }}

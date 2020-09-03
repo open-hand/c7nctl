@@ -107,6 +107,8 @@ func (i *InstallDefinition) RenderRelease(r *Release) error {
 
 		// 保存渲染完成的 r
 		task.Values = r.Values
+		// 执行 Release Job 时需要
+		task.Resource = *r.Resource
 		task.Status = c7nconsts.RenderedStatus
 		if _, err = c7nclient.SaveTask(*task); err != nil {
 			return err
@@ -114,10 +116,14 @@ func (i *InstallDefinition) RenderRelease(r *Release) error {
 	} else {
 		// 当 r 渲染完成但是没有完成安装——c7nctl install 会中断，二次执行
 		r.Values = task.Values
+		r.Resource = &task.Resource
 		// 重新渲染 preCommand 等，避免在 TaskInfo 加入 PreCommand 导致循环依赖
 		if err := i.render(r); err != nil {
 			return err
 		}
+	}
+	if err = i.CheckReleaseDomain(r.Values); err != nil {
+		return err
 	}
 	log.Infof("Successfully rendered the Release %s", r.Name)
 	return nil
@@ -191,6 +197,20 @@ func (i *InstallDefinition) MergerConfig(uc *c7ncfg.C7nConfig) {
 	}
 }
 
+func (i *InstallDefinition) CheckReleaseDomain(values []c7nclient.ChartValue) error {
+	for _, v := range values {
+		// TODO 添加本地方式检查域名
+		if v.Check == "clusterdomain" {
+			log.Debugf("Value %s: %s, checking: %s", v.Name, v.Value, v.Check)
+			if err := i.Spec.Basic.Slaver.CheckClusterDomain(v.Value); err != nil {
+				log.Errorf("请检查您的域名: %s 已正确解析到集群", v.Value)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
 	for _, rls := range i.Spec.Release {
 		if res := uc.GetResource(rls.Name); res == nil {
@@ -201,9 +221,15 @@ func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
 				rls.Resource = res
 			} else {
 				if res.Domain != "" {
+					if !c7nutils.CheckDomain(res.Domain) {
+						log.Errorf("domain name %s is not in compliance with the rules", res.Domain)
+					}
 					rls.Resource.Domain = res.Domain
 				}
 				if res.Schema != "" {
+					if !c7nutils.CheckSchema(res.Schema) {
+						log.Errorf("schema %s is not in compliance with the rules", res.Schema)
+					}
 					rls.Resource.Schema = res.Schema
 				}
 				if res.Username != "" {

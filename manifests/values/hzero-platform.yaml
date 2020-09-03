@@ -1,14 +1,14 @@
-{{- if ne .GetImageRepository "" -}}
+{{- if ne .GetImageRepository "" }}
 image:
   repository: {{ .GetImageRepository }}/hzero_platform
 {{- end -}}
 
-{{- if ne .GetImageRepository "" -}}
+{{- if ne .GetImageRepository "" }}
 ## 插件相关配置
 plugins:
   # skywalking agent 镜像地址
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
-{{- end -}}
+{{- end }}
 
 preJob:
 {{- if ne .GetImageRepository "" }}

@@ -69,9 +69,9 @@ func (ir *InstallRunner) InstallGitlabRunner(instDef *resource.InstallDefinition
 	}
 
 	// 等待依赖项安装完成
-	for _, r := range runner.Requirements {
-		runner.CheckReleasePodRunning(r)
-	}
+	//for _, r := range runner.Requirements {
+	//	runner.CheckReleasePodRunning(r)
+	//}
 
 	if err := runner.ExecutePreCommands(&slaver); err != nil {
 		return std_errors.WithMessage(err, fmt.Sprintf("Release %s execute pre commands failed", runner.Name))

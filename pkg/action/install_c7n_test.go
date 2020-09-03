@@ -37,9 +37,10 @@ func initInstall() *Choerodon {
 
 		return i
 	*/
+	return nil
 }
 
-func setSettings(settings *helm_env.EnvSettings) {
+func setSettings() {
 	/*
 		if settings.TLSCaCertFile == helm_env.DefaultTLSCaCert || settings.TLSCaCertFile == "" {
 			settings.TLSCaCertFile = settings.Home.TLSCaCert()
