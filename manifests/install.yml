@@ -667,7 +667,7 @@ spec:
           value: "true"
     - name: minio
       chart: minio
-      version: 5.0.4
+      version: 5.0.5
       resource:
         host: minio
         port: 9000
@@ -770,3 +770,50 @@ spec:
             exclude:
               - value: "^\\d*$"
                 name: "不能为纯数字"
+  monitoring:
+    - name: prometheus-operator
+      chart: prometheus-operator
+      version: 9.3.0
+      resource:
+        host: "prometheus-operator"
+        port: 8080
+      requirements: []
+      preInstall: []
+      values: []
+  logging:
+    - name: loki
+      chart: loki
+      version: 0.29.0
+      resource:
+        host: "loki"
+        port: 8080
+      requirements: []
+      preInstall: []
+      values: []
+    - name: promtail
+      chart: promtail
+      resource:
+        host: "loki"
+        port: 8080
+      requirements: []
+      preInstall: []
+      values: []
+  skymalking:
+    - name: skywalking-mysql
+      chart: mysql
+      version: 0.1.4
+      resource:
+        host: "loki"
+        port: 8080
+      requirements: []
+      preInstall: []
+      values: []
+    - name: skywalking
+      chart: skywalking
+      version: 6.6.0
+      resource:
+        host: "loki"
+        port: 8080
+      requirements: []
+      preInstall: []
+      values: []
