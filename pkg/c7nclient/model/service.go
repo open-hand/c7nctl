@@ -32,8 +32,8 @@ type DevOpsService struct {
 	Error               string            `json:"error"`
 	LoadBalanceIP       string            `json:"loadBalanceIp"`
 	Target              struct {
-		Instances []ApplicationInstanceDTO `json:"instances"`
-		Labels    map[string]string        `json:"labels"`
+		Instances []ApplicationInstanceDTO            `json:"instances"`
+		Labels    map[string]string                   `json:"labels"`
 		EndPoints map[string][]map[string]interface{} `json:"endPoints"`
 	} `json:"target"`
 	Config struct {
@@ -83,7 +83,7 @@ type ServicePort struct {
 func PrintServiceInfo(contents []DevOpsServiceInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id", "Name", "Type", "TargetType", "Target", "Status")
+	table.AddRow("Id", "GetName", "Type", "TargetType", "Target", "Status")
 	for _, r := range contents {
 		table.AddRow(r.Id, r.Name, r.Type, r.TargetType, r.Target, r.Status)
 	}

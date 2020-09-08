@@ -61,7 +61,7 @@ type EnvSyncStatus struct {
 func PrintEnvInfo(envs []EnvInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id", "Name", "Code", "Status", "Group", "Cluster")
+	table.AddRow("Id", "GetName", "Code", "Status", "Group", "Cluster")
 	for _, r := range envs {
 		if r.Group == "" {
 			r.Group = "default"
@@ -74,7 +74,7 @@ func PrintEnvInfo(envs []EnvInfo, out io.Writer) {
 func PrintEnvGroupInfo(groups []DevopsGroupInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id", "Name")
+	table.AddRow("Id", "GetName")
 	for _, r := range groups {
 		table.AddRow(r.Id, r.Name)
 	}

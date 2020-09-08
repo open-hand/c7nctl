@@ -36,7 +36,7 @@ type ValueInfo struct {
 func PrintValueInfo(valueInfos []ValueInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Description", "AppServiceName", "Environment")
+	table.AddRow("Id", "GetName", "Description", "AppServiceName", "Environment")
 	for _, r := range valueInfos {
 		table.AddRow(r.Id, r.Name, r.Description, r.AppServiceName, r.Environment)
 	}

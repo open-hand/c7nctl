@@ -33,7 +33,7 @@ type OrganizationInfo struct {
 func PrintOrgInfo(orgInfos []OrganizationInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Name", "Code")
+	table.AddRow("GetName", "Code")
 	for _, r := range orgInfos {
 		table.AddRow(r.Name, r.Code)
 	}

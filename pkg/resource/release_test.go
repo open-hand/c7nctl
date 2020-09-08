@@ -23,7 +23,7 @@ func TestInfraResource_GetRequirement(t *testing.T) {
 			Requirements: []string{"mysql"},
 			Values: []ChartValue{
 				ChartValue{
-					Name:  "abc",
+					GetName:  "abc",
 					Value: `{{ .GetRequirement "mysql" "GITLAB_BASE_DOMAIN" }}`,
 					Input: context.Input{},
 				},
@@ -60,7 +60,7 @@ func TestRelease_String(t *testing.T) {
 					},
 				},
 			},
-			"{Name: \"test1\"}",
+			"{GetName: \"test1\"}",
 		},
 	}
 

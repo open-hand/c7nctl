@@ -88,6 +88,6 @@ func initConfig() {
 			log.Error(err)
 			os.Exit(consts.InitConfigErrorCode)
 		}
-		// TODO 校验 c7n context 和 clientConfig.Name 等是否存在
+		// TODO 校验 c7n context 和 clientConfig.GetName 等是否存在
 	}
 }

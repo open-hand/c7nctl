@@ -8,17 +8,17 @@ func TestHelmValues(t *testing.T) {
 	/*	infra := &Release{
 			Values: []ChartValue{
 				ChartValue{
-					Name:  "abc",
+					GetName:  "abc",
 					Value: "",
 					Input: context.Input{},
 				},
 				ChartValue{
-					Name:  "cde",
+					GetName:  "cde",
 					Value: "cde",
 					Case:  "{{ not .IgnorePv }}",
 				},
 			},
-			Name: "test-name-1",
+			GetName: "test-name-1",
 		}
 		context.Ctx = context.Context{
 			UserConfig: &config.C7n_Config{
@@ -47,11 +47,11 @@ func TestCleanJobs(t *testing.T) {
 func TestRequestParserParams(t *testing.T) {
 	/*
 		param1 := ChartValue{
-			Name:  "name",
+			GetName:  "name",
 			Value: "value1",
 		}
 		param2 := ChartValue{
-			Name:  "name2",
+			GetName:  "name2",
 			Value: "value5",
 		}
 		r := Request{
@@ -67,11 +67,11 @@ func TestRequestParserParams(t *testing.T) {
 func TestRequestParserUrl(t *testing.T) {
 	/*
 		param1 := ChartValue{
-			Name:  "name",
+			GetName:  "name",
 			Value: "value1",
 		}
 		param2 := ChartValue{
-			Name:  "name2",
+			GetName:  "name2",
 			Value: "value5",
 		}
 		r := Request{

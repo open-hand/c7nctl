@@ -6,8 +6,6 @@ spec:
   persistence:
     storageClassName: nfs-provisioner
   resources:
-    mysql:
-      external: false
     gitlab:
       domain: gitlab.c7n.yidaqiang.com
       external: false

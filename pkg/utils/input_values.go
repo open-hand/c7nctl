@@ -42,7 +42,7 @@ func getOrCreateCm(cmName string) *v1.ConfigMap {
 				APIVersion: "v1",
 			},
 			ObjectMeta: meta_v1.ObjectMeta{
-				Name:   cmName,
+				GetName:   cmName,
 				Labels: context.Ctx.CommonLabels,
 			},
 			Data: data,

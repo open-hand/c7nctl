@@ -39,7 +39,7 @@ type CustomInfo struct {
 func PrintCustomInfos(customInfos []CustomInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Type", "UpdateTime", "Status")
+	table.AddRow("Id", "GetName", "Type", "UpdateTime", "Status")
 	for _, r := range customInfos {
 		table.AddRow(r.Id, r.Name, r.K8sKind, r.LastUpdateDate, r.Status)
 	}

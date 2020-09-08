@@ -44,9 +44,7 @@ type Metadata struct {
 type Spec struct {
 	Basic     Basic
 	Resources v1.ResourceRequirements
-	Release   []*Release
-	Runner    *Release `json:"runner"`
-	Component []*Release
+	Release   map[string][]*Release
 }
 
 type Basic struct {
@@ -86,8 +84,25 @@ func (i *InstallDefinition) GetInstallDefinition(resource string) error {
 	return nil
 }
 
+func (i *InstallDefinition) IsName(name string) bool {
+	if rs := i.Spec.Release[name]; rs != nil {
+		return true
+	}
+	return false
+}
+
+func (i *InstallDefinition) RenderReleases(name string) error {
+	// 初始化安装记录
+	for _, rls := range i.Spec.Release[name] {
+		if err := i.renderRelease(rls); err != nil {
+			log.Errorf("Release %s render failed: %+v", rls.Name, err)
+		}
+	}
+	return nil
+}
+
 // TODO 渲染也是有先后顺序的
-func (i *InstallDefinition) RenderRelease(r *Release) error {
+func (i *InstallDefinition) renderRelease(r *Release) error {
 	task, err := c7nclient.GetTask(r.Name)
 	if err != nil {
 		if std_errors.Is(err, c7nerrors.TaskInfoIsNotFoundError) {
@@ -122,27 +137,20 @@ func (i *InstallDefinition) RenderRelease(r *Release) error {
 			return err
 		}
 	}
-	if err = i.CheckReleaseDomain(r.Values); err != nil {
-		return err
-	}
+	/*
+		if err = i.CheckReleaseDomain(r.Values); err != nil {
+			return err
+		}
+	*/
 	log.Infof("Successfully rendered the Release %s", r.Name)
 	return nil
 }
 
-func (i *InstallDefinition) RenderComponent(rls *Release) error {
-	rlsByte, _ := yaml_v2.Marshal(rls)
-	renderedRls, err := i.renderTpl(rls.Name, string(rlsByte))
-	if err != nil {
-		return err
-	}
-	return yaml_v2.Unmarshal(renderedRls.Bytes(), rls)
-}
-
 // 必须基于 InstallDefinition 渲染 value.yaml 文件
-func (i *InstallDefinition) RenderHelmValues(r *Release, resource, helmValues string) (map[string]interface{}, error) {
+func (i *InstallDefinition) RenderHelmValues(r *Release, helmValuesPath string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
 	var fileValsByte bytes.Buffer
-	fileVals, err := r.ValuesRaw(resource, helmValues)
+	fileVals, err := r.ValuesRaw(helmValuesPath)
 	if err != nil {
 		return nil, err
 	}
@@ -211,9 +219,28 @@ func (i *InstallDefinition) CheckReleaseDomain(values []c7nclient.ChartValue) er
 	return nil
 }
 
+func (i *InstallDefinition) PrintRelease(name string) {
+	for _, rls := range i.Spec.Release[name] {
+		fmt.Printf("---------- Helm Release %s ----------\n", rls.Name)
+		c7nutils.PrettyPrint(*rls)
+	}
+}
+
+func (i *InstallDefinition) getRelease(rls string) *Release {
+	for _, rs := range i.Spec.Release {
+		for _, r := range rs {
+			if r.Name == rls {
+				return r
+			}
+		}
+	}
+	log.Errorf("No Release %s in InstallDefinition", rls)
+	return nil
+}
+
 func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
-	for _, rls := range i.Spec.Release {
-		if res := uc.GetResource(rls.Name); res == nil {
+	for key, res := range uc.Spec.Resources {
+		if rls := i.getRelease(key); res == nil {
 			log.Debugf("There is no resource in config.yaml of Release %s", rls.Name)
 		} else {
 			// 直接使用外部配置
@@ -245,22 +272,22 @@ func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
 					resType := reflect.TypeOf(*res)
 					resValue := reflect.ValueOf(*res)
 					for i := 0; i < resType.NumField(); i ++ {
-						if f, ok := rlsType.FieldByName(resType.Field(i).Name); ok {
+						if f, ok := rlsType.FieldByName(resType.Field(i).GetName); ok {
 							switch resValue.Field(i).Kind() {
 							case reflect.String: {
-								rlsValue.FieldByName(f.Name).SetString(resValue.FieldByName(f.Name).String())
+								rlsValue.FieldByName(f.GetName).SetString(resValue.FieldByName(f.GetName).String())
 							}
 							case reflect.Bool: {
-								rlsValue.FieldByName(f.Name).SetBool(resValue.FieldByName(f.Name).Bool())
+								rlsValue.FieldByName(f.GetName).SetBool(resValue.FieldByName(f.GetName).Bool())
 							}
 							case reflect.Int32: {
-								rlsValue.FieldByName(f.Name).SetInt(resValue.FieldByName(f.Name).Int())
+								rlsValue.FieldByName(f.GetName).SetInt(resValue.FieldByName(f.GetName).Int())
 							}
 							default:
-								log.Debugf("can't convert Field %s from C7nConfig to InstallDefinition", f.Name)
+								log.Debugf("can't convert Field %s from C7nConfig to InstallDefinition", f.GetName)
 							}
 						} else {
-							log.Debugf("Resource of C7nConfig field %s isn't in Release of InstallDefinition", resType.Field(i).Name)
+							log.Debugf("Resource of C7nConfig field %s isn't in Release of InstallDefinition", resType.Field(i).GetName)
 						}
 					}
 				*/
@@ -353,29 +380,26 @@ func (i *InstallDefinition) GetStorageClass() string {
 }
 
 func (i *InstallDefinition) GetDatabaseUrl(rls string) string {
-	return fmt.Sprintf(i.Spec.Basic.DatasourceTpl, i.GetReleaseName("mysql"), i.GetReleaseName(rls))
+	return fmt.Sprintf(i.Spec.Basic.DatasourceTpl, i.GetReleaseName(c7nconsts.Mysql), i.GetReleaseName(rls))
 }
 
 func (i *InstallDefinition) GetResource(rls string) *c7ncfg.Resource {
-	for _, r := range i.Spec.Release {
-		if r.Name == rls {
-			return r.Resource
-		}
+	if r := i.getRelease(rls); r != nil {
+		return r.Resource
 	}
+
 	log.Fatal("Release cannot be empty")
 	return nil
 }
 
 func (i *InstallDefinition) GetReleaseValue(rls, value string) string {
-	for _, r := range i.Spec.Release {
-		if r.Name == rls {
-			for _, v := range r.Values {
-				if v.Name == value {
-					return v.Value
-				}
+	if r := i.getRelease(rls); r != nil {
+		for _, v := range r.Values {
+			if v.Name == value {
+				return v.Value
 			}
-			log.WithField("Release values", value).Fatal("Release value cannot be empty")
 		}
+		log.WithField("Release values", value).Fatal("Release value cannot be empty")
 	}
 	log.WithField("Release", rls).Fatal("Release cannot be empty")
 	return ""
@@ -397,7 +421,7 @@ func (i *InstallDefinition) EncryptGitlabAccessToken() string {
 }
 
 func (i *InstallDefinition) GetPersistence(rls string, index int) *Persistence {
-	for _, r := range i.Spec.Release {
+	if r := i.getRelease(rls); r != nil {
 		if r.Name == rls && len(r.Persistence) > index {
 			return r.Persistence[index]
 		}
@@ -407,19 +431,23 @@ func (i *InstallDefinition) GetPersistence(rls string, index int) *Persistence {
 }
 
 func (i *InstallDefinition) GetRunnerPersistence(index int) *Persistence {
-	if len(i.Spec.Runner.Persistence) > index {
-		return i.Spec.Runner.Persistence[index]
+	runner := i.getRelease("gitlab-runner")
+	if len(runner.Persistence) > index {
+		return runner.Persistence[index]
 	}
 	log.WithField("Release", "gitlab-runner").Fatal("Release cannot be empty")
 	return nil
 }
 
 func (i *InstallDefinition) GetRunnerValues(values string) string {
-	for _, v := range i.Spec.Runner.Values {
+	runner := i.getRelease("gitlab-runner")
+
+	for _, v := range runner.Values {
 		if v.Name == values {
 			return v.Value
 		}
 	}
+	log.Errorf("gitlab runner values %s is empty", values)
 	return ""
 }
 
@@ -428,20 +456,19 @@ func (i *InstallDefinition) IsThinMode() bool {
 }
 
 func (i *InstallDefinition) GetEurekaUrl() string {
-	for _, r := range i.Spec.Release {
-		if r.Name == c7nconsts.HzeroRegister {
-			return fmt.Sprintf(eurekaClientServerUrlTpl, r.Resource.Schema, r.Resource.Host)
-		}
+	if r := i.getRelease(c7nconsts.HzeroRegister); r != nil {
+		return fmt.Sprintf(eurekaClientServerUrlTpl, r.Resource.Schema, r.Resource.Host)
 	}
+	log.Error("Eureka url is empty")
+
 	return ""
 }
 
 func (i *InstallDefinition) GetResourceDomainUrl(rls string) string {
-	for _, r := range i.Spec.Release {
-		if r.Name == rls {
-			return fmt.Sprintf(resourceDomainUrlTpl, r.Resource.Schema, r.Resource.Domain)
-		}
+	if r := i.getRelease(rls); r != nil {
+		return fmt.Sprintf(resourceDomainUrlTpl, r.Resource.Schema, r.Resource.Domain)
 	}
+	log.Errorf("Release %s domain is empty", rls)
 	return ""
 }
 

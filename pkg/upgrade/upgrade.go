@@ -75,7 +75,7 @@ func (u *Upgrader) Init() {
 }
 
 func (u *Upgrader) GetReleaseValues(upgrade *Upgrade) error {
-	/*	ls, err := u.HelmInstall.HelmInstall.ReleaseContent(upgrade.Name)
+	/*	ls, err := u.HelmInstall.HelmInstall.ReleaseContent(upgrade.GetName)
 		if err != nil {
 			return err
 		}
@@ -106,13 +106,13 @@ func upgradeRelease(u *Upgrader, upgrade *Upgrade) error {
 				return err
 			}
 			chartArgs := c7n_helm.ChartArgs{
-				ReleaseName: upgrade.Name,
+				ReleaseName: upgrade.GetName,
 				RepoUrl:     u.Spec.Basic.RepoURL,
 				Verify:      false,
 				Version:     upgrade.Version,
 				ChartName:   upgrade.Chart,
 			}
-			log.Infof("Upgrade %s to %s version,please waiting.", upgrade.Name, upgrade.Version)
+			log.Infof("Upgrade %s to %s version,please waiting.", upgrade.GetName, upgrade.Version)
 			return u.HelmInstall.UpgradeRelease(
 				raw,
 				chartArgs,
@@ -233,12 +233,12 @@ func (u *Upgrader) preUpgrade() error {
 				delOpts := &meta_v1.DeleteOptions{}
 				for _, job := range jobList.Items {
 					if job.Status.Active > 0 {
-						log.Infof("job %s still active ignored..", job.Name)
+						log.Infof("job %s still active ignored..", job.GetName)
 					} else {
-						if err := jobInterface.Delete(job.Name, delOpts); err != nil {
+						if err := jobInterface.Delete(job.GetName, delOpts); err != nil {
 							return err
 						}
-						log.Successf("deleted job %s", job.Name)
+						log.Successf("deleted job %s", job.GetName)
 					}
 				}
 				checkJobDeleted(jobInterface)

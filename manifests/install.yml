@@ -34,786 +34,788 @@ spec:
         mountPath: /data
       dataPath: /data
   release:
-  - name: mysql
-    chart: mysql
-    version: 0.1.4
-    resource:
-      port: 3306
-      # mysql 的 svc name 就是 release name
-      host: '{{ .GetReleaseName "mysql" }}'
-      password: '{{ .GetReleaseValue "mysql" "env.MYSQL_ROOT_PASSWORD"}}'
-      username: root
-    values:
-    - name: "env.MYSQL_ROOT_PASSWORD"
-      value: "admin"
-      input:
-        enabled: true
-        regex: ".+"
-        password: true
-        tip: "请输入您要设置的mysql密码(不能为纯数字):"
-        exclude:
-        - value: "^\\d*$"
-          name: "不能为纯数字"
-  - name: redis
-    chart: redis
-    version: 0.2.5
-    resource:
-      host: '{{ .GetReleaseName "redis" }}'
-      port: 6379
-    values:
-  - name: gitlab
-    chart: gitlab-ha
-    version: 0.2.2
-    # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
-    resource: 
-      schema: http
-      # 如下是自引用的 postgres 配置
-      host: '{{ .GetReleaseName "gitlab" }}-gitlab-database'
-      port: 5432
-      username: "gitlab"
-      password: '{{ .GetReleaseValue "gitlab" "database.internal.password"}}'
-    values:
-      - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
-        value: '{{ generateAlphaNum 64 }}'
-      - name: "core.env.GITLAB_SECRETS_SECRET_KEY_BASE"
-        value: '{{ generateAlphaNum 64 }}'
-      - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
-        value: '{{ generateAlphaNum 64 }}'
-      - name: "expose.ingress.host"
-        value: '{{ ( .GetResource "gitlab").Domain }}'
-        check: clusterdomain
-      - name: "database.internal.password"
-        value: '{{ generateAlphaNum 10 }}'
-      - name: "redis.internal.password"
-        value: '{{ generateAlphaNum 10 }}'
-  - name: minio
-    chart: minio
-    version: 5.0.5
-    resource:
-      host: minio
-      port: 9000
-      schema: http
-    requirements:
-    values:
-    - name: "ingress.hosts[0]"
-      value: '{{ ( .GetResource "minio" ).Domain }}'
-      check: clusterdomain
-    - name: "accessKey"
-      value: "admin"
-      input:
-        enabled: true
-        regex: ".{3,}"
-        tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字):"
-        password: false
-        exclude:
-        - value: "^\\d*$"
-          name: "不能为纯数字"
-    - name: "secretKey"
-      value: "choerodon"
-      input:
-        enabled: true
-        password: true
-        regex: ".{8,40}"
-        tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字):"
-        exclude:
-        - value: "^\\d*$"
-          name: "不能为纯数字"
-   # resource harbor
-  - name: harbor
-    chart: harbor
-    version: 1.2.3
-    resource:
-      host: harbor
-      port: 5000
-      schema: https
-    requirements:
-    values:
-    - name: "harborAdminPassword"
-      value: "Choerodon123"
-      input:
-        enabled: true
-        password: true
-        regex: ".{8,}"
-        tip: "请设置的Harbor管理员密码(8位以上、必须包含大小写及数字):"
-        exclude:
-        - value: "^\\d*$"
-          name: "不能为纯数字"
-        include:
-        - value: "[A-Z]+"
-          name: "必须包含大写"
-        - value: "[a-z]+"
-          name: "必须包含小写"
-        - value: "\\d+"
-          name: "必须包含数字"
-    - name: "expose.ingress.hosts.core"
-      value: '{{ ( .GetResource "harbor" ).Domain }}'
-      check: clusterdomain
-  - name: chartmuseum
-    chart: chartmuseum
-    version: 2.6.0
-    resource:
-      host: chartmuseum
-      port: 80
-      schema: http
-    requirements:
-    values:
-    - name: "ingress.hosts[0].name"
-      value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
-      check: clusterdomain
-  - name: hzero-register
-    chart: hzero-register
-    version: "0.22.2"
-    resource:
-      host: "hzero-register"
-      port: 8000
-      schema: http
-      url: "http://hzero-register:8000/eureka/"
-    values:
-  - name: hzero-platform
-    chart: hzero-platform
-    version: "0.22.1"
-    resource:
-      host: hzero-platform
-      port: 8100
-      schema: http
-    requirements:
-    - mysql
-    - redis
-    - hzero-register
-    preInstall:
-    - name: hzero-platform-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS hzero_platform DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-        - GRANT ALL PRIVILEGES ON hzero_platform.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    afterInstall:
-    - name: create-gitlab-client
-      commands:
-      - use hzero_platform
-      # 子符串过长 yaml_v2 序列化时会自动换行
-      - |
-        INSERT INTO hzero_platform.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
-        web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
-        object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
-        "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
-        "{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
-      infraRef: mysql
-    values:
-  - name: hzero-admin
-    chart: hzero-admin
-    version: "0.22.3"
-    resource:
-      host: hzero-admin
-      port: 8062
-      schema: http
-    requirements:
-    - hzero-platform
-    preInstall:
-    - name: hzero-admin-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS hzero_admin DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON hzero_admin.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-  - name: hzero-asgard
-    chart: hzero-asgard
-    version: "0.22.4"
-    resource:
-      host: asgard-service
-      port: 8040
-      schema: http
-    requirements:
-    - hzero-platform
-    preInstall:
-    - name: hzero-asgard-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS asgard_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON asgard_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-  - name: hzero-gateway
-    chart: hzero-gateway
-    version: "0.22.4"
-    resource:
-      host: hzero-gateway
-      port: 8080
-      schema: http
-    requirements:
-      - hzero-admin
-      - hzero-asgard
-    values:
-      - name: "ingress.host"
-        value: '{{ (.GetResource "hzero-gateway" ).Domain }}'
-        check: clusterdomain
-  - name: hzero-iam
-    chart: hzero-iam
-    version: "0.22.1"
-    resource:
-      host: hzero-iam
-      port: 8030
-      schema: http
-    requirements:
-      - hzero-admin
-      - hzero-asgard
-    values:
-  - name: hzero-oauth
-    chart: hzero-oauth
-    version: "0.22.2"
-    resource:
-      host: hzero-oauth
-      port: 8020
-      schema: http
-    requirements:
-      - hzero-admin
-      - hzero-asgard
-    values:
-  - name: hzero-file
-    chart: hzero-file
-    version: "0.22.4"
-    resource:
-      host: hzero-file
-      port: 8110
-      schema: http
-    requirements:
-      - hzero-oauth
-      - minio
-    preInstall:
-      - name: hzero-file-predb
-        commands:
-          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-          - CREATE DATABASE IF NOT EXISTS hzero_file DEFAULT CHARACTER SET utf8;
-          - GRANT ALL PRIVILEGES ON hzero_file.* TO choerodon@"%";
-          - FLUSH PRIVILEGES;
-        infraRef: mysql
-    values:
-  - name: hzero-swagger
-    chart: hzero-swagger
-    version: "0.22.1"
-    resource:
-      host: hzero-swagger
-      port:
-      schema: http
-    requirements:
-      - hzero-oauth
-    values:
-  - name: hzero-message
-    chart: hzero-message
-    version: "0.22.7"
-    resource:
-      host: hzero-message
-      port: 8120
-      schema: http
-    requirements:
-      - hzero-oauth
-    preInstall:
-      - name: hzero-message-predb
-        commands:
-          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-          - CREATE DATABASE IF NOT EXISTS hzero_message DEFAULT CHARACTER SET utf8;
-          - GRANT ALL PRIVILEGES ON hzero_message.* TO choerodon@"%";
-          - FLUSH PRIVILEGES;
-        infraRef: mysql
-    values:
-      - name: "ingress.host"
-        value: '{{ (.GetResource "hzero-message" ).Domain }}'
-        check: clusterdomain
-  - name: hzero-monitor
-    chart: hzero-monitor
-    version: "0.22.4"
-    resource:
-      host: hzero-monitor
-      port: 8260
-      schema: http
-    requirements:
-      - hzero-file
-      - hzero-swagger
-      - hzero-message
-    preInstall:
-      - name: hzero-monitor-predb
-        commands:
-          - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-          - CREATE DATABASE IF NOT EXISTS hzero_monitor DEFAULT CHARACTER SET utf8;
-          - GRANT ALL PRIVILEGES ON hzero_monitor.* TO choerodon@"%";
-          - FLUSH PRIVILEGES;
-        infraRef: mysql
-    values:
-  - name: devops-service
-    chart: devops-service
-    version: "0.22.3"
-    resource:
-      host: devops-service
-      port: 8061
-      schema: ws
-    requirements:
-    - hzero-message
-    - gitlab
-    - harbor
-    - chartmuseum
-    preInstall:
-    - name: devops-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS devops_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON devops_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-    - name: "ingress.host"
-      value: '{{ ( .GetResource "devops-service" ).Domain }}'
-      check: clusterdomain
-  - name: gitlab-service
-    chart: gitlab-service
-    version: "0.22.1"
-    resource:
-      host: gitlab-service
-      port: 8071
-      schema: http
-    requirements:
-      - hzero-message
-      - gitlab
-    preInstall:
-    - name: gitlab-set-access-token
-      psql:
-      - |
-        insert into personal_access_tokens (user_id, token_digest, name, expires_at, created_at, updated_at, scopes)
-        values (1, '{{ .EncryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
-        array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10))) ON CONFLICT (token_digest)
-        DO UPDATE SET updated_at=NOW();
-      infraRef: gitlab
-      database: gitlabhq_production
-    afterInstall:
-    - name: create-gitlabadmin-binding
-      psql:
-      - CREATE EXTENSION IF NOT EXISTS pg_trgm;
-      - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
-      infraRef: gitlab
-      database: gitlabhq_production
-    - name: enable_webhook
-      request:
-        header:
-        - name: "content-type"
-          value: "application/json"
-        # TODO get GITLAB_OAUTH_TOKEN
-        - name: "private-token"
-          value: '{{.GetReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN"}}'
-        url: '{{(.GetResource "gitlab").Schema }}://{{(.GetResource "gitlab").Domain}}/api/v4/application/settings'
-        body: |
-          {
-                  "allow_local_requests_from_hooks_and_services": true
-          }
-        method: PUT
-    values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
-    - name: "env.open.GITLAB_PRIVATETOKEN"
-      value: "{{ generateAlphaNum 20 }}"
-  - name: workflow-service
-    chart: workflow-service
-    version: "0.22.2"
-    resource:
-      host: workflow-service
-      port: 8066
-      schema: ws
-    requirements:
-      - hzero-message
-    preInstall:
-    - name: workflow-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS workflow_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON workflow_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
-  - name: agile-service
-    chart: agile-service
-    version: "0.22.2"
-    resource:
-      host: agile-service
-      port: 8379
-      schema: http
-    requirements:
-      - hzero-message
-    preInstall:
-    - name: agile-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS agile_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON agile_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-  - name: test-manager-service
-    chart: test-manager-service
-    version: "0.22.1"
-    resource:
-      host: test-manager-service
-      port: 8394
-      schema: http
-    requirements:
-      - hzero-message
-    preInstall:
-    - name: test-manager-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS test_manager_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-Xms1024M -Xmx1024M"
-  - name: elasticsearch-kb
-    chart: elasticsearch-kb
-    version: "0.22.1"
-    resource:
-      port: 9200
-      host: "elasticsearch-kb"
-    values:
-  - name: knowledgebase-service
-    chart: knowledgebase-service
-    version: "0.22.1"
-    resource:
-      host: knowledgebase-service
-      port: 8280
-      schema: http
-    requirements:
-    - hzero-message
-    - elasticsearch-kb
-    preInstall:
-    - name: knowledgebase-service-predb
-      commands:
-        - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-        - CREATE DATABASE IF NOT EXISTS knowledgebase_service DEFAULT CHARACTER SET utf8;
-        - GRANT ALL PRIVILEGES ON knowledgebase_service.* TO choerodon@"%";
-        - FLUSH PRIVILEGES;
-      infraRef: mysql
-    values:
-    - name: "env.open.JAVA_OPTS"
-      value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-  - name: hzero-front
-    chart: hzero-front
-    version: "0.22.1"
-    resource:
-      host: hzero-front
-      schema: http
-    requirements:
-      - hzero-message
-    values:
-    - name: "ingress.host"
-      value: '{{ ( .GetResource "hzero-front" ).Domain }}'
-    preInstall:
-      - name: create-hzero-front-client
-        commands:
-          - USE hzero_platform;
-          - |
-            INSERT INTO hzero_platform.oauth_client (
-              name,organization_id,resource_ids,secret,scope,
-              authorized_grant_types,web_server_redirect_uri,
-              access_token_validity,refresh_token_validity,
-              additional_information,auto_approve,object_version_number,
-              created_by,creation_date,last_updated_by,last_update_date)
-            VALUES("hzero",1,"default","secret","default",
-                  "password,implicit,client_credentials,authorization_code,refresh_token",
-                  '{{ ( .GetResource "hzero-front").Schema }}://{{ ( .GetResource "hzero-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
-        infraRef: mysql
-  - name: choerodon-front
-    chart: choerodon-front
-    version: "0.22.1"
-    resource:
-      host: "choerodon-front"
-      port: 80
-      schema: http
-    requirements:
-    - agile-service
-    - gitlab-service
-    - devops-service
-    preInstall:
-    - name: create-choerodon-front-client
-      commands:
-        - USE hzero_platform;
-        - |
-          INSERT INTO hzero_platform.oauth_client (
-            name,organization_id,resource_ids,secret,scope,
-            authorized_grant_types,web_server_redirect_uri,
-            access_token_validity,refresh_token_validity,
-            additional_information,auto_approve,object_version_number,
-            created_by,creation_date,last_updated_by,last_update_date)
-          VALUES("choerodon",1,"default","secret","default",
-                "password,implicit,client_credentials,authorization_code,refresh_token",
-                '{{ ( .GetResource "choerodon-front").Schema }}://{{ ( .GetResource "choerodon-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
-      infraRef: mysql
-    values:
-    - name: "ingress.host"
-      value: '{{ ( .GetResource "choerodon-front").Domain }}'
-      check: clusterdomain
-  runner:
-    name: gitlab-runner
-    chart: gitlab-runner
-    version: "0.2.4"
-    resource:
-      host: 
-    requirements:
-    - gitlab
-    values:
-    - name: "rbac.create"
-      value: "true"
-    - name: "env.concurrent"
-      value: "3"
-    - name: "env.gitlabUrl"
-      value: '{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}/'
-    #  TODO
-    - name: "env.runnerToken"
-      value: "{{ ( generateAlphaNum 30) }}"
-    - name: "env.environment.CHOERODON_URL"
-      value: '{{ ( .GetResource "hzero-gateway").Schema }}://{{ ( .GetResource "hzero-gateway").Domain }}'
-      # TODO
-    - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
-      value: "/root/.m2"
-    - name: 'env.persistence.{{ (.GetRunnerPersistence 1 ).RefPvcName }}'
-      value: "/cache"
-    - name: "enabled_mount_host_docker_sock"
-      value: "true"
-    persistence:
-    - name: gitlab-runner-maven
-      path: gitlab-runner/maven
-      mode: "755"
-      accessModes: 
-      - ReadWriteMany
-      size: 20Gi
-      pvcEnabled: true
-      mountOptions:
-      - hard
-      - intr
-      - nfsvers=4.0
-    - name: gitlab-runner-cache
-      path: gitlab-runner/cache
-      mode: "755"
-      accessModes:
-      - ReadWriteMany
-      size: 20Gi
-      pvcEnabled: true
-      mountOptions:
-      - hard
-      - intr
-      - nfsvers=4.0
-    preInstall:
-    - name: insertrunnertoken
-      psql:
-        - |
-          INSERT INTO
-            ci_runners
-            ( token, created_at, updated_at, description, is_shared, name, runner_type )
-          VALUES
-            ( '{{ .GetRunnerValues "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
-      infraRef: gitlab
-      database: gitlabhq_production
-  component:
-    - name: mysql
-      chart: mysql
-      version: 0.1.4
-      values:
-        - name: "env.MYSQL_ROOT_PASSWORD"
-          value: "admin"
-          input:
-            enabled: true
-            regex: ".+"
-            password: true
-            tip: "请输入您要设置的mysql密码(不能为纯数字):"
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.storageClass"
-          value: "nfs-provisioner"
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入mysql使用的storageClass:"
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.enabled"
-          value: "true"
-        - name: "persistence.size"
-          value: "20Gi"
-        - name: "config.character_set_server"
-          value: "utf8mb4"
-        - name: "config.collation_server"
-          value: "utf8mb4_general_ci"
-        - name: "config.lower_case_table_names"
-          value: "1"
-        - name: "config.max_allowed_packet"
-          value: "32M"
-        - name: "config.max_connections"
-          value: "1500"
-    - name: redis
-      chart: redis
-      version: 0.2.5
-      resource:
-        # svc name = release name
-        host: '{{ .GetReleaseName "redis" }}'
-        port: 6379
-      values:
-        - name: "service.enabled"
-          value: "true"
-    - name: minio
-      chart: minio
-      version: 5.0.5
-      resource:
-        host: minio
-        port: 9000
-        schema: http
-      requirements:
-      values:
-        - name: "ingress.hosts[0]"
-          value: "minio.example.choerodon.io"
-          input:
-            enabled: true
-            regex: ".+"
-            tip: "请输入 minio 的域名: "
-            password: false
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "accessKey"
-          value: "admin"
-          input:
-            enabled: true
-            regex: ".{3,}"
-            tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字): "
-            password: false
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "secretKey"
-          value: "choerodon"
-          input:
-            enabled: true
-            password: true
-            regex: ".{8,40}"
-            tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字): "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "mode"
-          value: "distributed"
-        - name: "persistence.enabled"
-          value: "true"
-        - name: "persistence.storageClass"
-          value: "nfs-provisioner"
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入mysql使用的storageClass: "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.size"
-          value: "50Gi"
-        - name: "ingress.enabled"
-          value: "true"
-    - name: nfs-client-provisioner
-      chart: nfs-client-provisioner
-      version: 0.1.1
-      values:
-        - name: "rbac.create"
-          value: true
-        - name: "persistence.enabled"
-          value: true
-        - name: "storageClass.name"
-          value: nfs-provisioner
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入 storageClass 的名字: "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.enabled"
-          value: nfs-provisioner
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入 NFS 服务器的IP: "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.nfsServer"
-          value: nfs-provisioner
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入 NFS 服务器的IP: "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-        - name: "persistence.nfsPath"
-          value: nfs-provisioner
-          input:
-            enabled: true
-            regex: ".+"
-            password: false
-            tip: "请输入 NFS 的目录: "
-            exclude:
-              - value: "^\\d*$"
-                name: "不能为纯数字"
-  monitoring:
-    - name: prometheus-operator
-      chart: prometheus-operator
-      version: 9.3.0
-      resource:
-        host: "prometheus-operator"
-        port: 8080
-      requirements: []
-      preInstall: []
-      values: []
-  logging:
-    - name: loki
-      chart: loki
-      version: 0.29.0
-      resource:
-        host: "loki"
-        port: 8080
-      requirements: []
-      preInstall: []
-      values: []
-    - name: promtail
-      chart: promtail
-      resource:
-        host: "loki"
-        port: 8080
-      requirements: []
-      preInstall: []
-      values: []
-  skymalking:
-    - name: skywalking-mysql
-      chart: mysql
-      version: 0.1.4
-      resource:
-        host: "loki"
-        port: 8080
-      requirements: []
-      preInstall: []
-      values: []
-    - name: skywalking
-      chart: skywalking
-      version: 6.6.0
-      resource:
-        host: "loki"
-        port: 8080
-      requirements: []
-      preInstall: []
-      values: []
+    c7n:
+      - name: c7n-mysql
+        chart: mysql
+        version: 0.1.4
+        resource:
+          port: 3306
+          # mysql 的 svc name 就是 release name
+          host: '{{ .GetReleaseName "c7n-mysql" }}'
+          password: '{{ .GetReleaseValue "c7n-mysql" "env.MYSQL_ROOT_PASSWORD"}}'
+          username: root
+        values:
+          - name: "env.MYSQL_ROOT_PASSWORD"
+            value: "admin"
+            input:
+              enabled: true
+              regex: ".+"
+              password: true
+              tip: "请输入您要设置的mysql密码(不能为纯数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+      - name: c7n-redis
+        chart: redis
+        version: 0.2.5
+        resource:
+          host: '{{ .GetReleaseName "c7n-redis" }}'
+          port: 6379
+        values:
+      - name: gitlab
+        chart: gitlab-ha
+        version: 0.2.2
+        # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
+        resource:
+          schema: http
+          # 如下是自引用的 postgres 配置
+          host: '{{ .GetReleaseName "gitlab" }}-gitlab-database'
+          port: 5432
+          username: "gitlab"
+          password: '{{ .GetReleaseValue "gitlab" "database.internal.password"}}'
+        values:
+          - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "core.env.GITLAB_SECRETS_SECRET_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "expose.ingress.host"
+            value: '{{ ( .GetResource "gitlab").Domain }}'
+            check: clusterdomain
+          - name: "database.internal.password"
+            value: '{{ generateAlphaNum 10 }}'
+          - name: "redis.internal.password"
+            value: '{{ generateAlphaNum 10 }}'
+      - name: minio
+        chart: minio
+        version: 5.0.5
+        resource:
+          host: minio
+          port: 9000
+          schema: http
+        requirements:
+        values:
+          - name: "ingress.hosts[0]"
+            value: '{{ ( .GetResource "minio" ).Domain }}'
+            check: clusterdomain
+          - name: "accessKey"
+            value: "admin"
+            input:
+              enabled: true
+              regex: ".{3,}"
+              tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字):"
+              password: false
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "secretKey"
+            value: "choerodon"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,40}"
+              tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+      # resource harbor
+      - name: harbor
+        chart: harbor
+        version: 1.2.3
+        resource:
+          host: harbor
+          port: 5000
+          schema: https
+        requirements:
+        values:
+          - name: "harborAdminPassword"
+            value: "Choerodon123"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,}"
+              tip: "请设置的Harbor管理员密码(8位以上、必须包含大小写及数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+              include:
+                - value: "[A-Z]+"
+                  name: "必须包含大写"
+                - value: "[a-z]+"
+                  name: "必须包含小写"
+                - value: "\\d+"
+                  name: "必须包含数字"
+          - name: "expose.ingress.hosts.core"
+            value: '{{ ( .GetResource "harbor" ).Domain }}'
+            check: clusterdomain
+      - name: chartmuseum
+        chart: chartmuseum
+        version: 2.6.0
+        resource:
+          host: chartmuseum
+          port: 80
+          schema: http
+        requirements:
+        values:
+          - name: "ingress.hosts[0].name"
+            value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
+            check: clusterdomain
+      - name: hzero-register
+        chart: hzero-register
+        version: "0.22.2"
+        resource:
+          host: "hzero-register"
+          port: 8000
+          schema: http
+          url: "http://hzero-register:8000/eureka/"
+        values:
+      - name: hzero-platform
+        chart: hzero-platform
+        version: "0.22.1"
+        resource:
+          host: hzero-platform
+          port: 8100
+          schema: http
+        requirements:
+          - c7n-mysql
+          - c7n-redis
+          - hzero-register
+        preInstall:
+          - name: hzero-platform-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hzero_platform DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+              - GRANT ALL PRIVILEGES ON hzero_platform.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        afterInstall:
+          - name: create-gitlab-client
+            commands:
+              - use hzero_platform
+              # 子符串过长 yaml_v2 序列化时会自动换行
+              - |
+                INSERT INTO hzero_platform.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
+                web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
+                object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
+                "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
+                "{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
+            infraRef: c7n-mysql
+        values:
+      - name: hzero-admin
+        chart: hzero-admin
+        version: "0.22.3"
+        resource:
+          host: hzero-admin
+          port: 8062
+          schema: http
+        requirements:
+          - hzero-platform
+        preInstall:
+          - name: hzero-admin-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hzero_admin DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hzero_admin.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+      - name: hzero-asgard
+        chart: hzero-asgard
+        version: "0.22.4"
+        resource:
+          host: asgard-service
+          port: 8040
+          schema: http
+        requirements:
+          - hzero-platform
+        preInstall:
+          - name: hzero-asgard-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS asgard_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON asgard_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+      - name: hzero-gateway
+        chart: hzero-gateway
+        version: "0.22.4"
+        resource:
+          host: hzero-gateway
+          port: 8080
+          schema: http
+        requirements:
+          - hzero-admin
+          - hzero-asgard
+        values:
+          - name: "ingress.host"
+            value: '{{ (.GetResource "hzero-gateway" ).Domain }}'
+            check: clusterdomain
+      - name: hzero-iam
+        chart: hzero-iam
+        version: "0.22.1"
+        resource:
+          host: hzero-iam
+          port: 8030
+          schema: http
+        requirements:
+          - hzero-admin
+          - hzero-asgard
+        values:
+      - name: hzero-oauth
+        chart: hzero-oauth
+        version: "0.22.2"
+        resource:
+          host: hzero-oauth
+          port: 8020
+          schema: http
+        requirements:
+          - hzero-admin
+          - hzero-asgard
+        values:
+      - name: hzero-file
+        chart: hzero-file
+        version: "0.22.4"
+        resource:
+          host: hzero-file
+          port: 8110
+          schema: http
+        requirements:
+          - hzero-oauth
+          - minio
+        preInstall:
+          - name: hzero-file-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hzero_file DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hzero_file.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+      - name: hzero-swagger
+        chart: hzero-swagger
+        version: "0.22.1"
+        resource:
+          host: hzero-swagger
+          port:
+          schema: http
+        requirements:
+          - hzero-oauth
+        values:
+      - name: hzero-message
+        chart: hzero-message
+        version: "0.22.7"
+        resource:
+          host: hzero-message
+          port: 8120
+          schema: http
+        requirements:
+          - hzero-oauth
+        preInstall:
+          - name: hzero-message-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hzero_message DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hzero_message.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+          - name: "ingress.host"
+            value: '{{ (.GetResource "hzero-message" ).Domain }}'
+            check: clusterdomain
+      - name: hzero-monitor
+        chart: hzero-monitor
+        version: "0.22.4"
+        resource:
+          host: hzero-monitor
+          port: 8260
+          schema: http
+        requirements:
+          - hzero-file
+          - hzero-swagger
+          - hzero-message
+        preInstall:
+          - name: hzero-monitor-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hzero_monitor DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hzero_monitor.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+      - name: devops-service
+        chart: devops-service
+        version: "0.22.3"
+        resource:
+          host: devops-service
+          port: 8061
+          schema: ws
+        requirements:
+          - hzero-message
+          - gitlab
+          - harbor
+          - chartmuseum
+        preInstall:
+          - name: devops-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS devops_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON devops_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+          - name: "ingress.host"
+            value: '{{ ( .GetResource "devops-service" ).Domain }}'
+            check: clusterdomain
+      - name: gitlab-service
+        chart: gitlab-service
+        version: "0.22.1"
+        resource:
+          host: gitlab-service
+          port: 8071
+          schema: http
+        requirements:
+          - hzero-message
+          - gitlab
+        preInstall:
+          - name: gitlab-set-access-token
+            psql:
+              - |
+                insert into personal_access_tokens (user_id, token_digest, name, expires_at, created_at, updated_at, scopes)
+                values (1, '{{ .EncryptGitlabAccessToken }}', 'c7n', '2099-12-31', '2020-04-28 00:00:00', '2019-04-28 00:00:00',
+                array_to_string(ARRAY ['---','- api','- read_user','- sudo','- read_repository'], chr(10))) ON CONFLICT (token_digest)
+                DO UPDATE SET updated_at=NOW();
+            infraRef: gitlab
+            database: gitlabhq_production
+        afterInstall:
+          - name: create-gitlabadmin-binding
+            psql:
+              - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+              - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
+            infraRef: gitlab
+            database: gitlabhq_production
+          - name: enable_webhook
+            request:
+              header:
+                - name: "content-type"
+                  value: "application/json"
+                # TODO get GITLAB_OAUTH_TOKEN
+                - name: "private-token"
+                  value: '{{.GetReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN"}}'
+              url: '{{(.GetResource "gitlab").Schema }}://{{(.GetResource "gitlab").Domain}}/api/v4/application/settings'
+              body: |
+                {
+                        "allow_local_requests_from_hooks_and_services": true
+                }
+              method: PUT
+        values:
+          - name: "env.open.JAVA_OPTS"
+            value: "-Xms1024M -Xmx1024M"
+          - name: "env.open.GITLAB_PRIVATETOKEN"
+            value: "{{ generateAlphaNum 20 }}"
+      - name: workflow-service
+        chart: workflow-service
+        version: "0.22.2"
+        resource:
+          host: workflow-service
+          port: 8066
+          schema: ws
+        requirements:
+          - hzero-message
+        preInstall:
+          - name: workflow-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS workflow_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON workflow_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+          - name: "env.open.JAVA_OPTS"
+            value: "-Xms1024M -Xmx1024M"
+      - name: agile-service
+        chart: agile-service
+        version: "0.22.2"
+        resource:
+          host: agile-service
+          port: 8379
+          schema: http
+        requirements:
+          - hzero-message
+        preInstall:
+          - name: agile-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS agile_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON agile_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+      - name: test-manager-service
+        chart: test-manager-service
+        version: "0.22.1"
+        resource:
+          host: test-manager-service
+          port: 8394
+          schema: http
+        requirements:
+          - hzero-message
+        preInstall:
+          - name: test-manager-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS test_manager_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+          - name: "env.open.JAVA_OPTS"
+            value: "-Xms1024M -Xmx1024M"
+      - name: elasticsearch-kb
+        chart: elasticsearch-kb
+        version: "0.22.1"
+        resource:
+          port: 9200
+          host: "elasticsearch-kb"
+        values:
+      - name: knowledgebase-service
+        chart: knowledgebase-service
+        version: "0.22.1"
+        resource:
+          host: knowledgebase-service
+          port: 8280
+          schema: http
+        requirements:
+          - hzero-message
+          - elasticsearch-kb
+        preInstall:
+          - name: knowledgebase-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS knowledgebase_service DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON knowledgebase_service.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+        values:
+          - name: "env.open.JAVA_OPTS"
+            value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+      - name: hzero-front
+        chart: hzero-front
+        version: "0.22.1"
+        resource:
+          host: hzero-front
+          schema: http
+        requirements:
+          - hzero-message
+        values:
+          - name: "ingress.host"
+            value: '{{ ( .GetResource "hzero-front" ).Domain }}'
+        preInstall:
+          - name: create-hzero-front-client
+            commands:
+              - USE hzero_platform;
+              - |
+                INSERT INTO hzero_platform.oauth_client (
+                  name,organization_id,resource_ids,secret,scope,
+                  authorized_grant_types,web_server_redirect_uri,
+                  access_token_validity,refresh_token_validity,
+                  additional_information,auto_approve,object_version_number,
+                  created_by,creation_date,last_updated_by,last_update_date)
+                VALUES("hzero",1,"default","secret","default",
+                      "password,implicit,client_credentials,authorization_code,refresh_token",
+                      '{{ ( .GetResource "hzero-front").Schema }}://{{ ( .GetResource "hzero-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+            infraRef: c7n-mysql
+      - name: choerodon-front
+        chart: choerodon-front
+        version: "0.22.1"
+        resource:
+          host: "choerodon-front"
+          port: 80
+          schema: http
+        requirements:
+          - agile-service
+          - gitlab-service
+          - devops-service
+        preInstall:
+          - name: create-choerodon-front-client
+            commands:
+              - USE hzero_platform;
+              - |
+                INSERT INTO hzero_platform.oauth_client (
+                  name,organization_id,resource_ids,secret,scope,
+                  authorized_grant_types,web_server_redirect_uri,
+                  access_token_validity,refresh_token_validity,
+                  additional_information,auto_approve,object_version_number,
+                  created_by,creation_date,last_updated_by,last_update_date)
+                VALUES("choerodon",1,"default","secret","default",
+                      "password,implicit,client_credentials,authorization_code,refresh_token",
+                      '{{ ( .GetResource "choerodon-front").Schema }}://{{ ( .GetResource "choerodon-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+            infraRef: c7n-mysql
+        values:
+          - name: "ingress.host"
+            value: '{{ ( .GetResource "choerodon-front").Domain }}'
+            check: clusterdomain
+    runner:
+      - name: gitlab-runner
+        chart: gitlab-runner
+        version: "0.2.4"
+        resource:
+          host:
+        requirements:
+          - gitlab
+        values:
+          - name: "rbac.create"
+            value: "true"
+          - name: "env.concurrent"
+            value: "3"
+          - name: "env.gitlabUrl"
+            value: '{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}/'
+          #  TODO
+          - name: "env.runnerToken"
+            value: "{{ ( generateAlphaNum 30) }}"
+          - name: "env.environment.CHOERODON_URL"
+            value: '{{ ( .GetResource "hzero-gateway").Schema }}://{{ ( .GetResource "hzero-gateway").Domain }}'
+            # TODO
+          - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
+            value: "/root/.m2"
+          - name: 'env.persistence.{{ (.GetRunnerPersistence 1 ).RefPvcName }}'
+            value: "/cache"
+          - name: "enabled_mount_host_docker_sock"
+            value: "true"
+        persistence:
+          - name: gitlab-runner-maven
+            path: gitlab-runner/maven
+            mode: "755"
+            accessModes:
+              - ReadWriteMany
+            size: 20Gi
+            pvcEnabled: true
+            mountOptions:
+              - hard
+              - intr
+              - nfsvers=4.0
+          - name: gitlab-runner-cache
+            path: gitlab-runner/cache
+            mode: "755"
+            accessModes:
+              - ReadWriteMany
+            size: 20Gi
+            pvcEnabled: true
+            mountOptions:
+              - hard
+              - intr
+              - nfsvers=4.0
+        preInstall:
+          - name: insertrunnertoken
+            psql:
+              - |
+                INSERT INTO
+                  ci_runners
+                  ( token, created_at, updated_at, description, is_shared, name, runner_type )
+                VALUES
+                  ( '{{ .GetRunnerValues "env.runnerToken" }}', NOW(), NOW(), 'c7n-default', true,'gitlab-runner', 1 )
+            infraRef: gitlab
+            database: gitlabhq_production
+    component:
+      - name: mysql-app
+        chart: mysql
+        version: 0.1.4
+        values:
+          - name: "env.MYSQL_ROOT_PASSWORD"
+            value: "admin"
+            input:
+              enabled: true
+              regex: ".+"
+              password: true
+              tip: "请输入您要设置的mysql密码(不能为纯数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.storageClass"
+            value: "nfs-provisioner"
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入mysql使用的storageClass:"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.enabled"
+            value: "true"
+          - name: "persistence.size"
+            value: "20Gi"
+          - name: "config.character_set_server"
+            value: "utf8mb4"
+          - name: "config.collation_server"
+            value: "utf8mb4_general_ci"
+          - name: "config.lower_case_table_names"
+            value: "1"
+          - name: "config.max_allowed_packet"
+            value: "32M"
+          - name: "config.max_connections"
+            value: "1500"
+      - name: redis-app
+        chart: redis
+        version: 0.2.5
+        resource:
+          # svc name = release name
+          host: '{{ .GetReleaseName "redis" }}'
+          port: 6379
+        values:
+          - name: "service.enabled"
+            value: "true"
+      - name: minio-app
+        chart: minio
+        version: 5.0.5
+        resource:
+          host: minio
+          port: 9000
+          schema: http
+        requirements:
+        values:
+          - name: "ingress.hosts[0]"
+            value: "minio.example.choerodon.io"
+            input:
+              enabled: true
+              regex: ".+"
+              tip: "请输入 minio 的域名: "
+              password: false
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "accessKey"
+            value: "admin"
+            input:
+              enabled: true
+              regex: ".{3,}"
+              tip: "请设置的minio的ACCESS_KEY(3个字符以上,不能为纯数字): "
+              password: false
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "secretKey"
+            value: "choerodon"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,40}"
+              tip: "请设置的minio的SECRET_KEY(8-40字符,不能为纯数字): "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "mode"
+            value: "distributed"
+          - name: "persistence.enabled"
+            value: "true"
+          - name: "persistence.storageClass"
+            value: "nfs-provisioner"
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入mysql使用的storageClass: "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.size"
+            value: "50Gi"
+          - name: "ingress.enabled"
+            value: "true"
+      - name: nfs-client-provisioner
+        chart: nfs-client-provisioner
+        version: 0.1.1
+        values:
+          - name: "rbac.create"
+            value: true
+          - name: "persistence.enabled"
+            value: true
+          - name: "storageClass.name"
+            value: nfs-provisioner
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入 storageClass 的名字: "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.enabled"
+            value: nfs-provisioner
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入 NFS 服务器的IP: "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.nfsServer"
+            value: nfs-provisioner
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入 NFS 服务器的IP: "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "persistence.nfsPath"
+            value: nfs-provisioner
+            input:
+              enabled: true
+              regex: ".+"
+              password: false
+              tip: "请输入 NFS 的目录: "
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+    monitoring:
+      - name: prometheus-operator
+        chart: prometheus-operator
+        version: 9.3.0
+        resource:
+          host: "prometheus-operator"
+          port: 8080
+        requirements: [ ]
+        preInstall: [ ]
+        values: [ ]
+    logging:
+      - name: loki
+        chart: loki
+        version: 0.29.0
+        resource:
+          host: "loki"
+          port: 8080
+        requirements: [ ]
+        preInstall: [ ]
+        values: [ ]
+      - name: promtail
+        chart: promtail
+        version: 0.23.0
+        resource:
+          host: "loki"
+          port: 8080
+        requirements: [ ]
+        preInstall: [ ]
+        values: [ ]
+    skymalking:
+      - name: skywalking-mysql
+        chart: mysql
+        version: 0.1.4
+        resource:
+          host: "loki"
+          port: 8080
+        requirements: [ ]
+        preInstall: [ ]
+        values: [ ]
+      - name: skywalking
+        chart: skywalking
+        version: 6.6.0
+        resource:
+          host: "loki"
+          port: 8080
+        requirements: [ ]
+        preInstall: [ ]
+        values: [ ]

@@ -47,7 +47,7 @@ type PvcPostInfo struct {
 func PrintPvcInfos(pvcInfos []PvcInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Status", "PVName", "AccessModes", "RequestResource")
+	table.AddRow("Id", "GetName", "Status", "PVName", "AccessModes", "RequestResource")
 	for _, r := range pvcInfos {
 		table.AddRow(r.Id, r.Name, r.Status, r.PvName, r.AccessModes, r.RequestResource)
 	}

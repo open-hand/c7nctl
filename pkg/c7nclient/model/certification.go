@@ -120,7 +120,7 @@ type GenericCertInfo struct {
 func PrintCertificationInfo(certificationInfo []CertificationInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Domain", "ExpireDay")
+	table.AddRow("Id", "GetName", "Domain", "ExpireDay")
 	for _, r := range certificationInfo {
 		table.AddRow(r.ID, r.CertName, r.Domains, strconv.Itoa(r.ExpireDay)+"天")
 	}
@@ -130,7 +130,7 @@ func PrintCertificationInfo(certificationInfo []CertificationInfo, out io.Writer
 func PrintGenericCertInfo(genericCertInfos []GenericCertInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Domain")
+	table.AddRow("Id", "GetName", "Domain")
 	for _, r := range genericCertInfos {
 		table.AddRow(r.Id, r.Name, r.Domain)
 	}
