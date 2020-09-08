@@ -44,7 +44,7 @@ func TestCreatePvc(t *testing.T) {
 		_ := Persistence{
 			CommonLabels: pvLabels,
 			AccessModes:  []v1.PersistentVolumeAccessMode{"ReadWriteMany"},
-			Name:         "test-pv998",
+			GetName:         "test-pv998",
 			Namespace:    "default",
 			Size:         "10Gi",
 		}

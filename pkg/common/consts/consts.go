@@ -79,8 +79,8 @@ const (
 // 服务列表
 const (
 	ChartMuseum          = "chartmuseum"
-	Redis                = "redis"
-	mysql                = "mysql"
+	Redis                = "c7n-redis"
+	Mysql                = "c7n-mysql"
 	Gitlab               = "gitlab"
 	Harbor               = "harbor"
 	Sonarqube            = "sonarqube"

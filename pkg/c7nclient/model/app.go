@@ -43,14 +43,14 @@ type AppPostInfo struct {
 	Name                        string `json:"name"`
 	Code                        string `json:"code"`
 	Type                        string `json:"type"`
-	TemplateAppServiceId        int `json:"templateAppServiceId,omitempty"`
-	TemplateAppServiceVersionId int `json:"templateAppServiceVersionId,omitempty"`
+	TemplateAppServiceId        int    `json:"templateAppServiceId,omitempty"`
+	TemplateAppServiceVersionId int    `json:"templateAppServiceVersionId,omitempty"`
 }
 
 func PrintAppInfo(appInfos []AppInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("AppId", "Type", "Name", "Code", "RepoUrl", "Status")
+	table.AddRow("AppId", "Type", "GetName", "Code", "RepoUrl", "Status")
 	for _, r := range appInfos {
 		table.AddRow(r.Id, r.Type, r.Name, r.Code, r.RepoURL, r.Status)
 	}

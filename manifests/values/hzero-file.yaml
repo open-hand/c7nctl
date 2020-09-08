@@ -23,8 +23,8 @@ preJob:
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
     # 此db不可更改
     SPRING_REDIS_DATABASE: 1
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_file" }}

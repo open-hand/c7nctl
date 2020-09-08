@@ -49,8 +49,8 @@ func runDelete(cmd *cobra.Command, args []string) error {
 }
 
 func addDeleteFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
-	fs.StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
+	//fs.StringVarP(&ResourceFile, "resource-file", "r", "", "resource file to read from, It provide which app should be installed")
+	//fs.StringVarP(&ConfigFile, "config-file", "c", "", "user Config file to read from, User define config by this file")
 	fs.Bool("debug", false, "enable debug output")
 	fs.StringP("namespace", "n", "", "select namespace")
 }

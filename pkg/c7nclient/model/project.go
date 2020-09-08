@@ -26,7 +26,7 @@ type ProjectInfo struct {
 func PrintProInfo(proInfos []ProjectInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Name", "Code")
+	table.AddRow("GetName", "Code")
 	for _, r := range proInfos {
 		table.AddRow(r.Name, r.Code)
 	}

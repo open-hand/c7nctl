@@ -29,8 +29,8 @@ preJob:
 env:
   open:
     SPRING_APPLICATION_NAME: agile-service
-    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
     SPRING_REDIS_DATABASE: 12
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "agile_service" }}

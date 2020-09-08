@@ -78,7 +78,7 @@ func (r *Release) InstallComponent() error {
 	}
 	// raw := r.ValuesRaw()
 	fmt.Printf("%+v", chartArgs)
-	//err := c7nctx.Ctx.HelmClient.InstallRelease(values, "", chartArgs)
+	//err := c7nctx.Ctx.HelmClient.installRelease(values, "", chartArgs)
 	return nil
 }
 
@@ -257,12 +257,13 @@ func (r *Release) mergerResource(uc *config.C7nConfig) {
 
 // convert yml format values template to yaml raw data
 // 获取 resourcePath 路径下的 values 文件
-func (r *Release) ValuesRaw(resourcePath, helmValue string) (string, error) {
+func (r *Release) ValuesRaw(helmValuePath string) (string, error) {
 	// values.yaml 与 r 名一致
-	valuesFilepath := fmt.Sprintf(filepath.Join(resourcePath, helmValue, r.Name) + ".yaml")
+	valuesFilepath := fmt.Sprintf(filepath.Join(helmValuePath, r.Name) + ".yaml")
 	data, err := utils.GetResource(valuesFilepath)
 	if err != nil {
 		log.Debugf("load helm values file %s failed: %+v", valuesFilepath, err)
+		return "", err
 	}
 	// 不存在配置文件的返回空字符串
 	return string(data[:]), nil

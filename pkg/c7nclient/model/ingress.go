@@ -60,7 +60,7 @@ type DevOpsIngressInfo struct {
 func PrintIngressInfo(contents []DevOpsIngressInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("Id", "Name", "Status", "Host", "Paths")
+	table.AddRow("Id", "GetName", "Status", "Host", "Paths")
 	for _, r := range contents {
 		table.AddRow(r.Id, r.Name, r.Status, r.Host, r.Paths)
 	}

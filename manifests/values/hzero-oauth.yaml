@@ -21,8 +21,8 @@ env:
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password
-    SPRING_REDIS_HOST: {{ ( .GetResource "redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "redis").Port }}
+    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
     # 此db不可更改
     SPRING_REDIS_DATABASE: 3
 {{- if .IsThinMode }}

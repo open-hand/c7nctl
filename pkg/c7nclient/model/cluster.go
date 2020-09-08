@@ -14,10 +14,10 @@ type Clusters struct {
 }
 
 type Cluster struct {
-	ID                         int         `json:"id"`
-	Name                       string      `json:"name"`
-	Code                       string      `json:"code"`
-	Connect                    bool        `json:"connect"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Code    string `json:"code"`
+	Connect bool   `json:"connect"`
 }
 
 type Node struct {
@@ -41,9 +41,9 @@ type Node struct {
 }
 
 type Nodes struct {
-	Pages int       `json:"pages"`
-	Size  int       `json:"size"`
-	Total int       `json:"total"`
+	Pages int    `json:"pages"`
+	Size  int    `json:"size"`
+	Total int    `json:"total"`
 	List  []Node `json:"list"`
 }
 
@@ -59,9 +59,9 @@ type NodeInfo struct {
 }
 
 type ClusterInfo struct {
-	Name        string
-	Code        string
-	Status      string
+	Name   string
+	Code   string
+	Status string
 }
 
 type ClusterPostInfo struct {
@@ -74,7 +74,7 @@ type ClusterPostInfo struct {
 func PrintClusterInfo(clusterInfos []ClusterInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Name", "Code", "Status")
+	table.AddRow("GetName", "Code", "Status")
 	for _, r := range clusterInfos {
 		table.AddRow(r.Name, r.Code, r.Status)
 	}
@@ -84,7 +84,7 @@ func PrintClusterInfo(clusterInfos []ClusterInfo, out io.Writer) {
 func PrintNodeInfo(nodeInfos []NodeInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Status", "Name", "Type", "Cpu Request", "Cpu Limit", "Memory Request", "Memory Limit", "CreationDate")
+	table.AddRow("Status", "GetName", "Type", "Cpu Request", "Cpu Limit", "Memory Request", "Memory Limit", "CreationDate")
 	for _, r := range nodeInfos {
 		table.AddRow(r.Status, r.NodeName, r.NodeType, r.CpuRequest, r.CpuLimit, r.MemoryRequest, r.MemoryLimit, r.CreationDate)
 	}

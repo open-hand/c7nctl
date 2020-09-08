@@ -45,7 +45,7 @@ type SecretPostInfo struct {
 func PrintSecretInfos(secretInfos []SecretInfo, out io.Writer) {
 	table := uitable.New()
 	table.MaxColWidth = 100
-	table.AddRow("Id", "Name", "Key", "UpdateTime", "Status")
+	table.AddRow("Id", "GetName", "Key", "UpdateTime", "Status")
 	for _, r := range secretInfos {
 		table.AddRow(r.Id, r.Name, r.Key, r.LastUpdateDate, r.Status)
 	}
