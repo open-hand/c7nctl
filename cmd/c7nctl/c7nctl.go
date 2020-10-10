@@ -52,7 +52,7 @@ func main() {
 		c7nCfg.KubeClient = client.NewK8sClient(kubeclient)
 	})
 	if err := cmd.Execute(); err != nil {
-		log.Debug(err)
+		log.Error(err)
 	}
 }
 
