@@ -62,6 +62,7 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 			} else {
 				log.Info("Install Choerodon succeed")
 			}
+			metrics.Send()
 		},
 	}
 

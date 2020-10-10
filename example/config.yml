@@ -21,6 +21,9 @@ spec:
     chartmuseum:
       domain: chart.c7n.yidaqiang.com
       schema: http
+    sonarqube:
+      domain: sonarqube.c7n.yidaqiang.com
+      schema: http
     hzero-gateway:
       domain: api.c7n.yidaqiang.com
       schema: http

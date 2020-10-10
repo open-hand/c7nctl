@@ -161,6 +161,20 @@ spec:
           - name: "ingress.hosts[0].name"
             value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
             check: clusterdomain
+      - name: sonarqube
+        chart: sonarqube
+        version: 0.15.0-3
+        resource:
+          schema: "http"
+          host: '{{ .GetReleaseName "sonarqube" }}-postgresql'
+          port: 5432
+          username: "sonarUser"
+          password: "sonarPass"
+        requirements:
+        values:
+          - name: "ingress.hosts[0]"
+            value: '{{ ( .GetResource "sonarqube" ).Domain }}'
+            check: clusterdomain
       - name: hzero-register
         chart: hzero-register
         version: "0.22.2"
@@ -172,7 +186,7 @@ spec:
         values:
       - name: hzero-platform
         chart: hzero-platform
-        version: "0.22.1"
+        version: "0.22.2"
         resource:
           host: hzero-platform
           port: 8100
@@ -222,7 +236,7 @@ spec:
         values:
       - name: hzero-asgard
         chart: hzero-asgard
-        version: "0.22.4"
+        version: "0.22.5"
         resource:
           host: asgard-service
           port: 8040
@@ -254,7 +268,7 @@ spec:
             check: clusterdomain
       - name: hzero-iam
         chart: hzero-iam
-        version: "0.22.1"
+        version: "0.22.4"
         resource:
           host: hzero-iam
           port: 8030
@@ -305,7 +319,7 @@ spec:
         values:
       - name: hzero-message
         chart: hzero-message
-        version: "0.22.7"
+        version: "0.22.10"
         resource:
           host: hzero-message
           port: 8120
@@ -346,15 +360,16 @@ spec:
         values:
       - name: devops-service
         chart: devops-service
-        version: "0.22.3"
+        version: "0.22.7"
         resource:
           host: devops-service
           port: 8061
           schema: ws
         requirements:
-          - hzero-message
+          - hzero-monitor
           - gitlab
           - harbor
+          - sonarqube
           - chartmuseum
         preInstall:
           - name: devops-service-predb
@@ -364,6 +379,30 @@ spec:
               - GRANT ALL PRIVILEGES ON devops_service.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
+          - name: create-sonarqube-front-client
+            commands:
+              - USE hzero_platform;
+              - |
+                INSERT INTO hzero_platform.oauth_client (
+                  name,organization_id,resource_ids,secret,scope,
+                  authorized_grant_types,web_server_redirect_uri,
+                  access_token_validity,refresh_token_validity,
+                  additional_information,auto_approve,object_version_number,
+                  created_by,creation_date,last_updated_by,last_update_date)
+                VALUES("sonar",1,"default","secret","default",
+                      "password,implicit,client_credentials,authorization_code,refresh_token",
+                      '{{ ( .GetResource "sonarqube").Schema }}://{{ ( .GetResource "sonarqube").Domain }}/oauth2/callback/choerodon',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+            infraRef: c7n-mysql
+          - name: sonarqube-init-predb
+            psql:
+              - UPDATE organizations SET new_project_private = true WHERE kee='default-organization';
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.url', 'http://{{ ( .GetResource "sonarqube" ).Domain }}/', false, EXTRACT(epoch FROM NOW()) * 1000);
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.url', 'http://{{ ( .GetResource "hzero-gateway" ).Domain }}', false, EXTRACT(epoch FROM NOW()) * 1000);
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.applicationId', 'sonar', false, EXTRACT(epoch FROM NOW()) * 1000);
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.secret', 'secret', false, EXTRACT(epoch FROM NOW()) * 1000);
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.enabled', 'true', false, EXTRACT(epoch FROM NOW()) * 1000);
+            infraRef: sonarqube
+            database: sonarDB
         values:
           - name: "ingress.host"
             value: '{{ ( .GetResource "devops-service" ).Domain }}'
@@ -376,7 +415,7 @@ spec:
           port: 8071
           schema: http
         requirements:
-          - hzero-message
+          - hzero-monitor
           - gitlab
         preInstall:
           - name: gitlab-set-access-token
@@ -410,8 +449,6 @@ spec:
                 }
               method: PUT
         values:
-          - name: "env.open.JAVA_OPTS"
-            value: "-Xms1024M -Xmx1024M"
           - name: "env.open.GITLAB_PRIVATETOKEN"
             value: "{{ generateAlphaNum 20 }}"
       - name: workflow-service
@@ -422,7 +459,7 @@ spec:
           port: 8066
           schema: ws
         requirements:
-          - hzero-message
+          - hzero-monitor
         preInstall:
           - name: workflow-service-predb
             commands:
@@ -432,8 +469,6 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-          - name: "env.open.JAVA_OPTS"
-            value: "-Xms1024M -Xmx1024M"
       - name: agile-service
         chart: agile-service
         version: "0.22.2"
@@ -442,7 +477,7 @@ spec:
           port: 8379
           schema: http
         requirements:
-          - hzero-message
+          - hzero-monitor
         preInstall:
           - name: agile-service-predb
             commands:
@@ -454,13 +489,13 @@ spec:
         values:
       - name: test-manager-service
         chart: test-manager-service
-        version: "0.22.1"
+        version: "0.22.2"
         resource:
           host: test-manager-service
           port: 8394
           schema: http
         requirements:
-          - hzero-message
+          - hzero-monitor
         preInstall:
           - name: test-manager-service-predb
             commands:
@@ -507,7 +542,7 @@ spec:
           host: hzero-front
           schema: http
         requirements:
-          - hzero-message
+          - hzero-monitor
         values:
           - name: "ingress.host"
             value: '{{ ( .GetResource "hzero-front" ).Domain }}'

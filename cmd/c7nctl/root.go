@@ -50,6 +50,6 @@ func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []str
 		newUseCmd(out),
 	)
 
-	// TODO  完成命令自动补全功能
+	// TODO 完成命令自动补全功能
 	return cmd
 }
