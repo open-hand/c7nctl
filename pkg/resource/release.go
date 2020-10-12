@@ -11,7 +11,6 @@ import (
 	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"path/filepath"
 	"strings"
 )
 
@@ -259,7 +258,10 @@ func (r *Release) mergerResource(uc *config.C7nConfig) {
 // 获取 resourcePath 路径下的 values 文件
 func (r *Release) ValuesRaw(helmValuePath string) string {
 	// values.yaml 与 r 名一致
-	valuesFilepath := fmt.Sprintf(filepath.Join(helmValuePath, r.Name) + ".yaml")
+	if !strings.HasSuffix(helmValuePath, "/") {
+		helmValuePath += "/"
+	}
+	valuesFilepath := fmt.Sprintf(helmValuePath + r.Name + ".yaml")
 	data, err := utils.GetResource(valuesFilepath)
 	if err != nil {
 		log.Debugf("load helm values file %s failed: %+v", valuesFilepath, err)

@@ -18,7 +18,7 @@ import (
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -66,7 +66,11 @@ type Basic struct {
 
 func (i *InstallDefinition) GetInstallDefinition(resource string) error {
 	// TODO 如果 resource 是域名形式, https:// 会变成 https:/
-	res, err := c7nutils.GetResource(filepath.Join(resource, c7nconsts.InstallConfigPath))
+	if !strings.HasSuffix(resource, "/") {
+		resource += "/"
+	}
+	res, err := c7nutils.GetResource(resource + c7nconsts.InstallConfigPath)
+
 	if err != nil {
 		return err
 	}
