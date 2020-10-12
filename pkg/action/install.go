@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -153,7 +152,11 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 		rls := installQueue.Dequeue()
 		log.Infof("start installing release %s", rls.Name)
 		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
-		vals, err := inst.RenderHelmValues(rls, filepath.Join(i.ResourcePath, i.HelmValues))
+		if !strings.HasSuffix(i.ResourcePath, "/") {
+			i.ResourcePath += "/"
+		}
+
+		vals, err := inst.RenderHelmValues(rls, i.ResourcePath+i.HelmValues)
 		if err != nil {
 			return err
 		}
