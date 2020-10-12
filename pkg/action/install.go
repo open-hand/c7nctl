@@ -127,7 +127,7 @@ func (i *Install) Run(instDef *resource.InstallDefinition) (err error) {
 
 	// 渲染 Release
 	c7nclient.InitC7nLogs(i.cfg.KubeClient.GetClientSet(), i.Namespace)
-	if err = instDef.RenderReleases(i.Name); err != nil {
+	if err = instDef.RenderReleases(i.Name, i.cfg.KubeClient, i.Namespace); err != nil {
 		return err
 	}
 	if i.ClientOnly {
@@ -157,6 +157,7 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 		if err != nil {
 			return err
 		}
+
 		args := c7nclient.ChartArgs{
 			RepoUrl:     inst.Spec.Basic.ChartRepository,
 			Namespace:   i.Namespace,

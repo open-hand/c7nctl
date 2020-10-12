@@ -4,7 +4,9 @@ import (
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
+	c7nerrors "github.com/choerodon/c7nctl/pkg/common/errors"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
+	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -71,10 +73,11 @@ func (p *Persistence) CheckOrCreatePvc(sc string) error {
 	if p.RefPvcName == "" {
 		p.RefPvcName = p.Name
 	}
-	ti, err := p.Client.GetTaskInfoFromCM(p.Namespace, p.Name)
+
+	task, err := c7nclient.GetTask(p.Name)
 	if err != nil {
-		if err.Error() == "Task info is not found" {
-			ti = c7nclient.TaskInfo{
+		if std_errors.Is(err, c7nerrors.TaskInfoIsNotFoundError) {
+			task = &c7nclient.TaskInfo{
 				Name:    p.Name,
 				RefName: p.Name,
 				Type:    c7nconsts.StaticPersistentKey,
@@ -84,9 +87,10 @@ func (p *Persistence) CheckOrCreatePvc(sc string) error {
 			return err
 		}
 	}
-	if ti.Name != "" && ti.Status == c7nconsts.SucceedStatus {
-		p.RefPvcName = ti.RefName
-		log.Infof("using existing pvc %s", ti.RefName)
+
+	if task.Status == c7nconsts.SucceedStatus {
+		p.RefPvcName = task.RefName
+		log.Infof("using existing pvc %s", task.RefName)
 		return nil
 	}
 	// 获得一个不重复的 pvc name
@@ -173,7 +177,7 @@ func (p *Persistence) createPvc(sc string) error {
 
 	ti := p.prepareTaskInfo()
 	ti.RefName = p.RefPvcName
-	defer p.Client.SaveTaskInfoToCM(p.Namespace, *ti)
+	defer c7nclient.SaveTask(*ti)
 
 	_, err := p.Client.CreatePvc(p.Namespace, pvc)
 	if err != nil {

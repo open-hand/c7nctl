@@ -91,13 +91,19 @@ func (i *InstallDefinition) IsName(name string) bool {
 	return false
 }
 
-func (i *InstallDefinition) RenderReleases(name string) error {
+func (i *InstallDefinition) RenderReleases(name string, client *c7nclient.K8sClient, namespace string) error {
 	// 初始化安装记录
 	for _, rls := range i.Spec.Release[name] {
+		i.CreatePersistence(rls, client, namespace)
+
 		if err := i.renderRelease(rls); err != nil {
 			log.Errorf("Release %s render failed: %+v", rls.Name, err)
 		}
+		if err := i.CheckReleaseDomain(rls.Values); err != nil {
+			log.Errorf("Check Release Domain %s failed: %+v", rls.Name, err)
+		}
 	}
+
 	return nil
 }
 
@@ -146,17 +152,28 @@ func (i *InstallDefinition) renderRelease(r *Release) error {
 	return nil
 }
 
+func (i *InstallDefinition) CreatePersistence(r *Release, client *c7nclient.K8sClient, namespace string) {
+	for _, p := range r.Persistence {
+		p.Client = client
+		p.Namespace = namespace
+		if err := p.CheckOrCreatePvc(i.GetStorageClass()); err != nil {
+			log.Error(err)
+		}
+	}
+}
+
 // 必须基于 InstallDefinition 渲染 value.yaml 文件
 func (i *InstallDefinition) RenderHelmValues(r *Release, helmValuesPath string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
 	var fileValsByte bytes.Buffer
-	fileVals, err := r.ValuesRaw(helmValuesPath)
-	if err != nil {
-		return nil, err
-	}
-	fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
-	if err != nil {
-		return nil, err
+	var err error
+
+	fileVals := r.ValuesRaw(helmValuesPath)
+	if fileVals != "" {
+		fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c7nutils.Vals(rlsVals, fileValsByte.String())
