@@ -257,16 +257,17 @@ func (r *Release) mergerResource(uc *config.C7nConfig) {
 
 // convert yml format values template to yaml raw data
 // 获取 resourcePath 路径下的 values 文件
-func (r *Release) ValuesRaw(helmValuePath string) (string, error) {
+func (r *Release) ValuesRaw(helmValuePath string) string {
 	// values.yaml 与 r 名一致
 	valuesFilepath := fmt.Sprintf(filepath.Join(helmValuePath, r.Name) + ".yaml")
 	data, err := utils.GetResource(valuesFilepath)
 	if err != nil {
 		log.Debugf("load helm values file %s failed: %+v", valuesFilepath, err)
-		return "", err
+		// 获取失败，返回空
+		return ""
 	}
 	// 不存在配置文件的返回空字符串
-	return string(data[:]), nil
+	return string(data[:])
 }
 
 // convert yml values to values list as xxx=yyy
