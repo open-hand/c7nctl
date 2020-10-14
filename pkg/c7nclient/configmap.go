@@ -35,7 +35,7 @@ func (c *C7NClient) ListConfigMap(out io.Writer, projectId int, envId int) {
 	loc, _ := time.LoadLocation("Local")
 	configMapInfos := []model.ConfigMapInfo{}
 	for _, configMap := range configMaps.List {
-		lastUpdateDate, _ := time.ParseInLocation(baseFormat, configMap.LastUpdateDate,loc)
+		lastUpdateDate, _ := time.ParseInLocation(baseFormat, configMap.LastUpdateDate, loc)
 		configMapInfo := model.ConfigMapInfo{
 			Id:             configMap.Id,
 			Name:           configMap.Name,

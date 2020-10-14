@@ -3,7 +3,7 @@ ingress:
 env:
   open:
     BUILD_CLIENT_ID: hzero
-    BUILD_API_HOST: {{ .GetResourceDomainUrl "hzero-gateway" }}
+    BUILD_API_HOST: {{ .GetResourceDomainUrl "hzero-front" }}
 {{- if .IsThinMode }}
 resources:
   limits:

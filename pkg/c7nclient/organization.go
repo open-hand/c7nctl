@@ -59,8 +59,8 @@ func (c *C7NClient) UseOrganization(out io.Writer, orgCode string) {
 				if context.Name == c.platformConfig.CurrentContext {
 					c.currentContext.User.OrganizationId = org.ID
 					c.currentContext.User.OrganizationCode = orgCode
-					c.platformConfig.Contexts[index].User.OrganizationId=org.ID
-					c.platformConfig.Contexts[index].User.OrganizationCode=orgCode
+					c.platformConfig.Contexts[index].User.OrganizationId = org.ID
+					c.platformConfig.Contexts[index].User.OrganizationCode = orgCode
 				}
 			}
 

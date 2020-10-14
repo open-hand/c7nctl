@@ -11,7 +11,7 @@ core:
     OAUTH_BLOCK_AUTO_CREATED_USERS: false
     OAUTH_GENERIC_API_KEY: "gitlab"
     OAUTH_GENERIC_APP_SECRET: "secret"
-    OAUTH_GENERIC_SITE: {{ .GetResourceDomainUrl "hzero-gateway" }}
+    OAUTH_GENERIC_SITE: {{ .GetResourceDomainUrl "choerodon-gateway" }}
     OAUTH_GENERIC_USER_INFO_URL: "/oauth/api/user"
     OAUTH_GENERIC_AUTHORIZE_URL: "/oauth/oauth/authorize"
     OAUTH_GENERIC_TOKEN_URL: "/oauth/oauth/token"

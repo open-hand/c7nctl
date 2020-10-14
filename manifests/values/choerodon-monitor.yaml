@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/hzero-file
+  repository: {{ .GetImageRepository }}/hzero-monitor
 {{- end }}
 
 {{- if ne .GetImageRepository "" }}
@@ -19,23 +19,17 @@ preJob:
       url: {{ .GetDatabaseUrl "" }}
       username: choerodon
       password: password
-      driver: com.mysql.jdbc.Driver
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+    HZERO_AUTO_REFRESH_SWAGGER_ENABLE: true
     SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
     SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
     # 此db不可更改
     SPRING_REDIS_DATABASE: 1
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_file" }}
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_monitor" }}
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password
-    SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 200MB
-    SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 200MB
-    FILE_GATEWAY_URL: {{ .GetResourceDomainUrl "hzero-gateway" }}/hfle
-    MINIO_ACCESSKEY: {{ .GetReleaseValue "minio" "accessKey" }}
-    MINIO_ENDPOINT: {{ .GetResourceDomainUrl "minio" }}
-    MINIO_SECRETKEY: {{ .GetReleaseValue "minio" "secretKey" }}
 {{- if .IsThinMode }}
 resources:
   limits:

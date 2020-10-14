@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/hzero_repository
+  repository: {{ .GetImageRepository }}/choerodon-register
 {{- end }}
 
 {{- if ne .GetImageRepository "" }}
@@ -13,7 +13,6 @@ plugins:
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-# TODO 确认是否需要域名
 ingress:
   enabled: false
 {{- if .IsThinMode }}

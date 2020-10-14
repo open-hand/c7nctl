@@ -1,20 +1,20 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/chartmuseum
+  repository: {{ .GetImageRepository }}/choeroedon-front
 {{- end }}
 
 env:
   open:
     LOCAL: false
     CLIENT_ID: choerodon
-    API_HOST: {{ .GetResourceDomainUrl "hzero-gateway" }}
+    API_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}
     DEVOPS_HOST: {{ .GetResourceDomainUrl "devops-service" }}
     HEADER_TITLE_NAME: Choerodon | 多云应用技术集成平台
     COOKIE_SERVER: {{ .GetResourceDomainUrl "choerodon-front" }}
     TITLE_NAME: Choerodon | 多云应用技术集成平台
-    WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "hzero-message" }}
+    WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "choerodon-message" }}
     FILE_SERVER: {{ .GetResourceDomainUrl "minio" }}
-    HZERO_FRONT: {{ .GetResourceDomainUrl "hzero-front" }}
-    DEVOPS_WEBSOCKET_SECRET_KEY: devops_ws
+    HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front" }}
+    DEVOPS_WEBSOCKET_SECRET_KEY: example
 ingress:
   enabled: true
