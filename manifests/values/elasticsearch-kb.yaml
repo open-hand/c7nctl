@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/workflow_service
+  repository: {{ .GetImageRepository }}/elasticsearch-kb
 {{- end }}
 
 {{- if .IsThinMode }}

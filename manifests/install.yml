@@ -11,7 +11,8 @@ spec:
     commonLabels:
       choerodon-version: "0.22"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
-    chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
+    chartRepository: "http://charts.dev.yidaqiang.com/c7n/"
+    #chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
     # prefix: ""
     # helmValues: "values"
@@ -149,6 +150,14 @@ spec:
           - name: "expose.ingress.hosts.core"
             value: '{{ ( .GetResource "harbor" ).Domain }}'
             check: clusterdomain
+      - name: sonatype-nexus
+        chart: sonatype-nexus
+        version: "2020.10.14-012352-master"
+        resource:
+          host: sonatype-nexus
+          schema: http
+        requirements:
+        values:
       - name: chartmuseum
         chart: chartmuseum
         version: 2.6.0
@@ -175,28 +184,28 @@ spec:
           - name: "ingress.hosts[0]"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
             check: clusterdomain
-      - name: hzero-register
-        chart: hzero-register
-        version: "0.22.2"
+      - name: choerodon-register
+        chart: choerodon-register
+        version: "0.23.1"
         resource:
-          host: "hzero-register"
+          host: "choerodon-register"
           port: 8000
           schema: http
-          url: "http://hzero-register:8000/eureka/"
+          url: "http://choerodon-register:8000/eureka/"
         values:
-      - name: hzero-platform
-        chart: hzero-platform
-        version: "0.22.2"
+      - name: choerodon-platform
+        chart: choerodon-platform
+        version: "0.23.4"
         resource:
-          host: hzero-platform
+          host: choerodon-platform
           port: 8100
           schema: http
         requirements:
           - c7n-mysql
           - c7n-redis
-          - hzero-register
+          - choerodon-register
         preInstall:
-          - name: hzero-platform-predb
+          - name: choerodon-platform-predb
             commands:
               - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
               - CREATE DATABASE IF NOT EXISTS hzero_platform DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -216,17 +225,17 @@ spec:
                 "{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}",3600,3600,"{}","default",1,0,NOW(),0,NOW());
             infraRef: c7n-mysql
         values:
-      - name: hzero-admin
-        chart: hzero-admin
-        version: "0.22.3"
+      - name: choerodon-admin
+        chart: choerodon-admin
+        version: "0.23.1"
         resource:
-          host: hzero-admin
+          host: choerodon-admin
           port: 8062
           schema: http
         requirements:
-          - hzero-platform
+          - choerodon-platform
         preInstall:
-          - name: hzero-admin-predb
+          - name: choerodon-admin-predb
             commands:
               - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
               - CREATE DATABASE IF NOT EXISTS hzero_admin DEFAULT CHARACTER SET utf8;
@@ -234,15 +243,15 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-      - name: hzero-asgard
-        chart: hzero-asgard
-        version: "0.22.5"
+      - name: choerodon-asgard
+        chart: choerodon-asgard
+        version: "0.23.3"
         resource:
-          host: asgard-service
+          host: choerodon-service
           port: 8040
           schema: http
         requirements:
-          - hzero-platform
+          - choerodon-platform
         preInstall:
           - name: hzero-asgard-predb
             commands:
@@ -252,54 +261,54 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-      - name: hzero-gateway
-        chart: hzero-gateway
-        version: "0.22.4"
+      - name: choerodon-gateway
+        chart: choerodon-gateway
+        version: "0.23.1"
         resource:
-          host: hzero-gateway
+          host: choerodon-gateway
           port: 8080
           schema: http
         requirements:
-          - hzero-admin
-          - hzero-asgard
+          - choerodon-admin
+          - choerodon-asgard
         values:
           - name: "ingress.host"
-            value: '{{ (.GetResource "hzero-gateway" ).Domain }}'
+            value: '{{ (.GetResource "choerodon-gateway" ).Domain }}'
             check: clusterdomain
-      - name: hzero-iam
-        chart: hzero-iam
-        version: "0.22.4"
+      - name: choerodon-iam
+        chart: choerodon-iam
+        version: "0.23.6"
         resource:
-          host: hzero-iam
+          host: choerodon-iam
           port: 8030
           schema: http
         requirements:
-          - hzero-admin
-          - hzero-asgard
+          - choerodon-admin
+          - choerodon-asgard
         values:
-      - name: hzero-oauth
-        chart: hzero-oauth
-        version: "0.22.2"
+      - name: choerodon-oauth
+        chart: choerodon-oauth
+        version: "0.23.1"
         resource:
-          host: hzero-oauth
+          host: choerodon-oauth
           port: 8020
           schema: http
         requirements:
-          - hzero-admin
-          - hzero-asgard
+          - choerodon-admin
+          - choerodon-asgard
         values:
-      - name: hzero-file
-        chart: hzero-file
-        version: "0.22.4"
+      - name: choerodon-file
+        chart: choerodon-file
+        version: "0.23.1"
         resource:
-          host: hzero-file
+          host: choerodon-file
           port: 8110
           schema: http
         requirements:
-          - hzero-oauth
+          - choerodon-oauth
           - minio
         preInstall:
-          - name: hzero-file-predb
+          - name: choerodon-file-predb
             commands:
               - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
               - CREATE DATABASE IF NOT EXISTS hzero_file DEFAULT CHARACTER SET utf8;
@@ -307,27 +316,27 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-      - name: hzero-swagger
-        chart: hzero-swagger
-        version: "0.22.1"
+      - name: choerodon-swagger
+        chart: choerodon-swagger
+        version: "0.23.1"
         resource:
-          host: hzero-swagger
+          host: choerodon-swagger
           port:
           schema: http
         requirements:
-          - hzero-oauth
+          - choerodon-oauth
         values:
-      - name: hzero-message
-        chart: hzero-message
-        version: "0.22.10"
+      - name: choerodon-message
+        chart: choerodon-message
+        version: "0.23.7"
         resource:
-          host: hzero-message
+          host: choerodon-message
           port: 8120
           schema: http
         requirements:
-          - hzero-oauth
+          - choerodon-oauth
         preInstall:
-          - name: hzero-message-predb
+          - name: choerodon-message-predb
             commands:
               - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
               - CREATE DATABASE IF NOT EXISTS hzero_message DEFAULT CHARACTER SET utf8;
@@ -336,21 +345,21 @@ spec:
             infraRef: c7n-mysql
         values:
           - name: "ingress.host"
-            value: '{{ (.GetResource "hzero-message" ).Domain }}'
+            value: '{{ (.GetResource "choerodon-message" ).Domain }}'
             check: clusterdomain
-      - name: hzero-monitor
-        chart: hzero-monitor
-        version: "0.22.4"
+      - name: choerodon-monitor
+        chart: choerodon-monitor
+        version: "0.23.1"
         resource:
-          host: hzero-monitor
+          host: choerodon-monitor
           port: 8260
           schema: http
         requirements:
-          - hzero-file
-          - hzero-swagger
-          - hzero-message
+          - choerodon-file
+          - choerodon-swagger
+          - choerodon-message
         preInstall:
-          - name: hzero-monitor-predb
+          - name: choerodon-monitor-predb
             commands:
               - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
               - CREATE DATABASE IF NOT EXISTS hzero_monitor DEFAULT CHARACTER SET utf8;
@@ -360,13 +369,13 @@ spec:
         values:
       - name: devops-service
         chart: devops-service
-        version: "0.22.7"
+        version: "0.23.7"
         resource:
           host: devops-service
           port: 8061
           schema: ws
         requirements:
-          - hzero-monitor
+          - choerodon-message
           - gitlab
           - harbor
           - sonarqube
@@ -397,7 +406,7 @@ spec:
             psql:
               - UPDATE organizations SET new_project_private = true WHERE kee='default-organization';
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.url', 'http://{{ ( .GetResource "sonarqube" ).Domain }}/', false, EXTRACT(epoch FROM NOW()) * 1000);
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.url', 'http://{{ ( .GetResource "hzero-gateway" ).Domain }}', false, EXTRACT(epoch FROM NOW()) * 1000);
+              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.url', 'http://{{ ( .GetResource "choerodon-gateway" ).Domain }}', false, EXTRACT(epoch FROM NOW()) * 1000);
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.applicationId', 'sonar', false, EXTRACT(epoch FROM NOW()) * 1000);
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.secret', 'secret', false, EXTRACT(epoch FROM NOW()) * 1000);
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.enabled', 'true', false, EXTRACT(epoch FROM NOW()) * 1000);
@@ -409,13 +418,13 @@ spec:
             check: clusterdomain
       - name: gitlab-service
         chart: gitlab-service
-        version: "0.22.1"
+        version: "0.23.1"
         resource:
           host: gitlab-service
           port: 8071
           schema: http
         requirements:
-          - hzero-monitor
+          - choerodon-message
           - gitlab
         preInstall:
           - name: gitlab-set-access-token
@@ -453,13 +462,13 @@ spec:
             value: "{{ generateAlphaNum 20 }}"
       - name: workflow-service
         chart: workflow-service
-        version: "0.22.2"
+        version: "0.23.2"
         resource:
           host: workflow-service
           port: 8066
           schema: ws
         requirements:
-          - hzero-monitor
+          - choerodon-message
         preInstall:
           - name: workflow-service-predb
             commands:
@@ -471,13 +480,13 @@ spec:
         values:
       - name: agile-service
         chart: agile-service
-        version: "0.22.2"
+        version: "0.23.6"
         resource:
           host: agile-service
           port: 8379
           schema: http
         requirements:
-          - hzero-monitor
+          - choerodon-message
         preInstall:
           - name: agile-service-predb
             commands:
@@ -489,13 +498,13 @@ spec:
         values:
       - name: test-manager-service
         chart: test-manager-service
-        version: "0.22.2"
+        version: "0.23.2"
         resource:
           host: test-manager-service
           port: 8394
           schema: http
         requirements:
-          - hzero-monitor
+          - choerodon-message
         preInstall:
           - name: test-manager-service-predb
             commands:
@@ -504,25 +513,22 @@ spec:
               - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
-        values:
-          - name: "env.open.JAVA_OPTS"
-            value: "-Xms1024M -Xmx1024M"
       - name: elasticsearch-kb
         chart: elasticsearch-kb
-        version: "0.22.1"
+        version: "0.23.0"
         resource:
           port: 9200
           host: "elasticsearch-kb"
         values:
       - name: knowledgebase-service
         chart: knowledgebase-service
-        version: "0.22.1"
+        version: "0.23.1"
         resource:
           host: knowledgebase-service
           port: 8280
           schema: http
         requirements:
-          - hzero-message
+          - choerodon-message
           - elasticsearch-kb
         preInstall:
           - name: knowledgebase-service-predb
@@ -533,21 +539,84 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-          - name: "env.open.JAVA_OPTS"
-            value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+      - name: code-repo-service
+        chart: code-repo-service
+        version: "0.23.2"
+        resource:
+          host: code-repo-service
+          schema: http
+        requirements:
+          - gitlab-service
+        values:
+        preInstall:
+          - name: code-repo-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hrds_code_repo DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hrds_code_repo.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+      - name: prod-repo-service
+        chart: prod-repo-service
+        version: "0.23.3"
+        resource:
+          host: prod-repo-service
+          schema: http
+        requirements:
+          - devops-service
+          - sonatype-nexus
+        values:
+          - name: "env.open.NEXUS_DEFAULT_PASSWORD"
+            value: "hrdsadmin"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,}"
+              tip: "设置修改后的 NEXUS 默认账户密码（设置指南：）:"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "env.open.NEXUS_DEFAULT_ANONYMOUS_USER"
+            value: "hrds-anonymous"
+            input:
+              enabled: true
+              password: false
+              regex: ".{8,}"
+              tip: "ANONYMOUS 账户:"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "env.open.NEXUS_DEFAULT_ANONYMOUS_ROLE"
+            value: "hrds-anonymous"
+            input:
+              enabled: true
+              password: false
+              regex: ".{8,}"
+              tip: "ANONYMOUS 角色:"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+        preInstall:
+          - name: prod-repo-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hrds_prod_repo DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
       - name: hzero-front
         chart: hzero-front
-        version: "0.22.1"
+        version: "0.23.0"
         resource:
           host: hzero-front
           schema: http
         requirements:
-          - hzero-monitor
+          - choerodon-message
         values:
           - name: "ingress.host"
             value: '{{ ( .GetResource "hzero-front" ).Domain }}'
         preInstall:
-          - name: create-hzero-front-client
+          - name: create-choerodon-front-hzero-front-client
             commands:
               - USE hzero_platform;
               - |
@@ -563,15 +632,15 @@ spec:
             infraRef: c7n-mysql
       - name: choerodon-front
         chart: choerodon-front
-        version: "0.22.1"
+        version: "0.23.0"
         resource:
           host: "choerodon-front"
           port: 80
           schema: http
         requirements:
           - agile-service
-          - gitlab-service
-          - devops-service
+          - code-repo-service
+          - prod-repo-service
         preInstall:
           - name: create-choerodon-front-client
             commands:
@@ -610,7 +679,7 @@ spec:
           - name: "env.runnerToken"
             value: "{{ ( generateAlphaNum 30) }}"
           - name: "env.environment.CHOERODON_URL"
-            value: '{{ ( .GetResource "hzero-gateway").Schema }}://{{ ( .GetResource "hzero-gateway").Domain }}'
+            value: '{{ ( .GetResource "choerodon-gateway").Schema }}://{{ ( .GetResource "choerodon-gateway").Domain }}'
             # TODO
           - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
             value: "/root/.m2"
@@ -696,7 +765,7 @@ spec:
         version: 0.2.5
         resource:
           # svc name = release name
-          host: '{{ .GetReleaseName "redis" }}'
+          host: '{{ .GetReleaseNameGetReleaseName "redis" }}'
           port: 6379
         values:
           - name: "service.enabled"

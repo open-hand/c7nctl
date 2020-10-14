@@ -477,7 +477,7 @@ func (i *InstallDefinition) IsThinMode() bool {
 }
 
 func (i *InstallDefinition) GetEurekaUrl() string {
-	if r := i.getRelease(c7nconsts.HzeroRegister); r != nil {
+	if r := i.getRelease(c7nconsts.ChoerodonRegister); r != nil {
 		return fmt.Sprintf(eurekaClientServerUrlTpl, r.Resource.Schema, r.Resource.Host)
 	}
 	log.Error("Eureka url is empty")

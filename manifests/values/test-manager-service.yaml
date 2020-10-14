@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/test_manager_service
+  repository: {{ .GetImageRepository }}/test-manager-service
 {{- end }}
 
 {{- if ne .GetImageRepository "" }}

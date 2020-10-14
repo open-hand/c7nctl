@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/knowledgebase-service
+  repository: {{ .GetImageRepository }}/code-repo-service
 {{- end }}
 
 {{- if ne .GetImageRepository "" }}
@@ -29,15 +29,26 @@ preJob:
         driver: com.mysql.jdbc.Driver
 env:
   open:
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    SPRING_REDIS_DATABASE: 14
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "knowledgebase_service" }}
+    # devops的数据库 迁移数据使用 只会在0.23版本使用
+    HARBOR_INIT_CUSTOM_REPO_PASSWORD: password
+    HARBOR_INIT_CUSTOM_REPO_URL: {{ .GetDatabaseUrl "devops_service" }}
+    HARBOR_INIT_CUSTOM_REPO_USERNAME: choerodon
+    # platform的数据库 迁移数据使用 只会在0.23版本使用
+    HARBOR_INIT_DEFAULT_REPO_PASSWORD: password
+    HARBOR_INIT_DEFAULT_REPO_URL: {{ .GetDatabaseUrl "hzero_platform" }}
+    HARBOR_INIT_DEFAULT_REPO_USERNAME: choerodon
+    HARBOR_BASE_URL: {{ .GetResourceDomainUrl "harbor" }}
+    HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
+    HARBOR_USER_NAME: admin
+    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hrds_prod_repo" }}
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password
-    SERVICES_ATTACHMENT_URL: {{ .GetResourceDomainUrl "minio" }}/knowledgebase-service/
-    ELASTICSEARCH_IP: {{ ( .GetResource "elasticsearch-kb").Host }}:9200
+    SPRING_REDIS_DATABASE: 0
+    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+    NEXUS_DEFAULT_BASE_URL: {{ .GetResourceDomainUrl "sonatype-nexus" }}
+    NEXUS_DEFAULT_ENABLE_ANONYMOUS_FLAG: 1
 {{- if .IsThinMode }}
 resources:
   limits:
