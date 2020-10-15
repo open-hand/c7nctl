@@ -14,7 +14,7 @@ env:
     TITLE_NAME: Choerodon | 多云应用技术集成平台
     WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "choerodon-message" }}
     FILE_SERVER: {{ .GetResourceDomainUrl "minio" }}
-    HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front" }}
+    HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front-hzero" }}
     DEVOPS_WEBSOCKET_SECRET_KEY: example
 ingress:
   enabled: true
