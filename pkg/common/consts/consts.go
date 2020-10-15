@@ -24,7 +24,7 @@ const (
 
 	Version = "0.22"
 
-	ResourcePath    = "https://gitee.com/choerodon/c7nctl/raw/%s/manifests/"
+	ResourcePath    = "https://gitee.com/open-hand/c7nctl/raw/%s/manifests/"
 	ImageRepository = "registry.cn-shanghai.aliyuncs.com/c7n"
 	ChartRepository = "https://openchart.choerodon.com.cn/choerodon/c7n/"
 	DatasourceTpl   = "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
