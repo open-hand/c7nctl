@@ -1,4 +1,4 @@
-version: "0.22"
+version: "0.23"
 # this is a annotation
 metadata:
   name: resource
@@ -9,9 +9,8 @@ spec:
       memory: 38Gi
   basic:
     commonLabels:
-      choerodon-version: "0.22"
+      choerodon-version: "0.23"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
-    #chartRepository: "http://charts.c7n.yidaqiang.com/c7n/"
     chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
     # prefix: ""
@@ -218,7 +217,7 @@ spec:
               - use hzero_platform
               # 子符串过长 yaml_v2 序列化时会自动换行
               - |
-                INSERT INTO hzero_platform.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
+                INSERT IGNORE INTO hzero_platform.oauth_client (name,organization_id,resource_ids,secret,scope,authorized_grant_types,
                 web_server_redirect_uri,access_token_validity,refresh_token_validity,additional_information,auto_approve,
                 object_version_number,created_by,creation_date,last_updated_by,last_update_date)VALUES("gitlab",1,"default",
                 "secret","default","password,implicit,client_credentials,authorization_code,refresh_token",
@@ -392,7 +391,7 @@ spec:
             commands:
               - USE hzero_platform;
               - |
-                INSERT INTO hzero_platform.oauth_client (
+                INSERT IGNORE INTO hzero_platform.oauth_client (
                   name,organization_id,resource_ids,secret,scope,
                   authorized_grant_types,web_server_redirect_uri,
                   access_token_validity,refresh_token_validity,
@@ -572,7 +571,7 @@ spec:
               enabled: true
               password: true
               regex: ".{8,}"
-              tip: "设置修改后的 NEXUS 默认账户密码（设置指南：）:"
+              tip: "设置修改后的 NEXUS 默认账户密码（设置指南：http://dwz.win/ThF）:"
               exclude:
                 - value: "^\\d*$"
                   name: "不能为纯数字"
@@ -604,23 +603,23 @@ spec:
               - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
-      - name: hzero-front
-        chart: hzero-front
-        version: "0.23.0"
+      - name: choerodon-front-hzero
+        chart: choerodon-front-hzero
+        version: "0.23.1"
         resource:
-          host: hzero-front
+          host: choerodon-front-hzero
           schema: http
         requirements:
           - choerodon-message
         values:
           - name: "ingress.host"
-            value: '{{ ( .GetResource "hzero-front" ).Domain }}'
+            value: '{{ ( .GetResource "choerodon-front-hzero" ).Domain }}'
         preInstall:
-          - name: create-choerodon-front-hzero-front-client
+          - name: create-choerodon-front-hzero-client
             commands:
               - USE hzero_platform;
               - |
-                INSERT INTO hzero_platform.oauth_client (
+                INSERT IGNORE INTO hzero_platform.oauth_client (
                   name,organization_id,resource_ids,secret,scope,
                   authorized_grant_types,web_server_redirect_uri,
                   access_token_validity,refresh_token_validity,
@@ -628,7 +627,7 @@ spec:
                   created_by,creation_date,last_updated_by,last_update_date)
                 VALUES("hzero",1,"default","secret","default",
                       "password,implicit,client_credentials,authorization_code,refresh_token",
-                      '{{ ( .GetResource "hzero-front").Schema }}://{{ ( .GetResource "hzero-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+                      '{{ ( .GetResource "choerodon-front-hzero").Schema }}://{{ ( .GetResource "choerodon-front-hzero").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
             infraRef: c7n-mysql
       - name: choerodon-front
         chart: choerodon-front
@@ -646,7 +645,7 @@ spec:
             commands:
               - USE hzero_platform;
               - |
-                INSERT INTO hzero_platform.oauth_client (
+                INSERT IGNORE INTO hzero_platform.oauth_client (
                   name,organization_id,resource_ids,secret,scope,
                   authorized_grant_types,web_server_redirect_uri,
                   access_token_validity,refresh_token_validity,

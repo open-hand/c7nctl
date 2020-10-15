@@ -3,7 +3,7 @@ ingress:
 env:
   open:
     BUILD_CLIENT_ID: hzero
-    BUILD_API_HOST: {{ .GetResourceDomainUrl "hzero-front" }}
+    BUILD_API_HOST: {{ .GetResourceDomainUrl "choerodon-front-hzero" }}
 {{- if .IsThinMode }}
 resources:
   limits:
