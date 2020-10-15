@@ -11,8 +11,8 @@ spec:
     commonLabels:
       choerodon-version: "0.22"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
-    chartRepository: "http://charts.dev.yidaqiang.com/c7n/"
-    #chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
+    #chartRepository: "http://charts.c7n.yidaqiang.com/c7n/"
+    chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
     # prefix: ""
     # helmValues: "values"
@@ -152,7 +152,7 @@ spec:
             check: clusterdomain
       - name: sonatype-nexus
         chart: sonatype-nexus
-        version: "2020.10.14-012352-master"
+        version: "3.0.0"
         resource:
           host: sonatype-nexus
           schema: http
