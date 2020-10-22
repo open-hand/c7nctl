@@ -7,27 +7,24 @@ spec:
     storageClassName: nfs-provisioner
   resources:
     gitlab:
-      domain: gitlab.c7n.yidaqiang.com
+      domain: gitlab.example.choerodon.io
     minio:
-      domain: minio.c7n.yidaqiang.com
+      domain: minio.example.choerodon.io
     harbor:
-      domain: harbor.c7n.yidaqiang.com
+      domain: harbor.example.choerodon.io
     chartmuseum:
-      domain: chart.c7n.yidaqiang.com
+      domain: chart.example.choerodon.io
     sonatype-nexus:
-      domain: nexus.c7n.yidaqiang.com
+      domain: nexus.example.choerodon.io
     sonarqube:
-      domain: sonarqube.c7n.yidaqiang.com
+      domain: sonarqube.example.choerodon.io
     choerodon-gateway:
-      domain: api.c7n.yidaqiang.com
+      domain: api.example.choerodon.io
     choerodon-message:
-      domain: notify.c7n.yidaqiang.com
+      domain: notify.example.choerodon.io
     devops-service:
-      domain: devops.c7n.yidaqiang.com
+      domain: devops.example.choerodon.io
     choerodon-front:
-      domain: app.c7n.yidaqiang.com
+      domain: app.example.choerodon.io
     choerodon-front-hzero:
-      domain: hzero.c7n.yidaqiang.com
-  helm:
-    values:
-      dir: manifests/values
+      domain: hzero.example.choerodon.io
