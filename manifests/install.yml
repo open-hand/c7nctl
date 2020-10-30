@@ -151,12 +151,32 @@ spec:
             check: clusterdomain
       - name: sonatype-nexus
         chart: sonatype-nexus
-        version: "3.0.1"
+        version: "3.4.0"
         resource:
           host: sonatype-nexus
           schema: http
         requirements:
         values:
+          - name: "nexusProxy.env.nexusHttpHost"
+            value: '{{ ( .GetResource "sonatype-nexus" ).Domain }}'
+            check: clusterdomain
+          - name: "initAdminPassword.password"
+            value: "admin123"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,}"
+              tip: "设置 NEXUS admin 账户密码(8位以上、必须包含大小写及数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+              include:
+                - value: "[A-Z]+"
+                  name: "必须包含大写"
+                - value: "[a-z]+"
+                  name: "必须包含小写"
+                - value: "\\d+"
+                  name: "必须包含数字"
       - name: chartmuseum
         chart: chartmuseum
         version: 2.6.0
@@ -565,16 +585,6 @@ spec:
           - devops-service
           - sonatype-nexus
         values:
-          - name: "env.open.NEXUS_DEFAULT_PASSWORD"
-            value: "hrdsadmin"
-            input:
-              enabled: true
-              password: true
-              regex: ".{8,}"
-              tip: "设置修改后的 NEXUS 默认账户密码（设置指南：http://dwz.win/ThF）:"
-              exclude:
-                - value: "^\\d*$"
-                  name: "不能为纯数字"
         preInstall:
           - name: prod-repo-service-predb
             commands:
