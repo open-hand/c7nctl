@@ -12,7 +12,7 @@ import (
 func GetReleaseTag(app, version string) (targetVersion string, err error) {
 	client := gitee.NewClient(nil)
 
-	tags, resp, err := client.Repositories.ListTags(context.Background(), "open-hand", app, &gitee.ListOptions{AccessToken: "b6fed6c7bad34220693300b936f7c8c4"})
+	tags, resp, err := client.Repositories.ListTags(context.Background(), "open-hand", app, &gitee.ListOptions{AccessToken: "xxx"})
 	if err != nil {
 		log.Debug(resp)
 		return "", std_errors.WithMessage(err, fmt.Sprintf("Get Relesea %s version failed", app))
