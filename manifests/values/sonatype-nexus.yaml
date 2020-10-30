@@ -1,18 +1,10 @@
 persistence:
   storageClass: {{ .GetStorageClass }}
 nexusProxy:
+  enabled: false
   env:
     nexusHttpHost: {{ ( .GetResource "sonatype-nexus" ).Domain }}
 ingress:
   enabled: true
   tls:
     enabled: false
-deployment:
-  initContainers:
-    - name: create-default-prop
-      image: busybox
-      imagePullPolicy: IfNotPresent
-      command: ['sh', '-c', 'mkdir -p /nexus-data/etc  && echo "nexus.scripts.allowCreation=true" > /nexus-data/etc/nexus.properties' ]
-      volumeMounts:
-        - name: {{ .GetReleaseName "sonatype-nexus" }}-data
-          mountPath: /nexus-data

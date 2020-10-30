@@ -151,7 +151,7 @@ spec:
             check: clusterdomain
       - name: sonatype-nexus
         chart: sonatype-nexus
-        version: "3.0.0"
+        version: "3.0.1"
         resource:
           host: sonatype-nexus
           schema: http
@@ -185,7 +185,7 @@ spec:
             check: clusterdomain
       - name: choerodon-register
         chart: choerodon-register
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: "choerodon-register"
           port: 8000
@@ -194,7 +194,7 @@ spec:
         values:
       - name: choerodon-platform
         chart: choerodon-platform
-        version: "0.23.4"
+        #version: "0.23.4"
         resource:
           host: choerodon-platform
           port: 8100
@@ -226,7 +226,7 @@ spec:
         values:
       - name: choerodon-admin
         chart: choerodon-admin
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-admin
           port: 8062
@@ -244,7 +244,7 @@ spec:
         values:
       - name: choerodon-asgard
         chart: choerodon-asgard
-        version: "0.23.3"
+        #version: "0.23.3"
         resource:
           host: choerodon-service
           port: 8040
@@ -262,7 +262,7 @@ spec:
         values:
       - name: choerodon-gateway
         chart: choerodon-gateway
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-gateway
           port: 8080
@@ -276,7 +276,7 @@ spec:
             check: clusterdomain
       - name: choerodon-iam
         chart: choerodon-iam
-        version: "0.23.6"
+        #version: "0.23.6"
         resource:
           host: choerodon-iam
           port: 8030
@@ -287,7 +287,7 @@ spec:
         values:
       - name: choerodon-oauth
         chart: choerodon-oauth
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-oauth
           port: 8020
@@ -298,7 +298,7 @@ spec:
         values:
       - name: choerodon-file
         chart: choerodon-file
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-file
           port: 8110
@@ -317,7 +317,7 @@ spec:
         values:
       - name: choerodon-swagger
         chart: choerodon-swagger
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-swagger
           port:
@@ -327,7 +327,7 @@ spec:
         values:
       - name: choerodon-message
         chart: choerodon-message
-        version: "0.23.7"
+        #version: "0.23.7"
         resource:
           host: choerodon-message
           port: 8120
@@ -348,7 +348,7 @@ spec:
             check: clusterdomain
       - name: choerodon-monitor
         chart: choerodon-monitor
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-monitor
           port: 8260
@@ -368,7 +368,7 @@ spec:
         values:
       - name: devops-service
         chart: devops-service
-        version: "0.23.7"
+        #version: "0.23.7"
         resource:
           host: devops-service
           port: 8061
@@ -417,7 +417,7 @@ spec:
             check: clusterdomain
       - name: gitlab-service
         chart: gitlab-service
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: gitlab-service
           port: 8071
@@ -461,7 +461,7 @@ spec:
             value: "{{ generateAlphaNum 20 }}"
       - name: workflow-service
         chart: workflow-service
-        version: "0.23.2"
+        #version: "0.23.2"
         resource:
           host: workflow-service
           port: 8066
@@ -479,7 +479,7 @@ spec:
         values:
       - name: agile-service
         chart: agile-service
-        version: "0.23.6"
+        #version: "0.23.6"
         resource:
           host: agile-service
           port: 8379
@@ -497,7 +497,7 @@ spec:
         values:
       - name: test-manager-service
         chart: test-manager-service
-        version: "0.23.2"
+        #version: "0.23.2"
         resource:
           host: test-manager-service
           port: 8394
@@ -521,7 +521,7 @@ spec:
         values:
       - name: knowledgebase-service
         chart: knowledgebase-service
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: knowledgebase-service
           port: 8280
@@ -540,7 +540,7 @@ spec:
         values:
       - name: code-repo-service
         chart: code-repo-service
-        version: "0.23.2"
+        #version: "0.23.2"
         resource:
           host: code-repo-service
           schema: http
@@ -557,7 +557,7 @@ spec:
             infraRef: c7n-mysql
       - name: prod-repo-service
         chart: prod-repo-service
-        version: "0.23.3"
+        #version: "0.23.3"
         resource:
           host: prod-repo-service
           schema: http
@@ -575,26 +575,6 @@ spec:
               exclude:
                 - value: "^\\d*$"
                   name: "不能为纯数字"
-          - name: "env.open.NEXUS_DEFAULT_ANONYMOUS_USER"
-            value: "hrds-anonymous"
-            input:
-              enabled: true
-              password: false
-              regex: ".{8,}"
-              tip: "ANONYMOUS 账户:"
-              exclude:
-                - value: "^\\d*$"
-                  name: "不能为纯数字"
-          - name: "env.open.NEXUS_DEFAULT_ANONYMOUS_ROLE"
-            value: "hrds-anonymous"
-            input:
-              enabled: true
-              password: false
-              regex: ".{8,}"
-              tip: "ANONYMOUS 角色:"
-              exclude:
-                - value: "^\\d*$"
-                  name: "不能为纯数字"
         preInstall:
           - name: prod-repo-service-predb
             commands:
@@ -605,7 +585,7 @@ spec:
             infraRef: c7n-mysql
       - name: choerodon-front-hzero
         chart: choerodon-front-hzero
-        version: "0.23.1"
+        #version: "0.23.1"
         resource:
           host: choerodon-front-hzero
           schema: http
@@ -631,7 +611,7 @@ spec:
             infraRef: c7n-mysql
       - name: choerodon-front
         chart: choerodon-front
-        version: "0.23.0"
+        #version: "0.23.0"
         resource:
           host: "choerodon-front"
           port: 80

@@ -48,7 +48,7 @@ env:
     SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
     SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
     NEXUS_DEFAULT_BASE_URL: {{ .GetResourceDomainUrl "sonatype-nexus" }}
-    NEXUS_DEFAULT_ENABLE_ANONYMOUS_FLAG: 1
+    NEXUS_DEFAULT_ENABLE_ANONYMOUS_FLAG: 0
 {{- if .IsThinMode }}
 resources:
   limits:

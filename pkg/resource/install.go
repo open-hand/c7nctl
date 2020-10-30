@@ -286,32 +286,6 @@ func (i *InstallDefinition) mergerResource(uc *c7ncfg.C7nConfig) {
 				if res.Password != "" {
 					rls.Resource.Password = res.Password
 				}
-				// TODO 其他的配置项是否需要初始化到 rls 中
-				/*
-					rlsType := reflect.TypeOf(*rls.Resource)
-					rlsValue := reflect.ValueOf(rls.Resource).Elem()
-					resType := reflect.TypeOf(*res)
-					resValue := reflect.ValueOf(*res)
-					for i := 0; i < resType.NumField(); i ++ {
-						if f, ok := rlsType.FieldByName(resType.Field(i).GetName); ok {
-							switch resValue.Field(i).Kind() {
-							case reflect.String: {
-								rlsValue.FieldByName(f.GetName).SetString(resValue.FieldByName(f.GetName).String())
-							}
-							case reflect.Bool: {
-								rlsValue.FieldByName(f.GetName).SetBool(resValue.FieldByName(f.GetName).Bool())
-							}
-							case reflect.Int32: {
-								rlsValue.FieldByName(f.GetName).SetInt(resValue.FieldByName(f.GetName).Int())
-							}
-							default:
-								log.Debugf("can't convert Field %s from C7nConfig to InstallDefinition", f.GetName)
-							}
-						} else {
-							log.Debugf("Resource of C7nConfig field %s isn't in Release of InstallDefinition", resType.Field(i).GetName)
-						}
-					}
-				*/
 			}
 		}
 	}
