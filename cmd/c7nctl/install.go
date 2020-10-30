@@ -100,7 +100,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 
 func addInstallFlags(fs *pflag.FlagSet, client *action.Install) {
 	fs.StringVarP(&client.ResourcePath, "resource-path", "r", "", "choerodon install definition file")
-	fs.StringVarP(&client.Version, "version", "v", "0.22", "version of choerodon which will installation")
+	fs.StringVarP(&client.Version, "version", "v", "0.23", "version of choerodon which will installation")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
 	fs.StringVar(&client.ImageRepository, "image-repo", "", "default image repository of all release")
 	fs.StringVar(&client.ChartRepository, "chart-repo", "", "chart repository url")

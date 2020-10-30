@@ -11,6 +11,8 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.0.0
 	github.com/golang/protobuf v1.3.2
+	github.com/google/go-github/v32 v32.1.0
+	github.com/google/go-querystring v1.0.0
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-version v1.2.0
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c

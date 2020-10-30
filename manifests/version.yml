@@ -1,6 +1,10 @@
 versions:
-  - version: "0.21"
+  - version: "0.23"
     status: stable
+  - version: "0.22"
+    status: history
+  - version: "0.21"
+    status: history
   - version: "0.20"
     status: history
   - version: "0.19"

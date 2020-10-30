@@ -1,8 +1,9 @@
 package consts
 
 import (
-	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
+	"os"
 	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -35,7 +36,7 @@ var (
 		C7nLabelKey: C7nLabelValue,
 	}
 
-	DefaultConfigPath     = filepath.Join(c7nutils.HomeDir(), ".c7n")
+	DefaultConfigPath     = filepath.Join(HomeDir(), ".c7n")
 	DefaultConfigFileName = "config"
 )
 
@@ -88,7 +89,7 @@ const (
 	ChoerodonPlatform    = "choerodon-platform"
 	ChoerodonAdmin       = "choerodon-admin"
 	ChoerodonIam         = "choerodon-iam"
-	ChoerodonOauth       = "choerodon-Oauth"
+	ChoerodonOauth       = "choerodon-oauth"
 	ChoerodonGateWay     = "choerodon-gateway"
 	ChoerodonAsgard      = "choerodon-asgard"
 	ChoerodonSwagger     = "choerodon-swagger"
@@ -101,6 +102,34 @@ const (
 	AgileService         = "agile-service"
 	TestManagerService   = "test-manager-service"
 	KnowledgebaseService = "knowledgebase-service"
+	ElasticsearchKb      = "elasticsearch-kb"
+	ProdRepoService      = "prod-repo-service"
+	CodeRepoService      = "code-repo-service"
 	ChoerodonFrontHzero  = "choerodon-front-hzero"
 	ChoerodonFront       = "choerodon-front"
 )
+
+// HomeDir returns the home directory for the current user
+func HomeDir() string {
+	if runtime.GOOS == "windows" {
+
+		// First prefer the HOME environmental variable
+		if home := os.Getenv("HOME"); len(home) > 0 {
+			if _, err := os.Stat(home); err == nil {
+				return home
+			}
+		}
+		if homeDrive, homePath := os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"); len(homeDrive) > 0 && len(homePath) > 0 {
+			homeDir := homeDrive + homePath
+			if _, err := os.Stat(homeDir); err == nil {
+				return homeDir
+			}
+		}
+		if userProfile := os.Getenv("USERPROFILE"); len(userProfile) > 0 {
+			if _, err := os.Stat(userProfile); err == nil {
+				return userProfile
+			}
+		}
+	}
+	return os.Getenv("HOME")
+}

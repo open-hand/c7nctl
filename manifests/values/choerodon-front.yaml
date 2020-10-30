@@ -15,6 +15,6 @@ env:
     WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "choerodon-message" }}
     FILE_SERVER: {{ .GetResourceDomainUrl "minio" }}
     HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front-hzero" }}
-    DEVOPS_WEBSOCKET_SECRET_KEY: example
+    DEVOPS_WEBSOCKET_SECRET_KEY: devops_ws
 ingress:
   enabled: true
