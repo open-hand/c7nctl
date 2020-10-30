@@ -114,8 +114,9 @@ checksum:
 	done
 
 .PHONY: release
-release: build-cross dist checksum
+release: build-cross  dist checksum
 	@echo "finish c7nctl release"
+	cd _dist; zip c7nctl-${VERSION}.zip *.tar.gz*
 
 # ------------------------------------------------------------------------------
 

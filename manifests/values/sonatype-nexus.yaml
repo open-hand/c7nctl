@@ -2,9 +2,9 @@ persistence:
   storageClass: {{ .GetStorageClass }}
 nexusProxy:
   enabled: false
-  env:
-    nexusHttpHost: {{ ( .GetResource "sonatype-nexus" ).Domain }}
 ingress:
   enabled: true
   tls:
     enabled: false
+initAdminPassword:
+  enabled: true
