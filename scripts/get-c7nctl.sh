@@ -5,7 +5,7 @@
 : ${DEBUG:="false"}
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
-: ${C7NCTL_INSTALL_DIR:="./"}
+: ${C7NCTL_INSTALL_DIR:="."}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
 HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
