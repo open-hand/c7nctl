@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/gitee"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -12,13 +13,13 @@ import (
 func GetReleaseTag(app, version string) (targetVersion string, err error) {
 	client := gitee.NewClient(nil)
 
-	tags, resp, err := client.Repositories.ListTags(context.Background(), "open-hand", app, &gitee.ListOptions{AccessToken: "xxx"})
+	tags, resp, err := client.Repositories.ListTags(context.Background(), "open-hand", app, &gitee.ListOptions{AccessToken: consts.DefaultGiteeAccessToken})
 	if err != nil {
 		log.Debug(resp)
 		return "", std_errors.WithMessage(err, fmt.Sprintf("Get Relesea %s version failed", app))
 	}
 
-	reg := regexp.MustCompile("^" + version + ".\\d$")
+	reg := regexp.MustCompile("^" + version + ".\\d+$")
 	for _, tag := range tags {
 		tagName := *tag.Name
 		if reg.MatchString(tagName) {

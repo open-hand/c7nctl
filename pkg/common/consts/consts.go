@@ -38,6 +38,8 @@ var (
 
 	DefaultConfigPath     = filepath.Join(HomeDir(), ".c7n")
 	DefaultConfigFileName = "config"
+
+	DefaultGiteeAccessToken = "14b8f261fabe031456cd48e7d76d407a"
 )
 
 // 默认的资源文件名
