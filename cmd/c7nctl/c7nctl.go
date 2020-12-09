@@ -17,7 +17,6 @@ import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/choerodon/c7nctl/pkg/cli"
-	"github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/docker/docker/pkg/fileutils"
@@ -44,12 +43,7 @@ func main() {
 		if settings.Debug {
 			log.SetLevel(log.DebugLevel)
 		}
-		// 初始化 helm3Client
-		cfg := client.InitConfiguration(settings.KubeConfig, settings.Namespace)
-		c7nCfg.HelmClient = client.NewHelm3Client(cfg)
-		// 初始化 kubeClient
-		kubeclient, _ := client.GetKubeClient(settings.KubeConfig)
-		c7nCfg.KubeClient = client.NewK8sClient(kubeclient)
+		c7nCfg.Init(settings.KubeConfig, settings.Namespace)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Error(err)

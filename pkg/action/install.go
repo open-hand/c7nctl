@@ -1,7 +1,6 @@
 package action
 
 import (
-	"context"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
@@ -12,18 +11,15 @@ import (
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors"
+
 	"os"
 	"strings"
-	"time"
 )
 
 type Install struct {
 	cfg *C7nConfiguration
+
+	ResourceClient *resource.Client
 
 	Name      string
 	Namespace string
@@ -40,8 +36,7 @@ type Install struct {
 	ImageRepository string
 	ChartRepository string
 	DatasourceTpl   string
-	// TODO 是否支持
-	ThinMode bool
+	ThinMode        bool
 }
 
 func NewInstall(cfg *C7nConfiguration) *Install {
@@ -51,7 +46,7 @@ func NewInstall(cfg *C7nConfiguration) *Install {
 }
 
 // 设置 install 的值
-func (i *Install) InitInstall(c *config.C7nConfig) {
+func (i *Install) Setup(c *config.C7nConfig) {
 	log.Debug("Initialize config to Install")
 	// 配置优先级 flag > config.yaml > 默认值
 	// 当 i.Version 不存在时，设置成 c.Version 或者默认值
@@ -63,9 +58,13 @@ func (i *Install) InitInstall(c *config.C7nConfig) {
 		i.Version = c.Version
 	}
 	log.Debugf("Choerodon version is %s", i.Version)
+
 	if c.Spec.ResourcePath == "" {
-		// 默认到 github 上获取资源文件
-		c.Spec.ResourcePath = fmt.Sprintf(c7nconsts.ResourcePath, i.Version)
+		c.Spec.ResourcePath = c7nconsts.OpenSourceResourceURL
+		// 默认到 gitee 上获取资源文件
+		if i.ResourceClient.Business {
+			c.Spec.ResourcePath = c7nconsts.BusinessResourcePath
+		}
 	}
 	if i.ResourcePath == "" {
 		i.ResourcePath = c.Spec.ResourcePath
@@ -74,7 +73,7 @@ func (i *Install) InitInstall(c *config.C7nConfig) {
 	if i.HelmValues == "" {
 		i.HelmValues = c7nconsts.DefaultHelmValuesPath
 	}
-	log.Debugf("Helm values dir is %s", i.ResourcePath)
+	log.Debugf("Helm values dir is %s", i.HelmValues)
 
 	// 配置优先级 flag > config.yaml > install.yml > 默认值
 	// 通过 C7nConfig 将配置值传递到 InstallDefinition
@@ -105,19 +104,19 @@ func (i *Install) InitInstall(c *config.C7nConfig) {
 
 func (i *Install) Run(instDef *resource.InstallDefinition) (err error) {
 	// 检查资源，并将现有集群的硬件信息保存到 metrics
-	if i.ClientOnly {
-		if err = i.CheckResource(&instDef.Spec.Resources); err != nil {
-			return err
-		}
+	if i.ClientOnly || i.ThinMode {
 		log.Info("Running Client only, So skip up check cluster resource")
+	} else if err = i.cfg.CheckResource(&instDef.Spec.Resources); err != nil {
+		return err
 	}
 	if err = i.CheckNamespace(); err != nil {
 		return err
 	}
 
+	i.cfg.CreateImagePullSecret(instDef.Spec.Basic.DockerRegistry)
 	// 初始化 slaver
 	stopCh := make(chan struct{})
-	if _, err = instDef.Spec.Basic.Slaver.InitSalver(i.GetClientSet(), i.Namespace, stopCh); err != nil {
+	if _, err = instDef.Spec.Basic.Slaver.InitSalver(i.cfg.KubeClient.GetClientSet(), i.Namespace, stopCh); err != nil {
 		return std_errors.WithMessage(err, "Create Slaver failed")
 	}
 	defer func() {
@@ -156,7 +155,12 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 			i.ResourcePath += "/"
 		}
 
-		vals, err := inst.RenderHelmValues(rls, i.ResourcePath+i.HelmValues)
+		rvurl := fmt.Sprintf("/%s/%s.yaml", c7nconsts.DefaultHelmValuesPath, rls.Name)
+		rr, err := i.ResourceClient.GetResource(i.Version, rvurl)
+		if err != nil {
+			return err
+		}
+		vals, err := inst.RenderHelmValues(rls, rr)
 		if err != nil {
 			return err
 		}
@@ -174,6 +178,9 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 			ReleaseName: inst.GetReleaseName(rls.Name),
 			ChartName:   rls.Chart,
 			Version:     rls.Version,
+		}
+		if rls.RepoURL != "" {
+			args.RepoUrl = rls.RepoURL
 		}
 
 		if i.ClientOnly {
@@ -203,7 +210,7 @@ func (i *Install) installRelease(rls *resource.Release, vals map[string]interfac
 
 	// 等待依赖项安装完成
 	for _, r := range rls.Requirements {
-		i.CheckReleasePodRunning(r)
+		i.cfg.CheckReleasePodRunning(r, i.Namespace)
 	}
 
 	// 执行前置命令
@@ -233,144 +240,3 @@ func (i *Install) installRelease(rls *resource.Release, vals map[string]interfac
 	defer c7nclient.SaveTask(*task)
 	return err
 }
-
-func (i *Install) CheckResource(resources *v1.ResourceRequirements) error {
-	request := resources.Requests
-
-	reqMemory := request.Memory().Value()
-	reqCpu := request.Cpu().Value()
-	clusterMemory, clusterCpu := i.cfg.KubeClient.GetClusterResource()
-
-	/*
-		metrics.Memory = clusterMemory
-		metrics.CPU = clusterCpu
-
-		serverVersion, err := i.cfg.KubeClient.GetServerVersion()
-		if err != nil {
-			return std_errors.Wrap(err, "can't get your cluster version")
-		}
-		metrics.Version = serverVersion.String()
-	*/
-
-	// thin 不检查硬件资源大小
-	if i.ThinMode {
-		return nil
-	}
-	if clusterMemory < reqMemory {
-		return std_errors.New(fmt.Sprintf("cluster memory not enough, request %dGi", reqMemory/(1024*1024*1024)))
-	}
-	if clusterCpu < reqCpu {
-		return std_errors.New(fmt.Sprintf("cluster cpu not enough, request %dc", reqCpu/1000))
-	}
-	return nil
-}
-
-func (i *Install) CheckNamespace() error {
-	_, err := i.cfg.KubeClient.GetNamespace(i.Namespace)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return i.cfg.KubeClient.CreateNamespace(i.Namespace)
-		}
-		return err
-	}
-	log.Infof("namespace %s already exists", i.Namespace)
-	return nil
-}
-
-// 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签
-// TODO 去掉 app label
-func (i *Install) CheckReleasePodRunning(rls string) {
-	clientset := i.GetClientSet()
-
-	labels := []string{
-		fmt.Sprintf("choerodon.io/release=%s", rls),
-		fmt.Sprintf("app=%s", rls),
-	}
-
-	log.Infof("Waiting %s running", rls)
-	for {
-		for _, label := range labels {
-			deploy, err := clientset.AppsV1().Deployments(i.Namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
-			if errors.IsNotFound(err) {
-				log.Debugf("Deployment %s in namespace %s not found\n", label, i.Namespace)
-			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Debugf("Error getting deployment %s in namespace %s: %v\n",
-					label, i.Namespace, statusError.ErrStatus.Message)
-			} else if err != nil {
-				panic(err.Error())
-			} else {
-				for _, d := range deploy.Items {
-					if *d.Spec.Replicas != d.Status.ReadyReplicas {
-						log.Debugf("Release %s is not ready\n", d.Name)
-					} else {
-						log.Debugf("Release %s is Ready\n", d.Name)
-						return
-					}
-				}
-			}
-			ss, err := clientset.AppsV1().StatefulSets(i.Namespace).List(context.Background(), meta_v1.ListOptions{LabelSelector: label})
-			if errors.IsNotFound(err) {
-				log.Debugf("StatefulSet %s in namespace %s not found\n", label, i.Namespace)
-			} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-				log.Debugf("Error getting statefulSet %s in namespace %s: %v\n",
-					label, i.Namespace, statusError.ErrStatus.Message)
-			} else if err != nil {
-				panic(err.Error())
-			} else {
-				for _, s := range ss.Items {
-					if *s.Spec.Replicas != s.Status.ReadyReplicas {
-						log.Debugf("Release %s is not ready\n", s.Name)
-					} else {
-						log.Debugf("Release %s is Ready\n", s.Name)
-						return
-					}
-				}
-			}
-		}
-		time.Sleep(5 * time.Second)
-	}
-}
-
-func (i *Install) GetClientSet() *kubernetes.Clientset {
-	return i.cfg.KubeClient.GetClientSet()
-}
-
-func (i *Install) GetName(args []string) (string, error) {
-	if len(args) > 1 {
-		return args[0], std_errors.Errorf("expected at most one arguments, unexpected arguments: %v", strings.Join(args[1:], ", "))
-	}
-
-	return args[0], nil
-}
-
-/*
-func (i *Install) setFiledValue(filed, value interface{}) {
-	getType := reflect.TypeOf(i)
-	getValue := reflect.ValueOf(&i).Elem()
-
-	for i := 0; i < getType.NumField(); i++ {
-		t := getType.Field(i)
-		if t.Name == filed {
-			switch getValue.FieldByName(t.Name).Kind() {
-			case reflect.String:
-				{
-					getValue.Field(i).SetString(value.(string))
-				}
-			case reflect.Int:
-				{
-					getValue.Field(i).SetInt(value.(int64))
-
-				}
-			case reflect.Bool:
-				{
-					getValue.Field(i).SetBool(value.(bool))
-				}
-			default:
-				{
-					log.Debugf("Type %s is not support with InstallChoerodon")
-				}
-			}
-		}
-	}
-}
-*/

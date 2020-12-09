@@ -34,7 +34,7 @@ func (ir *InstallRunner) InitInstallRunner(c *config.C7nConfig) {
 
 	if c.Spec.ResourcePath == "" {
 		// 默认到 github 上获取资源文件
-		c.Spec.ResourcePath = fmt.Sprintf(c7nconsts.ResourcePath, ir.Version)
+		c.Spec.ResourcePath = fmt.Sprintf(c7nconsts.OpenSourceResourceURL+c7nconsts.OpenSourceResourceBasePath, ir.Version)
 	}
 	if ir.ResourcePath == "" {
 		ir.ResourcePath = c.Spec.ImageRepository

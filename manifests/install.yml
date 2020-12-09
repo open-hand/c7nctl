@@ -4,7 +4,7 @@ metadata:
   name: resource
 spec:
   resources:
-    requests: 
+    requests:
       cpu: 6000m
       memory: 38Gi
   basic:

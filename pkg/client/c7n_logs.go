@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-type C7nlogs struct {
+type C7nLogs struct {
 	client    *kubernetes.Clientset
 	Name      string
 	namespace string
@@ -49,7 +49,7 @@ type TaskInfo struct {
 	Prefix   string
 }
 
-var c7nLogs C7nlogs
+var c7nLogs C7nLogs
 
 func InitC7nLogs(client *kubernetes.Clientset, namespace string) {
 	var once sync.Once
@@ -91,22 +91,14 @@ func GetTask(task string) (*TaskInfo, error) {
 	if err := getC7nLogs(c7nLogs.namespace, c7nLogs.Name); err != nil {
 		panic(err)
 	}
-	for key := range c7nLogs.Tasks {
-		tt, err := getTaskOfType(key, task)
-		if err != nil {
-			switch err {
-			case c7nerrors.TaskInfoIsNotFoundError:
-				{
-					log.Debugf("Task %s isn't in task group %s", task, key)
-				}
-			default:
-				{
-					log.Error(err)
-				}
+	for group := range c7nLogs.Tasks {
+		tasks := *c7nLogs.Tasks[group]
+		for idx, t := range tasks {
+			if t.Name == task {
+				return &tasks[idx], nil
 			}
-		} else {
-			return tt, nil
 		}
+		log.Debugf("Task %s isn't in group %s", task, group)
 	}
 	return nil, stderrors.WithMessage(c7nerrors.TaskInfoIsNotFoundError, fmt.Sprintf("Task %s isn't in configMaps c7n-logs", task))
 }
@@ -130,24 +122,14 @@ func SaveTask(t TaskInfo) (*TaskInfo, error) {
 		log.Debug("Task is empty，Please confirm that the task exists")
 	}
 
-	if err := saveC7nLogs(c7nLogs.namespace, c7nLogs.Name); err != nil {
+	if err := saveC7nLogs(); err != nil {
 		return nil, err
 	}
 	return &t, nil
 }
 
-func getTaskOfType(types, task string) (*TaskInfo, error) {
-	tasks := *c7nLogs.Tasks[types]
-	for idx, t := range tasks {
-		if t.Name == task {
-			return &tasks[idx], nil
-		}
-	}
-	return nil, c7nerrors.TaskInfoIsNotFoundError
-}
-
-func saveC7nLogs(namespace, cmName string) error {
-	cm, err := getConfigMaps(namespace, cmName)
+func saveC7nLogs() error {
+	cm, err := getConfigMaps(c7nLogs.namespace, c7nLogs.Name)
 	if err != nil {
 		return stderrors.WithMessage(err, "Save configMaps c7n-logs failed: ")
 	}
@@ -161,7 +143,7 @@ func saveC7nLogs(namespace, cmName string) error {
 			cm.Data = map[string]string{}
 		}
 		cm.Data[key] = string(tbyte)
-		log.Debugf("Saving ConfigMaps key", key)
+		log.Debugf("Saving ConfigMaps key %s", key)
 	}
 	if _, err = c7nLogs.client.CoreV1().ConfigMaps(c7nLogs.namespace).Update(context.Background(), cm,
 		metav1.UpdateOptions{}); err != nil {
@@ -192,7 +174,6 @@ func getC7nLogs(namespace, cmName string) error {
 }
 
 func getConfigMaps(namespace, cmName string) (cm *v1.ConfigMap, err error) {
-
 	cm, err = c7nLogs.client.CoreV1().ConfigMaps(c7nLogs.namespace).Get(context.Background(), c7nLogs.Name, metav1.GetOptions{})
 	// 如果不存在则创建 cm
 	if err != nil {

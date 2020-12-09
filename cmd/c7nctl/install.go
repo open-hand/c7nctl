@@ -17,6 +17,7 @@ package main
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
@@ -29,6 +30,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"io"
 	"io/ioutil"
+	"strings"
 )
 
 const installDesc = `
@@ -48,6 +50,7 @@ the '--debug' and '--client-only' flags can be combined.
 func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	metrics := c7nclient.Metrics{}
+	client.ResourceClient = resource.NewClient(nil, "")
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [flags]",
@@ -56,6 +59,8 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			setUserConfig(settings.SkipInput)
+			client.ResourceClient.Init()
+
 			if err := runInstall(args, client, out); err != nil {
 				log.Errorf("Install Choerodon failed: %s", err)
 				metrics.ErrorMsg = []string{err.Error()}
@@ -73,7 +78,7 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 }
 
 func runInstall(args []string, client *action.Install, out io.Writer) error {
-	name, err := client.GetName(args)
+	name, err := getName(args)
 	if err != nil {
 		return err
 	}
@@ -83,11 +88,15 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	client.InitInstall(userConfig)
+	client.Setup(userConfig)
 	log.Infof("The current installing choerodon version is %s", client.Version)
 
 	instDef := &resource.InstallDefinition{}
-	if err = instDef.GetInstallDefinition(client.ResourcePath); err != nil {
+	rs, err := client.ResourceClient.GetResource(client.Version, consts.ResourceInstallFile)
+	if err != nil {
+		log.Error(err)
+	}
+	if err = instDef.GetInstallDefinition(rs); err != nil {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
 	if !instDef.IsName(name) {
@@ -108,6 +117,8 @@ func addInstallFlags(fs *pflag.FlagSet, client *action.Install) {
 
 	fs.BoolVar(&client.ThinMode, "thin-mode", false, "install choerodon using Low resource consumption")
 	fs.BoolVar(&client.ClientOnly, "client-only", false, "simulate an install")
+
+	addResourceClientFlags(fs, client.ResourceClient)
 }
 
 func setUserConfig(skipInput bool) {
@@ -159,4 +170,11 @@ func getUserConfig(filePath string) (*config.C7nConfig, error) {
 	log.Infof("The user profile %s was read successfully", filePath)
 
 	return userConfig, nil
+}
+
+func getName(args []string) (string, error) {
+	if len(args) > 1 {
+		return args[0], std_errors.Errorf("expected at most one arguments, unexpected arguments: %v", strings.Join(args[1:], ", "))
+	}
+	return args[0], nil
 }

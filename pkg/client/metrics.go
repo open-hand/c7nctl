@@ -3,8 +3,10 @@ package client
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"sync"
@@ -26,26 +28,37 @@ type Metrics struct {
 
 // TODO is move to pkg consts ?
 const (
-	metricsUrl = "http://get.choerodon.com.cn/api/v1/metrics"
+	metricsUrl = "http://localhost:8080/api/v1/metrics"
 	ipAddr     = "ns1.dnspod.net:6666"
 )
 
 func (m *Metrics) Send() {
 	log.Debug("sending metrics...")
-	data := m.pack()
-	client := http.Client{}
-	req, err := http.NewRequest("POST", metricsUrl, bytes.NewReader(data))
+	contentType := "application/json;charset=utf-8"
+	b, err := json.Marshal(m)
 	if err != nil {
-		log.Error(err)
+		log.Println("json format error:", err)
+		return
 	}
-	m.Ip = "127.0.0.1"
-	resp, err := client.Do(req)
+
+	body := bytes.NewBuffer(b)
+	resp, err := http.Post(metricsUrl, contentType, body)
 	if err != nil {
-		log.Debug(err)
+		log.Println("Post failed:", err)
+		return
 	}
+
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Debugf("send metrics failed with code: %d", resp.StatusCode)
 	}
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Read failed:", err)
+		return
+	}
+	log.Println("content:", string(content))
+
 }
 
 func (m *Metrics) pack() []byte {

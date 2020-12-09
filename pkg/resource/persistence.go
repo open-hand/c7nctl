@@ -39,10 +39,11 @@ func (p *Persistence) CheckOrCreatePv(pvs v1.PersistentVolumeSource) error {
 	if p.RefPvName == "" {
 		p.RefPvName = p.Name
 	}
-	ti, err := p.Client.GetTaskInfoFromCM(p.Namespace, p.Name)
+
+	ti, err := c7nclient.GetTask(p.Name)
 	if err != nil {
 		if err.Error() == "Task info is not found" {
-			ti = c7nclient.TaskInfo{
+			ti = &c7nclient.TaskInfo{
 				Name:    p.Name,
 				RefName: p.Name,
 				Type:    c7nconsts.StaticPersistentKey,
@@ -135,7 +136,7 @@ func (p *Persistence) createPv(pvs v1.PersistentVolumeSource) error {
 	}
 
 	news := p.prepareTaskInfo()
-	defer p.Client.SaveTaskInfoToCM(p.Namespace, *news)
+	defer c7nclient.SaveTask(*news)
 
 	_, err := p.Client.CreatePv(pv)
 	if err != nil {
