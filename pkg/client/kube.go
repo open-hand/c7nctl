@@ -1,28 +1,34 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/choerodon/c7nctl/pkg/common/consts"
 	stderrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/kubernetes/pkg/credentialprovider"
+	"os"
 )
 
 type K8sClient struct {
+	Namespace     string
 	kubeInterface *kubernetes.Clientset
 }
 
-func NewK8sClient(kclient *kubernetes.Clientset) *K8sClient {
+func NewK8sClient(kclient *kubernetes.Clientset, ns string) *K8sClient {
 	return &K8sClient{
 		kubeInterface: kclient,
+		Namespace:     ns,
 	}
 }
 
@@ -61,6 +67,41 @@ func (k *K8sClient) GetClientSet() *kubernetes.Clientset {
 	return k.kubeInterface
 }
 
+func (k *K8sClient) CreateImagePullSecret(server, username, password, secretName string) (*v1.Secret, error) {
+	client := *k.kubeInterface
+
+	imagePullSecret, err := client.CoreV1().Secrets(k.Namespace).Get(context.Background(), secretName, metav1.GetOptions{})
+	if !k8serrors.IsNotFound(err) {
+		log.Infof("Image pull secret %s already exists", secretName)
+		return imagePullSecret, nil
+	}
+	auth := credentialprovider.DockerConfigJson{
+		Auths: map[string]credentialprovider.DockerConfigEntry{
+			server: credentialprovider.DockerConfigEntry{
+				Username: username,
+				Password: password,
+			},
+		},
+		HttpHeaders: nil,
+	}
+	authByte, err := json.Marshal(auth)
+	if err != nil {
+		log.Errorf("Create image pull secret failed: %s", err)
+	}
+	imagePullSecret = &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: k.Namespace,
+		},
+		Immutable: nil,
+		Data: map[string][]byte{
+			".dockerconfigjson": authByte,
+		},
+		Type: v1.SecretTypeDockerConfigJson,
+	}
+	return client.CoreV1().Secrets(k.Namespace).Create(context.Background(), imagePullSecret, metav1.CreateOptions{})
+}
+
 func (k *K8sClient) CreateNamespace(namespace string) error {
 	client := *k.kubeInterface
 	ns := &v1.Namespace{
@@ -80,70 +121,6 @@ func (k *K8sClient) CreateNamespace(namespace string) error {
 func (k *K8sClient) GetNamespace(namespace string) (ns *v1.Namespace, err error) {
 	client := *k.kubeInterface
 	return client.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
-}
-
-func (k *K8sClient) SaveToCM(namespace string, cmName string, data map[string]string) (*v1.ConfigMap, error) {
-	client := *k.kubeInterface
-
-	cm, err := k.GetOrCreateCM(namespace, cmName)
-	if err != nil {
-		return nil, err
-	}
-	cm.Data = data
-	return client.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{})
-}
-
-func (k *K8sClient) GetOrCreateCM(namespace, cmName string) (*v1.ConfigMap, error) {
-	client := *k.kubeInterface
-
-	cm, err := client.CoreV1().ConfigMaps(namespace).Get(context.Background(), cmName, metav1.GetOptions{})
-	if k8serrors.IsNotFound(err) {
-		log.Infof("Config map %s isn't existing, now Create it", cmName)
-		return k.CreateCM(namespace, cmName)
-	} else if err != nil {
-		return nil, stderrors.WithMessage(err, fmt.Sprintf("Failed To get config maps %s from kubernetes", cmName))
-	}
-	return cm, nil
-}
-
-func (k *K8sClient) GetCM(namespace, cmName string) (*v1.ConfigMap, error) {
-	client := *k.kubeInterface
-
-	cm, err := client.CoreV1().ConfigMaps(namespace).Get(context.Background(), cmName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return cm, nil
-}
-
-func (k *K8sClient) CreateCM(namespace string, cmName string) (*v1.ConfigMap, error) {
-	client := *k.kubeInterface
-
-	cm := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cmName,
-			Namespace: namespace,
-		},
-	}
-
-	cm, err := client.CoreV1().ConfigMaps(namespace).Create(context.Background(), cm, metav1.CreateOptions{})
-	if err != nil {
-		err = stderrors.WithMessage(err, fmt.Sprintf("Failed to create configMap %s in namesapce %s", cmName, namespace))
-		return nil, err
-	}
-	log.Infof("Successfully created namespace %s in namespace %s", cmName, namespace)
-	return cm, err
-}
-
-func (k *K8sClient) DeleteCM(namespace string, cmName string) error {
-	client := *k.kubeInterface
-
-	if err := client.CoreV1().ConfigMaps(namespace).Delete(context.Background(), cmName, metav1.DeleteOptions{}); err != nil {
-		return stderrors.WithMessage(err, fmt.Sprintf("Failed to delete configMap %s in namesapce %s", cmName, namespace))
-	}
-	log.Infof("Successfully created configMap %s in namespace %s", cmName, namespace)
-	return nil
 }
 
 // Get exist pv
@@ -209,64 +186,6 @@ func (k *K8sClient) GetServerVersion() (*version.Info, error) {
 	return client.Discovery().ServerVersion()
 }
 
-func (k *K8sClient) GetTaskInfoFromCM(namespace, taskName string) (TaskInfo, error) {
-	logs, err := k.GetOrCreateCM(namespace, consts.StaticLogsCM)
-	if err != nil {
-		return TaskInfo{}, err
-	}
-	keys := []string{consts.StaticReleaseKey, consts.StaticTaskKey, consts.StaticPersistentKey}
-	for _, key := range keys {
-		var tasks []TaskInfo
-		if err := yaml.Unmarshal([]byte(logs.Data[key]), &tasks); err != nil {
-			return TaskInfo{}, err
-		}
-		for _, t := range tasks {
-			if t.Name == taskName {
-				return t, nil
-			}
-		}
-	}
-	return TaskInfo{}, stderrors.New("Task info is not found")
-}
-
-func (k *K8sClient) SaveTaskInfoToCM(namespace string, task TaskInfo) error {
-	c7nLogs, err := k.GetOrCreateCM(namespace, consts.StaticLogsCM)
-	if err != nil {
-		return err
-	}
-
-	var tasks []TaskInfo
-	if err := yaml.Unmarshal([]byte(c7nLogs.Data[task.Type]), &tasks); err != nil {
-		return err
-	}
-	// 如果存在就替换，不存在则添加
-	var isExisting bool
-	for idx, t := range tasks {
-		if t.Name == task.Name {
-			tasks[idx] = task
-			isExisting = true
-			break
-		}
-	}
-	if !isExisting {
-		tasks = append(tasks, task)
-	}
-	tasksStr, err := yaml.Marshal(tasks)
-	if err != nil {
-		return err
-	}
-	if c7nLogs.Data == nil {
-		c7nLogs.Data = map[string]string{}
-	}
-	c7nLogs.Data[task.Type] = string(tasksStr)
-
-	_, err = k.SaveToCM(namespace, consts.StaticLogsCM, c7nLogs.Data)
-	if err != nil {
-		log.Error(err)
-	}
-	return nil
-}
-
 func (k *K8sClient) DeleteDaemonSet(namespace, daemonSet string) error {
 	client := *k.kubeInterface
 
@@ -275,4 +194,72 @@ func (k *K8sClient) DeleteDaemonSet(namespace, daemonSet string) error {
 	}
 	log.Infof("Successfully created daemonSet %s in namespace %s", daemonSet, namespace)
 	return nil
+}
+
+func (k *K8sClient) ExecCommand(podName, command string) error {
+
+	cmd := []string{
+		"sh",
+		"-c",
+		command,
+	}
+
+	req := k.kubeInterface.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(k.Namespace).
+		SubResource("exec")
+	option := &v1.PodExecOptions{
+		Command: cmd,
+		Stdin:   true,
+		Stdout:  true,
+		Stderr:  true,
+		TTY:     true,
+	}
+	req.VersionedParams(option, scheme.ParameterCodec)
+
+	config, err := GetConfig()
+	if err != nil {
+		return err
+	}
+
+	var stdout, stderr bytes.Buffer
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	})
+	if err != nil {
+		log.Error(stderr.String())
+		return err
+	}
+	log.Infof("Exec command result: %s", stdout.String())
+	return nil
+}
+
+func (k *K8sClient) PatchServiceAccount(sa, ips string) {
+	defaultSA, err := k.kubeInterface.CoreV1().ServiceAccounts(k.Namespace).Get(context.Background(), sa, metav1.GetOptions{})
+	if err != nil {
+		log.Error(err)
+	}
+	if defaultSA.ImagePullSecrets == nil {
+		defaultSA.ImagePullSecrets = []v1.LocalObjectReference{}
+	}
+	// 当不重复时继续时添加
+	for _, i := range defaultSA.ImagePullSecrets {
+		if i.Name == ips {
+			return
+		}
+	}
+	defaultSA.ImagePullSecrets = append(defaultSA.ImagePullSecrets, v1.LocalObjectReference{
+		Name: ips,
+	})
+	_, err = k.kubeInterface.CoreV1().ServiceAccounts(k.Namespace).Update(context.Background(), defaultSA, metav1.UpdateOptions{})
+	if err != nil {
+		log.Error(err)
+	}
 }

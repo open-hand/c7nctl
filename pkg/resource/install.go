@@ -18,7 +18,6 @@ import (
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"strings"
 	"text/template"
 )
 
@@ -52,7 +51,8 @@ type Basic struct {
 	DefaultAccessModes []v1.PersistentVolumeAccessMode
 	StorageClass       string
 
-	Prefix string
+	DockerRegistry []DockerRegistry
+	Prefix         string
 	// 默认为空
 	ImageRepository string
 	ChartRepository string
@@ -65,17 +65,8 @@ type Basic struct {
 }
 
 func (i *InstallDefinition) GetInstallDefinition(resource string) error {
-	// TODO 如果 resource 是域名形式, https:// 会变成 https:/
-	if !strings.HasSuffix(resource, "/") {
-		resource += "/"
-	}
-	res, err := c7nutils.GetResource(resource + c7nconsts.InstallConfigPath)
 
-	if err != nil {
-		return err
-	}
-
-	rdJson, err := yaml.ToJSON(res)
+	rdJson, err := yaml.ToJSON([]byte(resource))
 	if err != nil {
 		panic(err)
 	}
@@ -167,12 +158,11 @@ func (i *InstallDefinition) CreatePersistence(r *Release, client *c7nclient.K8sC
 }
 
 // 必须基于 InstallDefinition 渲染 value.yaml 文件
-func (i *InstallDefinition) RenderHelmValues(r *Release, helmValuesPath string) (map[string]interface{}, error) {
+func (i *InstallDefinition) RenderHelmValues(r *Release, fileVals string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
 	var fileValsByte bytes.Buffer
 	var err error
 
-	fileVals := r.ValuesRaw(helmValuesPath)
 	if fileVals != "" {
 		fileValsByte, err = i.renderTpl(r.Name+"-file-values", fileVals)
 		if err != nil {

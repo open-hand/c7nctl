@@ -32,7 +32,7 @@ database:
 {{- if ne .GetImageRepository "" }}
     image:
       repository: {{ .GetImageRepository }}/postgresql
-{{- end -}}
+{{- end }}
     size: 20Gi
 persistence:
   enabled: true
