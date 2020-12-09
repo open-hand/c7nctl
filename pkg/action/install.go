@@ -11,9 +11,9 @@ import (
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"strings"
 
 	"os"
+	"strings"
 )
 
 type Install struct {
@@ -24,8 +24,9 @@ type Install struct {
 	Name      string
 	Namespace string
 	// 安装资源的路径，helm 的 values.yaml 文件在其路径下的 values 文件夹中
-	Version    string
-	HelmValues string
+	ResourcePath string
+	Version      string
+	HelmValues   string
 	//
 	C7nGatewayUrl string
 	ClientOnly    bool
@@ -47,15 +48,28 @@ func NewInstall(cfg *C7nConfiguration) *Install {
 // 设置 install 的值
 func (i *Install) Setup(c *config.C7nConfig) {
 	log.Debug("Initialize config to Install")
-	// config.yml 配置的 version 无效
+	// 配置优先级 flag > config.yaml > 默认值
+	// 当 i.Version 不存在时，设置成 c.Version 或者默认值
+	if c.Version == "" {
+		// TODO 在打包时根据 TAG 设置 version
+		c.Version = c7nconsts.Version
+	}
+	if i.Version == "" {
+		i.Version = c.Version
+	}
 	log.Debugf("Choerodon version is %s", i.Version)
 
-	if i.ResourceClient.ResourcePath == "" && c.Spec.ResourcePath != "" {
-		i.ResourceClient.ResourcePath = c.Spec.ResourcePath
+	if c.Spec.ResourcePath == "" {
+		c.Spec.ResourcePath = c7nconsts.OpenSourceResourceURL
+		// 默认到 gitee 上获取资源文件
+		if i.ResourceClient.Business {
+			c.Spec.ResourcePath = c7nconsts.BusinessResourcePath
+		}
 	}
-	i.ResourceClient.ResourcePath = strings.TrimSuffix(i.ResourceClient.ResourcePath, "/")
-
-	log.Debugf("Install file path is %s", i.ResourceClient.ResourcePath)
+	if i.ResourcePath == "" {
+		i.ResourcePath = c.Spec.ResourcePath
+	}
+	log.Debugf("Install file path is %s", i.ResourcePath)
 	if i.HelmValues == "" {
 		i.HelmValues = c7nconsts.DefaultHelmValuesPath
 	}
@@ -71,17 +85,17 @@ func (i *Install) Setup(c *config.C7nConfig) {
 	if i.ChartRepository != "" {
 		c.Spec.ChartRepository = i.ChartRepository
 	}
-	log.Debugf("Chart repository is %s", c.GetChartRepository())
+	log.Debugf("Chart repository is %s", c.GetImageRepository())
 
 	if i.DatasourceTpl != "" {
 		c.Spec.DatasourceTpl = i.DatasourceTpl
 	}
-	log.Debugf("Datasource template is %s", c.GetDatasourceTpl())
+	log.Debugf("Datasource template is %s", c.GetImageRepository())
 
 	if i.Prefix != "" {
 		c.Spec.Prefix = i.Prefix
 	}
-	log.Debugf("Prefix is %s", c.GetPrefix())
+	log.Debugf("Prefix is %s", c.GetImageRepository())
 
 	if i.ThinMode {
 		c.Spec.ThinMode = true
@@ -135,9 +149,14 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 
 	for !installQueue.IsEmpty() {
 		rls := installQueue.Dequeue()
-		log.Infof("Start installing release %s", rls.Name)
+		log.Infof("start installing release %s", rls.Name)
+		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
+		if !strings.HasSuffix(i.ResourcePath, "/") {
+			i.ResourcePath += "/"
+		}
 
-		rr, err := i.ResourceClient.GetHelmValueFile(i.Version, rls.Name)
+		rvurl := fmt.Sprintf("/%s/%s.yaml", c7nconsts.DefaultHelmValuesPath, rls.Name)
+		rr, err := i.ResourceClient.GetResource(i.Version, rvurl)
 		if err != nil {
 			return err
 		}
@@ -185,7 +204,7 @@ func (i *Install) installRelease(rls *resource.Release, vals map[string]interfac
 		return err
 	}
 	if task.Status == c7nconsts.SucceedStatus {
-		log.Infof("Release %s has been installed", rls.Name)
+		log.Infof("Release %s is already installed", rls.Name)
 		return nil
 	}
 

@@ -6,7 +6,6 @@ import (
 )
 
 func addResourceClientFlags(fs *pflag.FlagSet, client *resource.Client) {
-	fs.StringVarP(&client.ResourcePath, "resource-path", "r", "", "choerodon install definition file")
 	fs.BoolVar(&client.Business, "biz", false, "enable install business choerodon")
 	fs.StringVar(&client.Username, "auth-user", "", "The authenticated user of the installation resource")
 	fs.StringVar(&client.Password, "auth-pass", "", "The authenticated password of the installation resource")

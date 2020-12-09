@@ -1,9 +1,6 @@
 package action
 
 import (
-	"context"
-	"fmt"
-	"github.com/choerodon/c7nctl/pkg/cli"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	std_errors "github.com/pkg/errors"
@@ -30,13 +27,13 @@ type C7nConfiguration struct {
 	HelmClient *c7nclient.Helm3Client
 }
 
-func (c *C7nConfiguration) Init(s *cli.EnvSettings) {
-	cfg := c7nclient.InitConfiguration(s.KubeConfig, s.Namespace)
+func (c *C7nConfiguration) Init(kubeconfig, namespace string) {
+	cfg := c7nclient.InitConfiguration(kubeconfig, namespace)
 	// 初始化 helm3Client
 	c.HelmClient = c7nclient.NewHelm3Client(cfg)
 	// 初始化 kubeClient
-	kubeclient, _ := c7nclient.GetKubeClient(s.KubeConfig)
-	c.KubeClient = c7nclient.NewK8sClient(kubeclient, s.Namespace)
+	kubeclient, _ := c7nclient.GetKubeClient(kubeconfig)
+	c.KubeClient = c7nclient.NewK8sClient(kubeclient, namespace)
 }
 
 // 基础组件——比如 gitlab-ha ——有 app 标签，c7n 有 choerodon.io/release 标签

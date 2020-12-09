@@ -7,3 +7,5 @@ _offline/
 *.biz.yaml
 
 .DS_Store
+
+*.biz.yaml

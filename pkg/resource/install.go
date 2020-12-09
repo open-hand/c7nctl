@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
@@ -16,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"text/template"
 )
 
@@ -62,6 +64,21 @@ type Basic struct {
 	Slaver    c7nslaver.Slaver
 }
 
+func (i *InstallDefinition) GetInstallDefinition(resource string) error {
+
+	rdJson, err := yaml.ToJSON([]byte(resource))
+	if err != nil {
+		panic(err)
+	}
+	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
+	_ = json.Unmarshal(rdJson, i)
+
+	if i.Spec.Basic.DefaultAccessModes == nil {
+		i.Spec.Basic.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+	}
+	return nil
+}
+
 func (i *InstallDefinition) IsName(name string) bool {
 	if rs := i.Spec.Release[name]; rs != nil {
 		return true
@@ -85,6 +102,7 @@ func (i *InstallDefinition) RenderReleases(name string, client *c7nclient.K8sCli
 	return nil
 }
 
+// TODO 渲染也是有先后顺序的
 func (i *InstallDefinition) renderRelease(r *Release) error {
 	task, err := c7nclient.GetTask(r.Name)
 	if err != nil {
@@ -125,7 +143,7 @@ func (i *InstallDefinition) renderRelease(r *Release) error {
 			return err
 		}
 	*/
-	log.Infof("The Release %s was rendered successfully", r.Name)
+	log.Infof("Successfully rendered the Release %s", r.Name)
 	return nil
 }
 

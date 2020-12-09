@@ -28,11 +28,9 @@ import (
 )
 
 var (
-	// TODO 与操作 c7n 的 api 有关，目前没有用到
 	clientPlatformConfig c7nclient.C7NConfig
 	clientConfig         c7nclient.C7NContext
 
-	// 获取默认的变量值
 	settings = cli.New()
 )
 
@@ -45,7 +43,7 @@ func main() {
 		if settings.Debug {
 			log.SetLevel(log.DebugLevel)
 		}
-		c7nCfg.Init(settings)
+		c7nCfg.Init(settings.KubeConfig, settings.Namespace)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Error(err)
