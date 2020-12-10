@@ -48,6 +48,7 @@ func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []str
 		newContextCmd(out),
 		newUpgradeCmd(out),
 		newUseCmd(out),
+		newVersionCmd(out),
 	)
 
 	// TODO 完成命令自动补全功能

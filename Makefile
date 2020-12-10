@@ -36,6 +36,22 @@ endif
 
 BINARY_VERSION ?= ${GIT_TAG}
 
+# Only set Version if building a tag or VERSION is set
+ifneq ($(BINARY_VERSION),)
+	LDFLAGS += -X github.com/choerodon/c7nctl/internal/version.version=${BINARY_VERSION}
+endif
+
+VERSION_METADATA = unreleased
+# Clear the "unreleased" string in BuildMetadata
+ifneq ($(GIT_TAG),)
+	VERSION_METADATA =
+endif
+
+LDFLAGS += -X github.com/choerodon/c7nctl/internal/version.metadata=${VERSION_METADATA}
+LDFLAGS += -X github.com/choerodon/c7nctl/internal/version.gitCommit=${GIT_COMMIT}
+LDFLAGS += -X github.com/choerodon/c7nctl/internal/version.gitTreeState=${GIT_DIRTY}
+LDFLAGS += $(EXT_LDFLAGS)
+
 .PHONY: all
 all: build
 
