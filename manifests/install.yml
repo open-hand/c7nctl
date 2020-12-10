@@ -394,7 +394,7 @@ spec:
           port: 8061
           schema: ws
         requirements:
-          - choerodon-message
+          - choerodon-monitor
           - gitlab
           - harbor
           - sonarqube
@@ -443,7 +443,7 @@ spec:
           port: 8071
           schema: http
         requirements:
-          - choerodon-message
+          - choerodon-monitor
           - gitlab
         preInstall:
           - name: gitlab-set-access-token
@@ -487,7 +487,7 @@ spec:
           port: 8066
           schema: ws
         requirements:
-          - choerodon-message
+          - choerodon-monitor
         preInstall:
           - name: workflow-service-predb
             commands:
@@ -505,7 +505,7 @@ spec:
           port: 8379
           schema: http
         requirements:
-          - choerodon-message
+          - choerodon-monitor
         preInstall:
           - name: agile-service-predb
             commands:
@@ -523,7 +523,7 @@ spec:
           port: 8394
           schema: http
         requirements:
-          - choerodon-message
+          - choerodon-monitor
         preInstall:
           - name: test-manager-service-predb
             commands:
@@ -547,7 +547,7 @@ spec:
           port: 8280
           schema: http
         requirements:
-          - choerodon-message
+          - choerodon-monitor
           - elasticsearch-kb
         preInstall:
           - name: knowledgebase-service-predb
@@ -600,7 +600,7 @@ spec:
           host: choerodon-front-hzero
           schema: http
         requirements:
-          - choerodon-message
+          - choerodon-monitor
         values:
           - name: "ingress.host"
             value: '{{ ( .GetResource "choerodon-front-hzero" ).Domain }}'
