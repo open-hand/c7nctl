@@ -59,8 +59,8 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			setUserConfig(settings.SkipInput)
+			// TODO 添加到 install 中
 			client.ResourceClient.Init()
-
 			if err := runInstall(args, client, out); err != nil {
 				log.Errorf("Install Choerodon failed: %s", err)
 				metrics.ErrorMsg = []string{err.Error()}
@@ -78,12 +78,11 @@ func newInstallCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 }
 
 func runInstall(args []string, client *action.Install, out io.Writer) error {
-	name, err := getName(args)
+	var err error
+	client.Name, err = getName(args)
 	if err != nil {
 		return err
 	}
-	client.Name = name
-
 	userConfig, err := getUserConfig(settings.ConfigFile)
 	if err != nil {
 		return err
@@ -99,7 +98,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 	if err = instDef.GetInstallDefinition(rs); err != nil {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
-	if !instDef.IsName(name) {
+	if !instDef.IsName(client.Name) {
 		return std_errors.New("Please input right release name!")
 	}
 	instDef.MergerConfig(userConfig)
