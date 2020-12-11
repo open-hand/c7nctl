@@ -45,7 +45,7 @@ func main() {
 		if settings.Debug {
 			log.SetLevel(log.DebugLevel)
 		}
-		c7nCfg.Init(settings.KubeConfig, settings.Namespace)
+		c7nCfg.Init(settings)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Error(err)

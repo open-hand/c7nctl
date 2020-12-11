@@ -90,12 +90,12 @@ func (i *Install) Setup(c *config.C7nConfig) {
 	if i.DatasourceTpl != "" {
 		c.Spec.DatasourceTpl = i.DatasourceTpl
 	}
-	log.Debugf("Datasource template is %s", c.GetImageRepository())
+	log.Debugf("Datasource template is %s", c.GetDatasourceTpl())
 
 	if i.Prefix != "" {
 		c.Spec.Prefix = i.Prefix
 	}
-	log.Debugf("Prefix is %s", c.GetImageRepository())
+	log.Debugf("Prefix is %s", c.GetPrefix())
 
 	if i.ThinMode {
 		c.Spec.ThinMode = true
