@@ -374,6 +374,7 @@ spec:
           schema: http
         requirements:
           - choerodon-oauth
+          - choerodon-iam
         preInstall:
           - name: choerodon-message-predb
             commands:

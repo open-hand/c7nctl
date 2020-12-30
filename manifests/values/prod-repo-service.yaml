@@ -1,6 +1,6 @@
 {{- if ne .GetImageRepository "" }}
 image:
-  repository: {{ .GetImageRepository }}/code-repo-service
+  repository: {{ .GetImageRepository }}/prod-repo-service
 {{- end }}
 
 {{- if ne .GetImageRepository "" }}
