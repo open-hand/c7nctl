@@ -17,6 +17,7 @@ env:
     HZERO_OAUTH_LOGIN_SUCCESS_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
     HZERO_OAUTH_LOGIN_DEFAULT_CLIENT_ID: choerodon
     HZERO_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+    HZERO_OAUTH_BASE_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}/oauth
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
     SPRING_DATASOURCE_USERNAME: choerodon
