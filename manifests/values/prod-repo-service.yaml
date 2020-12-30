@@ -30,14 +30,6 @@ preJob:
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    # devops的数据库 迁移数据使用 只会在0.23版本使用
-    HARBOR_INIT_CUSTOM_REPO_PASSWORD: password
-    HARBOR_INIT_CUSTOM_REPO_URL: {{ .GetDatabaseUrl "devops_service" }}
-    HARBOR_INIT_CUSTOM_REPO_USERNAME: choerodon
-    # platform的数据库 迁移数据使用 只会在0.23版本使用
-    HARBOR_INIT_DEFAULT_REPO_PASSWORD: password
-    HARBOR_INIT_DEFAULT_REPO_URL: {{ .GetDatabaseUrl "hzero_platform" }}
-    HARBOR_INIT_DEFAULT_REPO_USERNAME: choerodon
     HARBOR_BASE_URL: {{ .GetResourceDomainUrl "harbor" }}
     HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
     HARBOR_USER_NAME: admin

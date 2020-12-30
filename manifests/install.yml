@@ -179,7 +179,7 @@ spec:
                   name: "必须包含数字"
       - name: chartmuseum
         chart: chartmuseum
-        version: 2.6.0
+        version: 2.15.0
         resource:
           host: chartmuseum
           port: 80
@@ -189,6 +189,26 @@ spec:
           - name: "ingress.hosts[0].name"
             value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
             check: clusterdomain
+          - name: "env.secret.BASIC_AUTH_USER"
+            value: "choerodon"
+            input:
+              enabled: true
+              regex: ".{3,}"
+              tip: "请设置的chartmuseum的basic认证用户(3个字符以上,不能为纯数字):"
+              password: false
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
+          - name: "env.secret.BASIC_AUTH_PASS"
+            value: "password"
+            input:
+              enabled: true
+              password: true
+              regex: ".{8,40}"
+              tip: "请设置的chartmuseum的basic密码(8-40字符,不能为纯数字):"
+              exclude:
+                - value: "^\\d*$"
+                  name: "不能为纯数字"
       - name: sonarqube
         chart: sonarqube
         version: 0.15.0-3

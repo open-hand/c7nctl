@@ -16,7 +16,7 @@ const (
 
 	// c7nctl 版本号
 	// TODO 使用 internal 包中的 version 替换此值
-	Version = "0.23"
+	Version = "0.24"
 
 	// 默认的开源版和商业版资源获取路径
 	OpenSourceResourceURL      = "https://gitee.com/open-hand/"

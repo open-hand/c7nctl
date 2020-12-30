@@ -5,8 +5,9 @@ image:
 
 env:
   open:
+    AUTH_ANONYMOUS_GET: "true"
     STORAGE: local
-    DISABLE_API: false
+    DISABLE_API: "false"
     DEPTH: 2
 persistence:
   enabled: true
