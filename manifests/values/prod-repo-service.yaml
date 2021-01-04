@@ -42,6 +42,10 @@ env:
     NEXUS_DEFAULT_BASE_URL: {{ .GetResourceDomainUrl "sonatype-nexus" }}
     NEXUS_DEFAULT_ENABLE_ANONYMOUS_FLAG: 0
     NEXUS_DEFAULT_PASSWORD: {{ .GetReleaseValue "sonatype-nexus" "initAdminPassword.password" }}
+    NEXUS_PROXY_URIPREFIX: /v1/nexus/proxy
+    NEXUS_PROXY_SERVLETURI: /v1/nexus/proxy/*
+    SERVICES_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+    SERVICE_ROUTE: /rdupm
 {{- if .IsThinMode }}
 resources:
   limits:
