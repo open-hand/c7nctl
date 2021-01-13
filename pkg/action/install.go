@@ -50,14 +50,7 @@ func (i *Install) Setup(c *config.C7nConfig) {
 	// config.yml 配置的 version 无效
 	log.Debugf("Choerodon version is %s", i.Version)
 
-	if c.Spec.ResourcePath == "" {
-		c.Spec.ResourcePath = c7nconsts.OpenSourceResourceURL
-		// 默认到 gitee 上获取资源文件
-		if i.ResourceClient.Business {
-			c.Spec.ResourcePath = c7nconsts.BusinessResourcePath
-		}
-	}
-	if i.ResourceClient.ResourcePath == "" {
+	if i.ResourceClient.ResourcePath == "" && c.Spec.ResourcePath != "" {
 		i.ResourceClient.ResourcePath = c.Spec.ResourcePath
 	}
 	i.ResourceClient.ResourcePath = strings.TrimSuffix(i.ResourceClient.ResourcePath, "/")
