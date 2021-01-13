@@ -85,7 +85,6 @@ func (i *InstallDefinition) RenderReleases(name string, client *c7nclient.K8sCli
 	return nil
 }
 
-// TODO 渲染也是有先后顺序的
 func (i *InstallDefinition) renderRelease(r *Release) error {
 	task, err := c7nclient.GetTask(r.Name)
 	if err != nil {

@@ -109,7 +109,6 @@ function pre_download() {
 }
 
 function pull_group_chart() {
-
     # shellcheck disable=SC2154
     # shellcheck disable=SC2068
     for key in ${!c7nChart[@]}
@@ -165,9 +164,19 @@ function push_image() {
     done
 }
 
-pre_download
+function list_version() {
+    # shellcheck disable=SC2154
+    # shellcheck disable=SC2068
+    for key in ${!c7nChart[@]}
+    do
+        helm search repo c7n/"${key}" | grep c7n/"${key}"
+    done
+}
+# pre_download
 # add_helm_repo
 # pull_group_image
 # pull_chart
-#push_image
+# push_image
 # push_chart
+
+list_version

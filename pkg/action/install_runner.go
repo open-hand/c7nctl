@@ -22,15 +22,7 @@ func NewInstallRunner(cfg *C7nConfiguration) *InstallRunner {
 }
 
 func (ir *InstallRunner) InitInstallRunner(c *config.C7nConfig) {
-	// 配置优先级 flag > config.yaml > 默认值
-	// 当 i.Version 不存在时，设置成 c.Version 或者默认值
-	if c.Version == "" {
-		// TODO 在打包时根据 TAG 设置 version
-		c.Version = c7nconsts.Version
-	}
-	if ir.Version == "" {
-		ir.Version = c.Version
-	}
+	// config.yml 中的配置无效
 
 	if c.Spec.ResourcePath == "" {
 		// 默认到 github 上获取资源文件
@@ -83,7 +75,6 @@ func (ir *InstallRunner) InstallGitlabRunner(instDef *resource.InstallDefinition
 		}
 
 		log.Infof("installing %s", runner.Name)
-		// TODO 使用统一的 io.writer
 		// 使用 upgrade --install cmd
 		_, err := ir.cfg.HelmClient.Install(args, vals, os.Stdout)
 		if err != nil {
