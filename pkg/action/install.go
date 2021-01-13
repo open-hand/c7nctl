@@ -11,9 +11,9 @@ import (
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"strings"
 
 	"os"
-	"strings"
 )
 
 type Install struct {
@@ -24,9 +24,8 @@ type Install struct {
 	Name      string
 	Namespace string
 	// 安装资源的路径，helm 的 values.yaml 文件在其路径下的 values 文件夹中
-	ResourcePath string
-	Version      string
-	HelmValues   string
+	Version    string
+	HelmValues string
 	//
 	C7nGatewayUrl string
 	ClientOnly    bool
@@ -66,10 +65,12 @@ func (i *Install) Setup(c *config.C7nConfig) {
 			c.Spec.ResourcePath = c7nconsts.BusinessResourcePath
 		}
 	}
-	if i.ResourcePath == "" {
-		i.ResourcePath = c.Spec.ResourcePath
+	if i.ResourceClient.ResourcePath == "" {
+		i.ResourceClient.ResourcePath = c.Spec.ResourcePath
 	}
-	log.Debugf("Install file path is %s", i.ResourcePath)
+	i.ResourceClient.ResourcePath = strings.TrimSuffix(i.ResourceClient.ResourcePath, "/")
+
+	log.Debugf("Install file path is %s", i.ResourceClient.ResourcePath)
 	if i.HelmValues == "" {
 		i.HelmValues = c7nconsts.DefaultHelmValuesPath
 	}
@@ -85,7 +86,7 @@ func (i *Install) Setup(c *config.C7nConfig) {
 	if i.ChartRepository != "" {
 		c.Spec.ChartRepository = i.ChartRepository
 	}
-	log.Debugf("Chart repository is %s", c.GetImageRepository())
+	log.Debugf("Chart repository is %s", c.GetChartRepository())
 
 	if i.DatasourceTpl != "" {
 		c.Spec.DatasourceTpl = i.DatasourceTpl
@@ -149,14 +150,9 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 
 	for !installQueue.IsEmpty() {
 		rls := installQueue.Dequeue()
-		log.Infof("start installing release %s", rls.Name)
-		// 获取的 values.yaml 必须经过渲染，只能放在 id 中
-		if !strings.HasSuffix(i.ResourcePath, "/") {
-			i.ResourcePath += "/"
-		}
+		log.Infof("Start installing release %s", rls.Name)
 
-		rvurl := fmt.Sprintf("/%s/%s.yaml", c7nconsts.DefaultHelmValuesPath, rls.Name)
-		rr, err := i.ResourceClient.GetResource(i.Version, rvurl)
+		rr, err := i.ResourceClient.GetHelmValueFile(i.Version, rls.Name)
 		if err != nil {
 			return err
 		}
@@ -204,7 +200,7 @@ func (i *Install) installRelease(rls *resource.Release, vals map[string]interfac
 		return err
 	}
 	if task.Status == c7nconsts.SucceedStatus {
-		log.Infof("Release %s is already installed", rls.Name)
+		log.Infof("Release %s has been installed", rls.Name)
 		return nil
 	}
 

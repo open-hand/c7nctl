@@ -17,7 +17,6 @@ package main
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
-	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/resource"
 	c7nutils "github.com/choerodon/c7nctl/pkg/utils"
@@ -91,13 +90,10 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 	log.Infof("The current installing choerodon version is %s", client.Version)
 
 	instDef := &resource.InstallDefinition{}
-	rs, err := client.ResourceClient.GetResource(client.Version, consts.ResourceInstallFile)
-	if err != nil {
-		log.Error(err)
-	}
-	if err = instDef.GetInstallDefinition(rs); err != nil {
+	if instDef, err = client.ResourceClient.GetInstallDefinition(client.Version); err != nil {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
+
 	if !instDef.IsName(client.Name) {
 		return std_errors.New("Please input right release name!")
 	}
@@ -107,7 +103,6 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 }
 
 func addInstallFlags(fs *pflag.FlagSet, client *action.Install) {
-	fs.StringVarP(&client.ResourcePath, "resource-path", "r", "", "choerodon install definition file")
 	fs.StringVarP(&client.Version, "version", "v", "0.23", "version of choerodon which will installation")
 	fs.StringVar(&client.Prefix, "prefix", "", "add prefix to all helm release")
 	fs.StringVar(&client.ImageRepository, "image-repo", "", "default image repository of all release")

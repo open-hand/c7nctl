@@ -108,7 +108,7 @@ func (c *C7nConfig) GetImageRepository() string {
 }
 
 func (c *C7nConfig) GetChartRepository() string {
-	return c.Spec.ImageRepository
+	return c.Spec.ChartRepository
 }
 
 func (c *C7nConfig) GetDatasourceTpl() string {

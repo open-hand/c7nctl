@@ -2,6 +2,6 @@
 
 bin/
 _dist/
-
+_offline/
 *.local.yml
 *.biz.yaml

@@ -1,4 +1,4 @@
-version: "0.23"
+version: "0.24"
 # this is a annotation
 metadata:
   name: resource
@@ -9,7 +9,7 @@ spec:
       memory: 38Gi
   basic:
     commonLabels:
-      choerodon-version: "0.23"
+      choerodon-version: "0.24"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
     chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
@@ -94,7 +94,6 @@ spec:
           host: minio
           port: 9000
           schema: http
-        requirements:
         values:
           - name: "ingress.hosts[0]"
             value: '{{ ( .GetResource "minio" ).Domain }}'
@@ -127,7 +126,6 @@ spec:
           host: harbor
           port: 5000
           schema: https
-        requirements:
         values:
           - name: "harborAdminPassword"
             value: "Choerodon123"
@@ -155,7 +153,6 @@ spec:
         resource:
           host: sonatype-nexus
           schema: http
-        requirements:
         values:
           - name: "nexusProxy.env.nexusHttpHost"
             value: '{{ ( .GetResource "sonatype-nexus" ).Domain }}'
@@ -184,7 +181,6 @@ spec:
           host: chartmuseum
           port: 80
           schema: http
-        requirements:
         values:
           - name: "ingress.hosts[0].name"
             value: '{{ ( .GetResource "chartmuseum" ).Domain }}'
@@ -218,14 +214,12 @@ spec:
           port: 5432
           username: "sonarUser"
           password: "sonarPass"
-        requirements:
         values:
           - name: "ingress.hosts[0]"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
             check: clusterdomain
       - name: choerodon-register
         chart: choerodon-register
-        #version: "0.23.1"
         resource:
           host: "choerodon-register"
           port: 8000
@@ -234,7 +228,6 @@ spec:
         values:
       - name: choerodon-platform
         chart: choerodon-platform
-        #version: "0.23.4"
         resource:
           host: choerodon-platform
           port: 8100
@@ -266,7 +259,6 @@ spec:
         values:
       - name: choerodon-admin
         chart: choerodon-admin
-        #version: "0.23.1"
         resource:
           host: choerodon-admin
           port: 8062
@@ -284,13 +276,12 @@ spec:
         values:
       - name: choerodon-asgard
         chart: choerodon-asgard
-        #version: "0.23.3"
         resource:
-          host: choerodon-service
+          host: choerodon-asgard
           port: 8040
           schema: http
         requirements:
-          - choerodon-platform
+          - choerodon-admin
         preInstall:
           - name: hzero-asgard-predb
             commands:
@@ -302,49 +293,43 @@ spec:
         values:
       - name: choerodon-gateway
         chart: choerodon-gateway
-        #version: "0.23.1"
         resource:
           host: choerodon-gateway
           port: 8080
           schema: http
         requirements:
           - choerodon-admin
-          - choerodon-asgard
         values:
           - name: "ingress.host"
             value: '{{ (.GetResource "choerodon-gateway" ).Domain }}'
             check: clusterdomain
-      - name: choerodon-iam
-        chart: choerodon-iam
-        #version: "0.23.6"
-        resource:
-          host: choerodon-iam
-          port: 8030
-          schema: http
-        requirements:
-          - choerodon-admin
-          - choerodon-asgard
-        values:
       - name: choerodon-oauth
         chart: choerodon-oauth
-        #version: "0.23.1"
         resource:
           host: choerodon-oauth
           port: 8020
           schema: http
         requirements:
+          - choerodon-gateway
+        values:
+      - name: choerodon-iam
+        chart: choerodon-iam
+        resource:
+          host: choerodon-iam
+          port: 8030
+          schema: http
+        requirements:
+          - choerodon-oauth
           - choerodon-admin
-          - choerodon-asgard
         values:
       - name: choerodon-file
         chart: choerodon-file
-        #version: "0.23.1"
         resource:
           host: choerodon-file
           port: 8110
           schema: http
         requirements:
-          - choerodon-oauth
+          - choerodon-asgard
           - minio
         preInstall:
           - name: choerodon-file-predb
@@ -357,23 +342,21 @@ spec:
         values:
       - name: choerodon-swagger
         chart: choerodon-swagger
-        #version: "0.23.1"
         resource:
           host: choerodon-swagger
           port:
           schema: http
         requirements:
-          - choerodon-oauth
+          - choerodon-asgard
         values:
       - name: choerodon-message
         chart: choerodon-message
-        #version: "0.23.7"
         resource:
           host: choerodon-message
           port: 8120
           schema: http
         requirements:
-          - choerodon-oauth
+          - choerodon-asgard
           - choerodon-iam
         preInstall:
           - name: choerodon-message-predb
@@ -389,15 +372,12 @@ spec:
             check: clusterdomain
       - name: choerodon-monitor
         chart: choerodon-monitor
-        #version: "0.23.1"
         resource:
           host: choerodon-monitor
           port: 8260
           schema: http
         requirements:
-          - choerodon-file
-          - choerodon-swagger
-          - choerodon-message
+          - choerodon-asgard
         preInstall:
           - name: choerodon-monitor-predb
             commands:
@@ -407,15 +387,42 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
+      - name: choerodon-front-hzero
+        chart: choerodon-front-hzero
+        resource:
+          host: choerodon-front-hzero
+          schema: http
+        requirements:
+          - choerodon-monitor
+          - choerodon-file
+          - choerodon-swagger
+          - choerodon-message
+        values:
+          - name: "ingress.host"
+            value: '{{ ( .GetResource "choerodon-front-hzero" ).Domain }}'
+        preInstall:
+          - name: create-choerodon-front-hzero-client
+            commands:
+              - USE hzero_platform;
+              - |
+                INSERT IGNORE INTO hzero_platform.oauth_client (
+                  name,organization_id,resource_ids,secret,scope,
+                  authorized_grant_types,web_server_redirect_uri,
+                  access_token_validity,refresh_token_validity,
+                  additional_information,auto_approve,object_version_number,
+                  created_by,creation_date,last_updated_by,last_update_date)
+                VALUES("hzero",1,"default","secret","default",
+                      "password,implicit,client_credentials,authorization_code,refresh_token",
+                      '{{ ( .GetResource "choerodon-front-hzero").Schema }}://{{ ( .GetResource "choerodon-front-hzero").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
+            infraRef: c7n-mysql
       - name: devops-service
         chart: devops-service
-        #version: "0.23.7"
         resource:
           host: devops-service
           port: 8061
           schema: ws
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
           - gitlab
           - harbor
           - sonarqube
@@ -458,13 +465,12 @@ spec:
             check: clusterdomain
       - name: gitlab-service
         chart: gitlab-service
-        #version: "0.23.1"
         resource:
           host: gitlab-service
           port: 8071
           schema: http
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
           - gitlab
         preInstall:
           - name: gitlab-set-access-token
@@ -480,7 +486,7 @@ spec:
           - name: create-gitlabadmin-binding
             psql:
               - CREATE EXTENSION IF NOT EXISTS pg_trgm;
-              - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
+              - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('2', 'oauth2_generic', 1, NOW(), NOW());
             infraRef: gitlab
             database: gitlabhq_production
           - name: enable_webhook
@@ -502,13 +508,12 @@ spec:
             value: "{{ generateAlphaNum 20 }}"
       - name: workflow-service
         chart: workflow-service
-        #version: "0.23.2"
         resource:
           host: workflow-service
           port: 8066
           schema: ws
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
         preInstall:
           - name: workflow-service-predb
             commands:
@@ -520,13 +525,12 @@ spec:
         values:
       - name: agile-service
         chart: agile-service
-        #version: "0.23.6"
         resource:
           host: agile-service
           port: 8379
           schema: http
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
         preInstall:
           - name: agile-service-predb
             commands:
@@ -538,13 +542,12 @@ spec:
         values:
       - name: test-manager-service
         chart: test-manager-service
-        #version: "0.23.2"
         resource:
           host: test-manager-service
           port: 8394
           schema: http
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
         preInstall:
           - name: test-manager-service-predb
             commands:
@@ -555,20 +558,19 @@ spec:
             infraRef: c7n-mysql
       - name: elasticsearch-kb
         chart: elasticsearch-kb
-        version: "0.23.0"
+        version: "0.24.0"
         resource:
           port: 9200
           host: "elasticsearch-kb"
         values:
       - name: knowledgebase-service
         chart: knowledgebase-service
-        #version: "0.23.1"
         resource:
           host: knowledgebase-service
           port: 8280
           schema: http
         requirements:
-          - choerodon-monitor
+          - choerodon-front-hzero
           - elasticsearch-kb
         preInstall:
           - name: knowledgebase-service-predb
@@ -581,7 +583,6 @@ spec:
         values:
       - name: code-repo-service
         chart: code-repo-service
-        #version: "0.23.2"
         resource:
           host: code-repo-service
           schema: http
@@ -598,7 +599,6 @@ spec:
             infraRef: c7n-mysql
       - name: prod-repo-service
         chart: prod-repo-service
-        #version: "0.23.3"
         resource:
           host: prod-repo-service
           schema: http
@@ -614,41 +614,17 @@ spec:
               - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
-      - name: choerodon-front-hzero
-        chart: choerodon-front-hzero
-        #version: "0.23.1"
-        resource:
-          host: choerodon-front-hzero
-          schema: http
-        requirements:
-          - choerodon-monitor
-        values:
-          - name: "ingress.host"
-            value: '{{ ( .GetResource "choerodon-front-hzero" ).Domain }}'
-        preInstall:
-          - name: create-choerodon-front-hzero-client
-            commands:
-              - USE hzero_platform;
-              - |
-                INSERT IGNORE INTO hzero_platform.oauth_client (
-                  name,organization_id,resource_ids,secret,scope,
-                  authorized_grant_types,web_server_redirect_uri,
-                  access_token_validity,refresh_token_validity,
-                  additional_information,auto_approve,object_version_number,
-                  created_by,creation_date,last_updated_by,last_update_date)
-                VALUES("hzero",1,"default","secret","default",
-                      "password,implicit,client_credentials,authorization_code,refresh_token",
-                      '{{ ( .GetResource "choerodon-front-hzero").Schema }}://{{ ( .GetResource "choerodon-front-hzero").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
-            infraRef: c7n-mysql
       - name: choerodon-front
         chart: choerodon-front
-        #version: "0.23.0"
         resource:
           host: "choerodon-front"
           port: 80
           schema: http
         requirements:
           - agile-service
+          - test-manager-service
+          - knowledgebase-service
+          - workflow-service
           - code-repo-service
           - prod-repo-service
         preInstall:
@@ -842,9 +818,9 @@ spec:
         version: 0.1.1
         values:
           - name: "rbac.create"
-            value: true
+            value: "true"
           - name: "persistence.enabled"
-            value: true
+            value: "true"
           - name: "storageClass.name"
             value: nfs-provisioner
             input:
