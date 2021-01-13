@@ -5,3 +5,5 @@ _dist/
 _offline/
 *.local.yml
 *.biz.yaml
+
+.DS_Store
