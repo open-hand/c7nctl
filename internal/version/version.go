@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	version = "0.23.3"
+	version = "0.24.1"
 
 	// metadata is extra build time data
 	metadata = ""

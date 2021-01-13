@@ -47,15 +47,7 @@ func NewInstall(cfg *C7nConfiguration) *Install {
 // 设置 install 的值
 func (i *Install) Setup(c *config.C7nConfig) {
 	log.Debug("Initialize config to Install")
-	// 配置优先级 flag > config.yaml > 默认值
-	// 当 i.Version 不存在时，设置成 c.Version 或者默认值
-	if c.Version == "" {
-		// TODO 在打包时根据 TAG 设置 version
-		c.Version = c7nconsts.Version
-	}
-	if i.Version == "" {
-		i.Version = c.Version
-	}
+	// config.yml 配置的 version 无效
 	log.Debugf("Choerodon version is %s", i.Version)
 
 	if c.Spec.ResourcePath == "" {
