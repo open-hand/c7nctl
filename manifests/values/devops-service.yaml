@@ -39,6 +39,8 @@ env:
     SERVICES_GITLAB_SSHURL: {{ (.GetResource "gitlab").Domain }}:30022
     SERVICES_GITLAB_PROJECTLIMIT: 100
     SERVICES_HELM_URL: {{ .GetResourceDomainUrl "chartmuseum" }}
+    SERVICES_HELM_USERNAME: {{ .GetReleaseValue "chartmuseum" "env.secret.BASIC_AUTH_USER" }}
+    SERVICES_HELM_PASSWORD: {{ .GetReleaseValue "chartmuseum" "env.secret.BASIC_AUTH_PASS" }}
     SERVICES_HARBOR_BASEURL: {{ .GetResourceDomainUrl "harbor" }}
     SERVICES_HARBOR_USERNAME: admin
     SERVICES_HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}

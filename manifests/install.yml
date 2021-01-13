@@ -661,12 +661,10 @@ spec:
             value: "3"
           - name: "env.gitlabUrl"
             value: '{{ ( .GetResource "gitlab" ).Schema }}://{{ ( .GetResource "gitlab" ).Domain }}/'
-          #  TODO
           - name: "env.runnerToken"
             value: "{{ ( generateAlphaNum 30) }}"
           - name: "env.environment.CHOERODON_URL"
             value: '{{ ( .GetResource "choerodon-gateway").Schema }}://{{ ( .GetResource "choerodon-gateway").Domain }}'
-            # TODO
           - name: 'env.persistence.{{ (.GetRunnerPersistence 0 ).RefPvcName }}'
             value: "/root/.m2"
           - name: 'env.persistence.{{ (.GetRunnerPersistence 1 ).RefPvcName }}'

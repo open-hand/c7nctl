@@ -65,7 +65,6 @@ start:
 func AcceptUserPassword(input Input) (string, error) {
 start:
 	fmt.Print(input.Tip)
-	// TODO
 	bytePassword, err := gopass.GetPasswd() // terminal.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return "", err

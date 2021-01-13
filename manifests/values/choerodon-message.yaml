@@ -22,7 +22,6 @@ preJob:
 env:
   open:
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    # TODO
     HZERO_WEBSOCKET_OAUTHURL: {{ ( .GetResource "choerodon-oauth" ).Schema}}://{{ ( .GetResource "choerodon-oauth" ).Host }}/oauth/api/user
     SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
     SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
