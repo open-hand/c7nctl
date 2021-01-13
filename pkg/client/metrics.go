@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"io/ioutil"
@@ -26,12 +27,6 @@ type Metrics struct {
 	Mail       string
 }
 
-// TODO is move to pkg consts ?
-const (
-	metricsUrl = "http://localhost:8080/api/v1/metrics"
-	ipAddr     = "ns1.dnspod.net:6666"
-)
-
 func (m *Metrics) Send() {
 	log.Debug("sending metrics...")
 	contentType := "application/json;charset=utf-8"
@@ -42,7 +37,7 @@ func (m *Metrics) Send() {
 	}
 
 	body := bytes.NewBuffer(b)
-	resp, err := http.Post(metricsUrl, contentType, body)
+	resp, err := http.Post(c7nconsts.MetricsUrl, contentType, body)
 	if err != nil {
 		log.Println("Post failed:", err)
 		return
@@ -78,7 +73,7 @@ func (m *Metrics) pack() []byte {
 }
 
 func GetPublicIP() string {
-	conn, err := net.Dial("tcp", ipAddr)
+	conn, err := net.Dial("tcp", c7nconsts.IpAddr)
 	if err != nil {
 		log.Error(err)
 		return "127.0.0.1"

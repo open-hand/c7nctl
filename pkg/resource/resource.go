@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
+	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,9 +28,10 @@ type Client struct {
 
 	UserAgent string
 
-	Business bool
-	Username string
-	Password string
+	Business     bool
+	ResourcePath string
+	Username     string
+	Password     string
 }
 
 func NewClient(httpClient *http.Client, bUrl string) *Client {
@@ -47,6 +52,32 @@ func (c *Client) Init() {
 	if c.Business {
 		c.BaseURL, _ = url.Parse(consts.BusinessResourcePath)
 	}
+}
+
+func (c *Client) GetInstallDefinition(version string) (*InstallDefinition, error) {
+	resource, err := c.GetResource(version, consts.ResourceInstallFile)
+	if err != nil {
+		return nil, err
+	}
+	rdJson, err := yaml.ToJSON([]byte(resource))
+	if err != nil {
+		return nil, err
+	}
+	i := &InstallDefinition{}
+	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
+	if err = json.Unmarshal(rdJson, i); err != nil {
+		log.Panic(err)
+	}
+
+	if i.Spec.Basic.DefaultAccessModes == nil {
+		i.Spec.Basic.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+	}
+	return i, nil
+}
+
+func (c *Client) GetHelmValueFile(version, releaseName string) (string, error) {
+	rvurl := fmt.Sprintf("%s/%s.yaml", consts.DefaultHelmValuesPath, releaseName)
+	return c.GetResource(version, rvurl)
 }
 
 func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
@@ -84,8 +115,11 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 	return req, nil
 }
 
-func (c *Client) Login(user, pass string, biz bool) (*Auth, error) {
+func (c *Client) Login() (*Auth, error) {
 	if c.Business {
+		if c.Username == "" || c.Password == "" {
+			return nil, std_errors.New("username and password cannot be blank, when installing the commercial version of the application")
+		}
 		u := fmt.Sprintf("auth?username=%v&password=%v", c.Username, c.Password)
 		req, err := c.NewRequest("POST", u, nil)
 		if err != nil {
@@ -99,23 +133,27 @@ func (c *Client) Login(user, pass string, biz bool) (*Auth, error) {
 }
 
 func (c *Client) GetResource(version, url string) (string, error) {
+	// 获取本地资源
+	if c.ResourcePath != "" {
+		path := fmt.Sprintf("%s/%s", c.ResourcePath, url)
+		resource, err := readLocalFile(path)
+		if err != nil {
+			return "", std_errors.WithMessage(err, fmt.Sprintf("Read local resource file %s failed", path))
+		}
+		return resource, nil
+	}
+
+	// 生成获取商业版或者开源版的 url : 商业版需要认证
 	auth := new(Auth)
-
 	fu := url
-
-	if c.Business {
-		u := fmt.Sprintf("auth?username=%v&password=%v", c.Username, c.Password)
-		req, err := c.NewRequest("POST", u, nil)
-		if err != nil {
-			return "", err
-		}
-		err = c.Do(context.Background(), req, auth)
-		if err != nil {
-			return "", err
-		}
-		fu = fmt.Sprintf(consts.BusinessResourceBasePath, version, url, *auth.Data.Token)
+	auth, err := c.Login()
+	if err != nil {
+		return "", std_errors.WithMessage(err, "Authentication business resource failed: ")
+	}
+	if auth == nil {
+		fu = fmt.Sprintf(consts.OpenSourceResourceBasePath, version, url)
 	} else {
-		fu = fmt.Sprintf(consts.OpenSourceResourceBasePath, version) + url
+		fu = fmt.Sprintf(consts.BusinessResourceBasePath, version, url, *auth.Data.Token)
 	}
 
 	result := new(bytes.Buffer)
@@ -216,4 +254,18 @@ func sanitizeURL(uri *url.URL) *url.URL {
 		uri.RawQuery = params.Encode()
 	}
 	return uri
+}
+
+func readLocalFile(path string) (resource string, err error) {
+	if err, ok := utils.IsFileExist(path); ok {
+		log.Debugf("Read Local file %s", path)
+		data, err := ioutil.ReadFile(path)
+		resource = string(data)
+		if err != nil {
+			return "", std_errors.WithMessage(err, fmt.Sprintf("Failed to Read %s", path))
+		}
+	} else if err != nil {
+		log.Debugf("can't find file %s : %+v", path, err)
+	}
+	return resource, nil
 }

@@ -20,7 +20,7 @@ const (
 
 	// 默认的开源版和商业版资源获取路径
 	OpenSourceResourceURL      = "https://gitee.com/open-hand/"
-	OpenSourceResourceBasePath = "c7nctl/raw/%s/manifests/"
+	OpenSourceResourceBasePath = "c7nctl/raw/%s/manifests/%s"
 	BusinessResourcePath       = "http://get.devops.hand-china.com/"
 	BusinessResourceBasePath   = "assets/biz/%s/%s?token=%v"
 	ResourceInstallFile        = "install.yml"
@@ -30,6 +30,9 @@ const (
 	// 默认 label
 	C7nLabelKey   = "c7n-usage"
 	C7nLabelValue = "c7n-installer"
+
+	MetricsUrl = "http://get.devops.hand-china.com/api/v1/metrics"
+	IpAddr     = "ns1.dnspod.net:6666"
 )
 
 var (

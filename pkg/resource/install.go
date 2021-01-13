@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
@@ -17,7 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"text/template"
 )
 
@@ -62,21 +60,6 @@ type Basic struct {
 	SkipInput bool
 	Timeout   int
 	Slaver    c7nslaver.Slaver
-}
-
-func (i *InstallDefinition) GetInstallDefinition(resource string) error {
-
-	rdJson, err := yaml.ToJSON([]byte(resource))
-	if err != nil {
-		panic(err)
-	}
-	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
-	_ = json.Unmarshal(rdJson, i)
-
-	if i.Spec.Basic.DefaultAccessModes == nil {
-		i.Spec.Basic.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
-	}
-	return nil
 }
 
 func (i *InstallDefinition) IsName(name string) bool {
@@ -143,7 +126,7 @@ func (i *InstallDefinition) renderRelease(r *Release) error {
 			return err
 		}
 	*/
-	log.Infof("Successfully rendered the Release %s", r.Name)
+	log.Infof("The Release %s was rendered successfully", r.Name)
 	return nil
 }
 

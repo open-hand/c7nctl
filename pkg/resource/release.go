@@ -8,7 +8,6 @@ import (
 	c7nerrors "github.com/choerodon/c7nctl/pkg/common/errors"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/choerodon/c7nctl/pkg/slaver"
-	"github.com/choerodon/c7nctl/pkg/utils"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"strings"
@@ -84,12 +83,12 @@ func (r *Release) InstallComponent() error {
 // 执行 after Task，完成后更新任务状态，并执行 wg.done
 func (r *Release) ExecuteAfterTasks(s *slaver.Slaver) error {
 
-	log.Infof("%s: started, will execute required commands and requests", r.Name)
+	log.Infof("%s performs the necessary post operations", r.Name)
 	return r.executeExternalFunc(r.AfterInstall, s)
 }
 
 func (r *Release) ExecutePreCommands(s *slaver.Slaver) error {
-	log.Infof("%s: started, will execute required commands and requests", r.Name)
+	log.Infof("%s performs the necessary pre-operations", r.Name)
 	err := r.executeExternalFunc(r.PreInstall, s)
 	return err
 }
@@ -133,11 +132,11 @@ func (pi *ReleaseJob) executeSql(rls *Release, sqlType string, s *slaver.Slaver)
 	defer c7nclient.SaveTask(*task)
 
 	if task.Status == consts.SucceedStatus {
-		log.Infof("task %s of %s had executed", pi.Name, rls.Name)
+		log.Infof("Task %s of %s had executed", pi.Name, rls.Name)
 		return nil
 	}
 
-	log.Infof("executing %s , %s", rls.Name, pi.Name)
+	log.Infof("Executing task %s of %s", pi.Name, rls.Name)
 	sqlList := make([]string, 0)
 	for _, v := range pi.Commands {
 		sqlList = append(sqlList, v)
@@ -252,24 +251,6 @@ func (r *Release) mergerResource(uc *config.C7nConfig) {
 			}
 		}
 	}
-}
-
-// convert yml format values template to yaml raw data
-// 获取 resourcePath 路径下的 values 文件
-func (r *Release) ValuesRaw(helmValuePath string) string {
-	// values.yaml 与 r 名一致
-	if !strings.HasSuffix(helmValuePath, "/") {
-		helmValuePath += "/"
-	}
-	valuesFilepath := fmt.Sprintf(helmValuePath + r.Name + ".yaml")
-	data, err := utils.GetResource(valuesFilepath)
-	if err != nil {
-		log.Debugf("load helm values file %s failed: %+v", valuesFilepath, err)
-		// 获取失败，返回空
-		return ""
-	}
-	// 不存在配置文件的返回空字符串
-	return string(data[:])
 }
 
 // convert yml values to values list as xxx=yyy
