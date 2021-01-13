@@ -136,6 +136,7 @@ func (c *Client) GetResource(version, url string) (string, error) {
 	// 获取本地资源
 	if c.ResourcePath != "" {
 		path := fmt.Sprintf("%s/%s", c.ResourcePath, url)
+		log.Debugf("Get the resource file %s", path)
 		resource, err := readLocalFile(path)
 		if err != nil {
 			return "", std_errors.WithMessage(err, fmt.Sprintf("Read local resource file %s failed", path))
@@ -156,6 +157,7 @@ func (c *Client) GetResource(version, url string) (string, error) {
 		fu = fmt.Sprintf(consts.BusinessResourceBasePath, version, url, *auth.Data.Token)
 	}
 
+	log.Debugf("Get the resource file %s%s from ", c.BaseURL.String(), fu)
 	result := new(bytes.Buffer)
 	freq, err := c.NewRequest("GET", fu, nil)
 	if err != nil {
