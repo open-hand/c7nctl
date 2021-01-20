@@ -18,21 +18,21 @@ declare -A c7nChart=(
   ["choerodon-front-hzero"]="0.24.0"
   ["choerodon-front"]="0.24.0"
   ["choerodon-gateway"]="0.24.0"
-  ["choerodon-iam"]="0.24.0"
+  ["choerodon-iam"]="0.24.1"
   ["choerodon-message"]="0.24.0"
   ["choerodon-monitor"]="0.24.0"
-  ["choerodon-oauth"]="0.24.0"
+  ["choerodon-oauth"]="0.24.1"
   ["choerodon-platform"]="0.24.0"
-  ["choerodon-register"]="0.24.0"
+  ["choerodon-register"]="0.24.1"
   ["workflow-service"]="0.24.0"
   ["gitlab-service"]="0.24.0"
-  ["devops-service"]="0.24.0"
-  ["test-manager-service"]="0.24.0"
+  ["devops-service"]="0.24.1"
+  ["test-manager-service"]="0.24.1"
   ["knowledgebase-service"]="0.24.0"
-  ["agile-service"]="0.24.0"
+  ["agile-service"]="0.24.2"
   ["elasticsearch-kb"]="0.24.0"
-  ["code-repo-service"]="0.24.0"
-  ["prod-repo-service"]="0.24.0"
+  ["code-repo-service"]="0.24.1"
+  ["prod-repo-service"]="0.24.1"
 )
 
 # kubectl get po -n c7n-system -o yaml | grep -E "^      image:" |  awk '{print $2}' | sort | uniq | sed 's/:/ /g' | awk '{print "[\""$1"\"]=\"" $2"\""}'
@@ -93,11 +93,6 @@ OFFLINE_PATH=_offline
 CHARTS_PATH=${OFFLINE_PATH}/charts
 IMAGES_PATH=${OFFLINE_PATH}/images
 
-NEXUS_USERNAME="admin"
-NEXUS_PASSWORD="admin123"
-BASE_CHART="http://localhost:8081/repository/helm/"
-BASE_IMAGE="localhost:8082/"
-
 function add_helm_repo() {
     helm repo add c7n    https://openchart.choerodon.com.cn/choerodon/c7n/
     helm repo update
@@ -108,7 +103,7 @@ function pre_download() {
   mkdir -p ${IMAGES_PATH}
 }
 
-function pull_group_chart() {
+function pull_c7n_chart() {
     # shellcheck disable=SC2154
     # shellcheck disable=SC2068
     for key in ${!c7nChart[@]}
@@ -118,7 +113,7 @@ function pull_group_chart() {
     done
 }
 
-function pull_group_image() {
+function pull_image() {
     # shellcheck disable=SC2068
     for i in ${!dockerImage[@]}
     do
@@ -135,7 +130,7 @@ function pull_group_image() {
 function pull_chart() {
     echo "Staring pull charts"
     cd ${CHARTS_PATH} || exit
-    pull_group_chart
+    pull_c7n_chart
     # shellcheck disable=SC2164
     cd ../..
 }
@@ -169,14 +164,6 @@ function list_version() {
     # shellcheck disable=SC2068
     for key in ${!c7nChart[@]}
     do
-        helm search repo c7n/"${key}" | grep c7n/"${key}"
+        helm search repo c7n/"${key}" | grep c7n/"${key}" | sort | uniq  | awk '{print "[\""$1"\"]=\"" $2"\""}'
     done
 }
-# pre_download
-# add_helm_repo
-# pull_group_image
-# pull_chart
-# push_image
-# push_chart
-
-list_version
