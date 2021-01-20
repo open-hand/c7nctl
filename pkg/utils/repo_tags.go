@@ -4,24 +4,36 @@ import (
 	"context"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
-	"github.com/choerodon/c7nctl/pkg/gitee"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/yidaqiang/go-chartmuseum/chartmuseum"
+	helm_repo "helm.sh/helm/v3/pkg/repo"
 	"regexp"
+	"strings"
 )
 
-func GetReleaseTag(app, version string) (targetVersion string, err error) {
-	client := gitee.NewClient(nil)
+var client *chartmuseum.Client
 
-	tags, resp, err := client.Repositories.ListTags(context.Background(), "open-hand", app, &gitee.ListOptions{AccessToken: consts.DefaultGiteeAccessToken})
-	if err != nil {
+func GetReleaseTag(repo, app, version string) (targetVersion string, err error) {
+	if repo == "" {
+		repo = consts.DefaultRepoUrl
+	}
+	url, path := matchChartRepo(repo)
+	if client == nil {
+		if client, err = chartmuseum.NewClient(url, nil); err != nil {
+			return "", err
+		}
+	}
+
+	charts := new(helm_repo.ChartVersions)
+	if resp, err := client.ChartService.ListChartVersion(context.Background(), path, app, charts); err != nil {
 		log.Debug(resp)
 		return "", std_errors.WithMessage(err, fmt.Sprintf("Get Relesea %s version failed", app))
 	}
 
 	reg := regexp.MustCompile("^" + version + ".\\d+$")
-	for _, tag := range tags {
-		tagName := *tag.Name
+	for _, c := range *charts {
+		tagName := c.Version
 		if reg.MatchString(tagName) {
 			if targetVersion == "" {
 				targetVersion = tagName
@@ -33,6 +45,14 @@ func GetReleaseTag(app, version string) (targetVersion string, err error) {
 		}
 	}
 	return targetVersion, nil
+}
+
+func matchChartRepo(repo string) (string, string) {
+	spaceReg, _ := regexp.Compile(`/([a-zA-Z0-9]+)/`)
+
+	idx := spaceReg.FindStringSubmatchIndex(repo)
+
+	return repo[:idx[2]], strings.Trim(repo[idx[2]:], "/")
 }
 
 func VersionOrdinal(version string) string {
