@@ -6,8 +6,10 @@ import (
 )
 
 func TestRandomString(t *testing.T) {
-	fmt.Println(RandomString(), RandomString())
-	if RandomString() == RandomString() {
+	str1 := RandomString(10)
+	str2 := RandomString(10)
+	fmt.Println(str1, str2)
+	if str1 == str2 {
 		t.Error("Func RandowString not work")
 	}
 }

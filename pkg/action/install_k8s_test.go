@@ -13,7 +13,10 @@ func TestEnv(t *testing.T) {
 }
 
 func TestInstallHelm(t *testing.T) {
-	ssh := client.NewSSHClient("192.168.56.201", "root", "yishuida", 22)
+	IP := "192.168.56.201"
+	username := "root"
+	password := "yishuida"
+	ssh := client.NewSSHClient(IP, username, password, 22)
 	for _, cmd := range installHelmCmd {
 		result, err := ssh.Run(cmd)
 		if err != nil {

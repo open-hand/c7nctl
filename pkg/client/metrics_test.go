@@ -33,7 +33,6 @@ func TestPack(t *testing.T) {
 
 func TestSend(t *testing.T) {
 
-	return
 	m := Metrics{
 		CPU:      8,
 		Memory:   1024 * 1024 * 1024 * 16,

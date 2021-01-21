@@ -42,7 +42,6 @@ func initData() []byte {
 }
 
 func TestGetRelease(t *testing.T) {
-	return
 	u := Upgrader{}
 	upgrade := Upgrade{
 		Name: "mysql-test",

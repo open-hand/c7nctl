@@ -59,7 +59,6 @@ func TestPortForward(t *testing.T) {
 		}},
 	}
 	// skip test
-	return
 	stopCh := make(chan struct{})
 	port := slaver.ForwardPort("http", stopCh)
 	log.Infof("success get listening port on %d", port)
