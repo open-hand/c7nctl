@@ -146,8 +146,8 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 			return err
 		}
 
-		if rls.Version == "" {
-			version, err := c7nutils.GetReleaseTag(rls.Chart, i.Version)
+		if rls.Version == "" && rls.RepoURL != "" {
+			version, err := c7nutils.GetReleaseTag(rls.RepoURL, rls.Chart, i.Version)
 			if err != nil {
 				return err
 			}
