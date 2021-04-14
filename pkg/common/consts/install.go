@@ -7,27 +7,26 @@ import (
 )
 
 const (
-	// 默认数据库连接信息模版
+	// DefaultDatabaseUrlTpl 默认数据库连接信息模版
 	DefaultDatabaseUrlTpl = "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
-	// 默认镜像仓库地址，因为同步 chart 包的时候会替换镜像仓库地址，所以不使用这个镜像地址
+	// DefaultImageRepository 默认镜像仓库地址，因为同步 chart 包的时候会替换镜像仓库地址，所以不使用这个镜像地址
 	DefaultImageRepository = "registry.cn-shanghai.aliyuncs.com/c7n/"
-	// 默认 chart 仓库地址，当 install.yml 中没有定义时使用
+	// DefaultRepoUrl 默认 chart 仓库地址，当 install.yml 中没有定义时使用
 	DefaultRepoUrl = "https://openchart.choerodon.com.cn/choerodon/c7n/"
 
-	// c7nctl 版本号
-	// TODO 使用 internal 包中的 version 替换此值
-	Version = "0.24"
+	// Version c7nctl 版本号
+	Version = "0.25"
 
-	// 默认的开源版和商业版资源获取路径
+	// OpenSourceResourceURL 默认的开源版和商业版资源获取路径
 	OpenSourceResourceURL      = "https://gitee.com/open-hand/"
 	OpenSourceResourceBasePath = "c7nctl/raw/%s/manifests/%s"
 	BusinessResourcePath       = "http://get.devops.hand-china.com/"
 	BusinessResourceBasePath   = "assets/biz/%s/%s?token=%v"
 	ResourceInstallFile        = "install.yml"
-	// 默认 value.yaml 模版文件路径
+	// DefaultHelmValuesPath 默认 value.yaml 模版文件路径
 	DefaultHelmValuesPath = "values"
 
-	// 默认 label
+	// C7nLabelKey 默认 label
 	C7nLabelKey   = "c7n-usage"
 	C7nLabelValue = "c7n-installer"
 

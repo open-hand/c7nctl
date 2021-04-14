@@ -55,7 +55,7 @@ func main() {
 // 初始化 config 与 c7n api 操作有关
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	// set default configuration is $HOME/.c7n/config.yml
+	// set default configuration is $HOME/.c7n/config.yaml
 	viper.AddConfigPath(consts.DefaultConfigPath)
 	viper.SetConfigName(consts.DefaultConfigFileName)
 	viper.SetConfigType("yaml")
@@ -64,17 +64,15 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	viper.SetDefault("version", consts.Version)
-	// If a config file is found, read it in.
+
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; Set default config to predefined path
 			configPath := filepath.Join(consts.DefaultConfigPath, consts.DefaultConfigFileName+".yaml")
 			if err = fileutils.CreateIfNotExists(configPath, false); err != nil {
 				log.Debug(err)
 			}
 			log.Infof("Created default config file %s", file)
 		} else {
-			// Config file was found but another error was produced
 			log.Error(err)
 			os.Exit(consts.InitConfigErrorCode)
 		}

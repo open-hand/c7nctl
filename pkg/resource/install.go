@@ -39,9 +39,10 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Basic     Basic
-	Resources v1.ResourceRequirements
-	Release   map[string][]*Release
+	Basic       Basic
+	Resources   v1.ResourceRequirements
+	Application map[string][]string
+	Release     map[string][]*Release
 }
 
 type Basic struct {
@@ -60,6 +61,30 @@ type Basic struct {
 	SkipInput bool
 	Timeout   int
 	Slaver    c7nslaver.Slaver
+}
+
+func (i *InstallDefinition) IsApplication(name string) bool {
+	if apps := i.Spec.Application[name]; apps != nil {
+		log.WithField("application", name).Debug("application is already exist")
+		for _, app := range apps {
+			if i.IsReleases(app) {
+				i.Spec.Release[name] = append(i.Spec.Release[name], i.Spec.Release[app]...)
+			}
+		}
+		return true
+	}
+	if i.IsReleases(name) {
+		log.WithField("release", name).Debug("release is already exist")
+		return true
+	}
+	return false
+}
+
+func (i *InstallDefinition) IsReleases(name string) bool {
+	if rs := i.Spec.Release[name]; rs != nil {
+		return true
+	}
+	return false
 }
 
 func (i *InstallDefinition) IsName(name string) bool {

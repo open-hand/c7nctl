@@ -23,7 +23,7 @@ import (
 
 var v = version.Get()
 
-const c7nctlDesc = `c7nctl is a powerful command line c7n-tool contains Choerodon related operations.
+const c7nctlDesc = `c7nctl is a powerful command line of Choerodon.
 
 Complete sources is available at https://github.com/choerodon/c7nctl/.
 `

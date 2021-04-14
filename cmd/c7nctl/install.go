@@ -33,7 +33,7 @@ import (
 )
 
 const installDesc = `
-This command install a set of instances.
+This command install a set of helm instances.
 
 The install argument must be a install reference.
 
@@ -94,7 +94,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
 
-	if !instDef.IsName(client.Name) {
+	if !instDef.IsApplication(client.Name) {
 		return std_errors.New("Please input right release name!")
 	}
 	instDef.MergerConfig(userConfig)

@@ -164,6 +164,9 @@ func (c *Client) GetResource(version, url string) (string, error) {
 		return "", err
 	}
 	err = c.Do(context.Background(), freq, result)
+	if result.Len() == 0 {
+		return "", nil
+	}
 	return result.String(), err
 }
 

@@ -38,6 +38,14 @@ env:
     SPRING_DATASOURCE_PASSWORD: password
     CHOERODON_CLEANPERMISSION: false
     SERVICES_ATTACHMENT_URL: {{ .GetResourceDomainUrl "minio" }}
+    # 猪齿鱼的网关地址
+    CHOERODON_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+choerodonTestAgent:
+  image:
+    repository: registry.cn-shanghai.aliyuncs.com/c7n/choerodon-test-agent
+    tag: 0.25.0
+    pullPolicy: IfNotPresent
+
 {{- if .IsThinMode }}
 resources:
   limits:
