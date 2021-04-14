@@ -33,6 +33,7 @@ env:
     HARBOR_BASE_URL: {{ .GetResourceDomainUrl "harbor" }}
     HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
     HARBOR_USER_NAME: admin
+    HARBOR_API_VERSION: v2
     SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hrds_prod_repo" }}
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password

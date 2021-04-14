@@ -3,6 +3,7 @@
 bin/
 _dist/
 _offline/
+_offline_biz/
 *.local.yml
 *.biz.yaml
 

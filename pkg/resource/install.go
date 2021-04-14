@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	c7nconsts "github.com/choerodon/c7nctl/pkg/common/consts"
@@ -17,7 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	yaml_v2 "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"text/template"
 )
 
@@ -41,9 +39,10 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Basic     Basic
-	Resources v1.ResourceRequirements
-	Release   map[string][]*Release
+	Basic       Basic
+	Resources   v1.ResourceRequirements
+	Application map[string][]string
+	Release     map[string][]*Release
 }
 
 type Basic struct {
@@ -64,19 +63,28 @@ type Basic struct {
 	Slaver    c7nslaver.Slaver
 }
 
-func (i *InstallDefinition) GetInstallDefinition(resource string) error {
-
-	rdJson, err := yaml.ToJSON([]byte(resource))
-	if err != nil {
-		panic(err)
+func (i *InstallDefinition) IsApplication(name string) bool {
+	if apps := i.Spec.Application[name]; apps != nil {
+		log.WithField("application", name).Debug("application is already exist")
+		for _, app := range apps {
+			if i.IsReleases(app) {
+				i.Spec.Release[name] = append(i.Spec.Release[name], i.Spec.Release[app]...)
+			}
+		}
+		return true
 	}
-	// slaver 使用了 core_v1.ContainerPort, 必须先转 JSON
-	_ = json.Unmarshal(rdJson, i)
-
-	if i.Spec.Basic.DefaultAccessModes == nil {
-		i.Spec.Basic.DefaultAccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+	if i.IsReleases(name) {
+		log.WithField("release", name).Debug("release is already exist")
+		return true
 	}
-	return nil
+	return false
+}
+
+func (i *InstallDefinition) IsReleases(name string) bool {
+	if rs := i.Spec.Release[name]; rs != nil {
+		return true
+	}
+	return false
 }
 
 func (i *InstallDefinition) IsName(name string) bool {
@@ -102,7 +110,6 @@ func (i *InstallDefinition) RenderReleases(name string, client *c7nclient.K8sCli
 	return nil
 }
 
-// TODO 渲染也是有先后顺序的
 func (i *InstallDefinition) renderRelease(r *Release) error {
 	task, err := c7nclient.GetTask(r.Name)
 	if err != nil {
@@ -143,7 +150,7 @@ func (i *InstallDefinition) renderRelease(r *Release) error {
 			return err
 		}
 	*/
-	log.Infof("Successfully rendered the Release %s", r.Name)
+	log.Infof("The Release %s was rendered successfully", r.Name)
 	return nil
 }
 

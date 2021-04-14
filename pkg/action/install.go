@@ -165,7 +165,10 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 			return err
 		}
 
-		if rls.Version == "" && rls.RepoURL != "" {
+		if rls.RepoURL == "" {
+			rls.RepoURL = inst.Spec.Basic.ChartRepository
+		}
+		if rls.Version == "" {
 			version, err := c7nutils.GetReleaseTag(rls.RepoURL, rls.Chart, i.Version)
 			if err != nil {
 				return err
@@ -173,7 +176,7 @@ func (i *Install) InstallReleases(inst *resource.InstallDefinition) error {
 			rls.Version = version
 		}
 		args := c7nclient.ChartArgs{
-			RepoUrl:     inst.Spec.Basic.ChartRepository,
+			RepoUrl:     rls.RepoURL,
 			Namespace:   i.Namespace,
 			ReleaseName: inst.GetReleaseName(rls.Name),
 			ChartName:   rls.Chart,

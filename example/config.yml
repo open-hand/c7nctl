@@ -1,4 +1,4 @@
-version: 0.24
+version: 0.25
 metadata:
   name: resource-choerodon
   namespace: c7n-system  # 指定命名空间安装choerodon

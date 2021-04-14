@@ -1,9 +1,0 @@
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ ( .GetResource "register-server").Url }}
-    MINIO_ACCESSKEY: {{ ( .GetInfra "minio" ).GetValue "env.open.MINIO_ACCESS_KEY" }}
-    MINIO_ENDPOINT: {{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_SCHEMA" }}://{{ ( .GetInfra "minio" ).GetPreValue "MINIO_BASE_DOMAIN" }}
-    MINIO_SECRETKEY: {{ ( .GetInfra "minio" ).GetValue "env.open.MINIO_SECRET_KEY" }}
-    SPRING_CLOUD_CONFIG_URI: {{ (.GetResource "register-server").Schema }}://{{ (.GetResource "register-server").Host }}:{{ (.GetResource "register-server").Port }}
-preJob:
-  timeout: 1800

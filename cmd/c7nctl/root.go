@@ -15,12 +15,15 @@
 package main
 
 import (
+	"github.com/choerodon/c7nctl/internal/version"
 	"github.com/choerodon/c7nctl/pkg/action"
 	"github.com/spf13/cobra"
 	"io"
 )
 
-var c7nctlDesc = `c7nctl is a powerful command line c7n-tool contains Choerodon related operations.
+var v = version.Get()
+
+const c7nctlDesc = `c7nctl is a powerful command line of Choerodon.
 
 Complete sources is available at https://github.com/choerodon/c7nctl/.
 `
@@ -48,6 +51,7 @@ func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []str
 		newContextCmd(out),
 		newUpgradeCmd(out),
 		newUseCmd(out),
+		newVersionCmd(out),
 	)
 
 	// TODO 完成命令自动补全功能

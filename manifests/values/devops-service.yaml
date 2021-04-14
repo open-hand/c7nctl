@@ -26,6 +26,11 @@ preJob:
         username: choerodon
         password: password
         driver: com.mysql.jdbc.Driver
+      message:
+        url: {{ .GetDatabaseUrl "" }}
+        username: choerodon
+        password: password
+        driver: com.mysql.jdbc.Driver
 env:
   open:
     SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
@@ -46,7 +51,7 @@ env:
     SERVICES_HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
     SERVICES_HARBOR_INSECURESKIPTLSVERIFY: true
     SERVICES_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    AGENT_VERSION: 0.23.5
+    AGENT_VERSION: 0.25.1
     AGENT_SERVICEURL: {{ .GetResourceDomainUrl "devops-service" }}/websocket
     AGENT_REPOURL: http://openchart.choerodon.com.cn/choerodon/c7n/
     AGENT_CERTMANAGERURL: http://openchart.choerodon.com.cn/choerodon/c7n/

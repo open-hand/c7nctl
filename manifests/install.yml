@@ -1,4 +1,4 @@
-version: "0.24"
+version: "0.25"
 # this is a annotation
 metadata:
   name: resource
@@ -9,7 +9,7 @@ spec:
       memory: 38Gi
   basic:
     commonLabels:
-      choerodon-version: "0.24"
+      choerodon-version: "0.25"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
     chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
@@ -33,8 +33,43 @@ spec:
       - name: data
         mountPath: /data
       dataPath: /data
-  release:
+  application:
     c7n:
+      - middleware
+      - devops-middleware
+      - c7n-framework
+      - c7n-devops
+      - c7n-agile
+      - c7n-test
+      - c7n-knowlagebase
+      - c7n-front
+    framework:
+      - middleware
+      - c7n-framework
+    agile:
+      - middleware
+      - c7n-framework
+      - c7n-agile
+      - c7n-front
+    test-manager:
+      - middleware
+      - c7n-framework
+      - c7n-test
+      - c7n-front
+    knowlagebase:
+      - middleware
+      - c7n-framework
+      - c7n-knowlagebase
+      - c7n-front
+    devops:
+      - middleware
+      - devops-middleware
+      - c7n-framework
+      - c7n-agile
+      - c7n-devops
+      - c7n-front
+  release:
+    middleware:
       - name: c7n-mysql
         chart: mysql
         version: 0.1.4
@@ -62,31 +97,6 @@ spec:
           host: '{{ .GetReleaseName "c7n-redis" }}'
           port: 6379
         values:
-      - name: gitlab
-        chart: gitlab-ha
-        version: 0.2.2
-        # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
-        resource:
-          schema: http
-          # 如下是自引用的 postgres 配置
-          host: '{{ .GetReleaseName "gitlab" }}-gitlab-database'
-          port: 5432
-          username: "gitlab"
-          password: '{{ .GetReleaseValue "gitlab" "database.internal.password"}}'
-        values:
-          - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
-            value: '{{ generateAlphaNum 64 }}'
-          - name: "core.env.GITLAB_SECRETS_SECRET_KEY_BASE"
-            value: '{{ generateAlphaNum 64 }}'
-          - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
-            value: '{{ generateAlphaNum 64 }}'
-          - name: "expose.ingress.host"
-            value: '{{ ( .GetResource "gitlab").Domain }}'
-            check: clusterdomain
-          - name: "database.internal.password"
-            value: '{{ generateAlphaNum 10 }}'
-          - name: "redis.internal.password"
-            value: '{{ generateAlphaNum 10 }}'
       - name: minio
         chart: minio
         version: 5.0.5
@@ -118,10 +128,36 @@ spec:
               exclude:
                 - value: "^\\d*$"
                   name: "不能为纯数字"
+    devops-middleware:
+      - name: gitlab
+        chart: gitlab-ha
+        version: 0.2.2
+        # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
+        resource:
+          schema: http
+          # 如下是自引用的 postgres 配置
+          host: '{{ .GetReleaseName "gitlab" }}-gitlab-database'
+          port: 5432
+          username: "gitlab"
+          password: '{{ .GetReleaseValue "gitlab" "database.internal.password"}}'
+        values:
+          - name: "core.env.GITLAB_SECRETS_DB_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "core.env.GITLAB_SECRETS_SECRET_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "core.env.GITLAB_SECRETS_OTP_KEY_BASE"
+            value: '{{ generateAlphaNum 64 }}'
+          - name: "expose.ingress.host"
+            value: '{{ ( .GetResource "gitlab").Domain }}'
+            check: clusterdomain
+          - name: "database.internal.password"
+            value: '{{ generateAlphaNum 10 }}'
+          - name: "redis.internal.password"
+            value: '{{ generateAlphaNum 10 }}'
       # resource harbor
       - name: harbor
         chart: harbor
-        version: 1.2.3
+        version: 1.5.4
         resource:
           host: harbor
           port: 5000
@@ -218,6 +254,7 @@ spec:
           - name: "ingress.hosts[0]"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
             check: clusterdomain
+    c7n-framework:
       - name: choerodon-register
         chart: choerodon-register
         resource:
@@ -415,6 +452,7 @@ spec:
                       "password,implicit,client_credentials,authorization_code,refresh_token",
                       '{{ ( .GetResource "choerodon-front-hzero").Schema }}://{{ ( .GetResource "choerodon-front-hzero").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
             infraRef: c7n-mysql
+    c7n-devops:
       - name: devops-service
         chart: devops-service
         resource:
@@ -523,6 +561,41 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
+      - name: code-repo-service
+        chart: code-repo-service
+        resource:
+          host: code-repo-service
+          schema: http
+        requirements:
+          - gitlab-service
+        values:
+        preInstall:
+          - name: code-repo-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hrds_code_repo DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hrds_code_repo.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+      - name: prod-repo-service
+        chart: prod-repo-service
+        version: 0.25.0-alpha.4
+        resource:
+          host: prod-repo-service
+          schema: http
+        requirements:
+          - devops-service
+          - sonatype-nexus
+        values:
+        preInstall:
+          - name: prod-repo-service-predb
+            commands:
+              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
+              - CREATE DATABASE IF NOT EXISTS hrds_prod_repo DEFAULT CHARACTER SET utf8;
+              - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
+              - FLUSH PRIVILEGES;
+            infraRef: c7n-mysql
+    c7n-agile:
       - name: agile-service
         chart: agile-service
         resource:
@@ -540,6 +613,7 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
+    c7n-test:
       - name: test-manager-service
         chart: test-manager-service
         resource:
@@ -556,9 +630,10 @@ spec:
               - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
+    c7n-knowlagebase:
       - name: elasticsearch-kb
         chart: elasticsearch-kb
-        version: "0.24.0"
+        version: "0.25.0"
         resource:
           port: 9200
           host: "elasticsearch-kb"
@@ -581,39 +656,7 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-      - name: code-repo-service
-        chart: code-repo-service
-        resource:
-          host: code-repo-service
-          schema: http
-        requirements:
-          - gitlab-service
-        values:
-        preInstall:
-          - name: code-repo-service-predb
-            commands:
-              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-              - CREATE DATABASE IF NOT EXISTS hrds_code_repo DEFAULT CHARACTER SET utf8;
-              - GRANT ALL PRIVILEGES ON hrds_code_repo.* TO choerodon@"%";
-              - FLUSH PRIVILEGES;
-            infraRef: c7n-mysql
-      - name: prod-repo-service
-        chart: prod-repo-service
-        resource:
-          host: prod-repo-service
-          schema: http
-        requirements:
-          - devops-service
-          - sonatype-nexus
-        values:
-        preInstall:
-          - name: prod-repo-service-predb
-            commands:
-              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-              - CREATE DATABASE IF NOT EXISTS hrds_prod_repo DEFAULT CHARACTER SET utf8;
-              - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
-              - FLUSH PRIVILEGES;
-            infraRef: c7n-mysql
+    c7n-front:
       - name: choerodon-front
         chart: choerodon-front
         resource:
@@ -621,12 +664,7 @@ spec:
           port: 80
           schema: http
         requirements:
-          - agile-service
-          - test-manager-service
-          - knowledgebase-service
-          - workflow-service
-          - code-repo-service
-          - prod-repo-service
+          - choerodon-front-hzero
         preInstall:
           - name: create-choerodon-front-client
             commands:
@@ -907,4 +945,3 @@ spec:
         requirements: [ ]
         preInstall: [ ]
         values: [ ]
-
