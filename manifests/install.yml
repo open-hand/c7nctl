@@ -579,7 +579,6 @@ spec:
             infraRef: c7n-mysql
       - name: prod-repo-service
         chart: prod-repo-service
-        version: 0.25.0-alpha.4
         resource:
           host: prod-repo-service
           schema: http

@@ -13,7 +13,7 @@ func TestGetReleaseTag(t *testing.T) {
 		{consts.ChoerodonRegister, "0.25.1"},
 		{consts.ChoerodonPlatform, "0.25.0"},
 		{consts.ChoerodonAdmin, "0.25.0"},
-		{consts.ChoerodonIam, "0.25.1"},
+		{consts.ChoerodonIam, "0.25.3"},
 		{consts.ChoerodonAsgard, "0.25.0"},
 		{consts.ChoerodonSwagger, "0.25.0"},
 		{consts.ChoerodonGateWay, "0.25.1"},
