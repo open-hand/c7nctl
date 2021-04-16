@@ -59,13 +59,13 @@ spec:
     knowlagebase:
       - middleware
       - c7n-framework
+      - c7n-agile
       - c7n-knowlagebase
       - c7n-front
     devops:
       - middleware
       - devops-middleware
       - c7n-framework
-      - c7n-agile
       - c7n-devops
       - c7n-front
   release:
