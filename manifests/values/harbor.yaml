@@ -10,6 +10,8 @@ persistence:
       storageClass: {{ .GetStorageClass }}
     redis:
       storageClass: {{ .GetStorageClass }}
+    trivy:
+      storageClass: { { .GetStorageClass } }
 {{- if ne .GetImageRepository "" }}
 nginx:
   image:
