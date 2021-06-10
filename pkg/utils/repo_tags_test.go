@@ -19,19 +19,19 @@ func TestGetReleaseTag(t *testing.T) {
 		{consts.ChoerodonGateWay, "0.25.1"},
 		{consts.ChoerodonOauth, "0.25.2"},
 		{consts.ChoerodonMonitor, "0.25.0"},
-		{consts.ChoerodonFile, "0.25.2"},
+		{consts.ChoerodonFile, "0.25.3"},
 		{consts.ChoerodonMessage, "0.25.1"},
 		{consts.DevopsService, "0.25.3"},
 		{consts.WorkflowService, "0.25.2"},
 		{consts.GitlabService, "0.25.0"},
-		{consts.AgileService, "0.25.2"},
-		{consts.TestManagerService, "0.25.1"},
+		{consts.AgileService, "0.25.3"},
+		{consts.TestManagerService, "0.25.2"},
 		{consts.KnowledgebaseService, "0.25.0"},
 		{consts.ElasticsearchKb, "0.25.0"},
 		{consts.ProdRepoService, "0.25.3"},
 		{consts.CodeRepoService, "0.25.1"},
 		{consts.ChoerodonFrontHzero, "0.25.0"},
-		{consts.ChoerodonFront, "0.25.1"},
+		{consts.ChoerodonFront, "0.25.2"},
 	}
 	for _, app := range apps {
 		version, _ := GetReleaseTag(consts.DefaultRepoUrl, app.Name, "0.25")
