@@ -11,7 +11,7 @@ persistence:
     redis:
       storageClass: {{ .GetStorageClass }}
     trivy:
-      storageClass: { { .GetStorageClass } }
+      storageClass: {{ .GetStorageClass }}
 {{- if ne .GetImageRepository "" }}
 nginx:
   image:
