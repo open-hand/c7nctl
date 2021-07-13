@@ -21,7 +21,7 @@ spec:
     slaver:
       version: 0.1.0
       name: c7n-slaver
-      image:  registry.cn-shanghai.aliyuncs.com/c7n/c7n-slaver:0.1.1
+      image: registry.cn-shanghai.aliyuncs.com/c7n/c7n-slaver:0.1.1
       ports:
       - containerPort: 9000
         name: http

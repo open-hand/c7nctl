@@ -32,6 +32,7 @@ env:
     SPRING_DATASOURCE_USERNAME: choerodon
     SPRING_DATASOURCE_PASSWORD: password
     HZERO_EXPORT_COREPOOLSIZE: 1
+    SERVICES_FRONT_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
 {{- if .IsThinMode }}
 resources:
   limits:
