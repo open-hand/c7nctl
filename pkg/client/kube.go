@@ -167,6 +167,7 @@ func (k *K8sClient) DeletePvc(namespace, pvc string) error {
 	log.Infof("Successfully created pvc %s in namespace %s", pvc, namespace)
 	return nil
 }
+
 func (k *K8sClient) GetClusterResource() (int64, int64) {
 	client := *k.kubeInterface
 

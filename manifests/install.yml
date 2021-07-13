@@ -21,7 +21,7 @@ spec:
     slaver:
       version: 0.1.0
       name: c7n-slaver
-      image: registry.cn-hangzhou.aliyuncs.com/choerodon-tools/c7n-slaver:0.1.1
+      image: registry.cn-shanghai.aliyuncs.com/c7n/c7n-slaver:0.1.1
       ports:
       - containerPort: 9000
         name: http
@@ -243,17 +243,19 @@ spec:
                   name: "不能为纯数字"
       - name: sonarqube
         chart: sonarqube
-        version: 0.15.0-3
+        version: 4.0.1
         resource:
           schema: "http"
           host: '{{ .GetReleaseName "sonarqube" }}-postgresql'
           port: 5432
-          username: "sonarUser"
-          password: "sonarPass"
+          username: "sonarqube"
+          password: "sonarqube"
         values:
-          - name: "ingress.hosts[0]"
+          - name: "ingress.hosts[0].name"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
             check: clusterdomain
+          - name: "ingress.hosts[0].paht"
+            value: '/'
     c7n-framework:
       - name: choerodon-register
         chart: choerodon-register
@@ -496,7 +498,7 @@ spec:
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.secret', 'secret', false, EXTRACT(epoch FROM NOW()) * 1000);
               - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.enabled', 'true', false, EXTRACT(epoch FROM NOW()) * 1000);
             infraRef: sonarqube
-            database: sonarDB
+            database: sonarqube
         values:
           - name: "ingress.host"
             value: '{{ ( .GetResource "devops-service" ).Domain }}'
