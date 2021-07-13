@@ -89,9 +89,9 @@ checkDesiredVersion() {
     # Get tag from release URL
     local latest_release_url="https://file.choerodon.com.cn/choerodon-install/c7nctl/"
     if [ "${HAS_CURL}" == "true" ]; then
-      TAG=$(curl -Ls $latest_release_url | grep 'href="0.[0-9]*.[0-9]*\/"' | grep -v no-underline | tail -n 1 | cut -d '"' -f 2 | sed s'/.$//')
+      TAG=$(curl -Ls $latest_release_url | grep 'href="1.[0-9]*.[0-9]*\/"' | grep -v no-underline | tail -n 1 | cut -d '"' -f 2 | sed s'/.$//')
     elif [ "${HAS_WGET}" == "true" ]; then
-      TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="0.[0-9]*.[0-9]*/\"' | grep -v no-underline | tail -n 1 | cut -d '"' -f 2 | sed s'/.$//')
+      TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="1.[0-9]*.[0-9]*/\"' | grep -v no-underline | tail -n 1 | cut -d '"' -f 2 | sed s'/.$//')
     fi
   else
     TAG=$DESIRED_VERSION
