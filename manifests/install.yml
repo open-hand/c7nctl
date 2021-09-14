@@ -524,7 +524,7 @@ spec:
           - name: create-gitlabadmin-binding
             psql:
               - CREATE EXTENSION IF NOT EXISTS pg_trgm;
-              - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('2', 'oauth2_generic', 1, NOW(), NOW());
+              - INSERT INTO identities(extern_uid, provider, user_id, created_at, updated_at) VALUES ('1', 'oauth2_generic', 1, NOW(), NOW());
             infraRef: gitlab
             database: gitlabhq_production
           - name: enable_webhook
