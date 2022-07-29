@@ -51,7 +51,7 @@ env:
     SERVICES_HARBOR_PASSWORD: {{ .GetReleaseValue "harbor" "harborAdminPassword" }}
     SERVICES_HARBOR_INSECURESKIPTLSVERIFY: true
     SERVICES_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    AGENT_VERSION: 0.25.1
+    AGENT_VERSION: 1.1.4
     AGENT_SERVICEURL: {{ .GetResourceDomainUrl "devops-service" }}/websocket
     AGENT_REPOURL: http://openchart.choerodon.com.cn/choerodon/c7n/
     AGENT_CERTMANAGERURL: http://openchart.choerodon.com.cn/choerodon/c7n/
