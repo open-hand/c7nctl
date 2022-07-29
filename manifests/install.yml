@@ -1,4 +1,4 @@
-version: "0.25"
+version: "1.1"
 # this is a annotation
 metadata:
   name: resource
@@ -131,7 +131,7 @@ spec:
     devops-middleware:
       - name: gitlab
         chart: gitlab-ha
-        version: 0.2.2
+        version: 0.2.4
         # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
         resource:
           schema: http
@@ -157,7 +157,7 @@ spec:
       # resource harbor
       - name: harbor
         chart: harbor
-        version: 1.5.4
+        version: 1.5.5
         resource:
           host: harbor
           port: 5000
@@ -427,6 +427,7 @@ spec:
             infraRef: c7n-mysql
         values:
       - name: choerodon-front-hzero
+        version: 0.25.0
         chart: choerodon-front-hzero
         resource:
           host: choerodon-front-hzero
