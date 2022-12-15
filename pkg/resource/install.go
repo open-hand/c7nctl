@@ -352,7 +352,7 @@ func (i *InstallDefinition) renderTpl(name, tplStr string) (bytes.Buffer, error)
 }
 
 /*
-  template 内嵌函数
+template 内嵌函数
 */
 func (i *InstallDefinition) WithPrefix() string {
 	if i.Spec.Basic.Prefix == "" {

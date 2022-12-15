@@ -18,12 +18,10 @@ import (
 	"github.com/choerodon/c7nctl/pkg/cli"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
-	"github.com/docker/docker/pkg/fileutils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
-	"path/filepath"
 )
 
 var (
@@ -40,7 +38,7 @@ func main() {
 		if settings.Debug {
 			log.SetLevel(log.DebugLevel)
 		}
-		c7nCfg.Init(settings.ConfigFile, settings.Namespace)
+		c7nCfg.Init(settings.KubeConfig, settings.Namespace)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Error(err)
@@ -62,10 +60,10 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			configPath := filepath.Join(consts.DefaultConfigPath, consts.DefaultConfigFileName+".yaml")
-			if err = fileutils.CreateIfNotExists(configPath, false); err != nil {
-				log.Debug(err)
-			}
+			//configPath := filepath.Join(consts.DefaultConfigPath, consts.DefaultConfigFileName+".yaml")
+			//if err = filepath.CreateIfNotExists(configPath, false); err != nil {
+			//	log.Debug(err)
+			//}
 			//log.Infof("Created default config file %s", file)
 		} else {
 			log.Error(err)

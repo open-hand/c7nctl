@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"

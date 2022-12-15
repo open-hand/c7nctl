@@ -16,11 +16,11 @@ type Cli struct {
 	LastResult string      //最近一次Run的结果
 }
 
-//创建命令行对象
-//@param ip IP地址
-//@param username 用户名
-//@param password 密码
-//@param port 端口号,默认22
+// 创建命令行对象
+// @param ip IP地址
+// @param username 用户名
+// @param password 密码
+// @param port 端口号,默认22
 func NewSSHClient(ip string, username string, password string, port ...int) *Cli {
 	cli := new(Cli)
 	cli.IP = ip
@@ -34,8 +34,8 @@ func NewSSHClient(ip string, username string, password string, port ...int) *Cli
 	return cli
 }
 
-//执行shell
-//@param shell shell脚本命令
+// 执行shell
+// @param shell shell脚本命令
 func (c Cli) Run(shell string) (string, error) {
 	if c.client == nil {
 		if err := c.connect(); err != nil {
@@ -53,7 +53,7 @@ func (c Cli) Run(shell string) (string, error) {
 	return c.LastResult, err
 }
 
-//连接
+// 连接
 func (c *Cli) connect() error {
 	config := ssh.ClientConfig{
 		User: c.Username,

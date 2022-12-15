@@ -6,7 +6,7 @@ import (
 )
 
 /*
-  2 -> 1 -> 3 -> 4 -> 5
+2 -> 1 -> 3 -> 4 -> 5
 */
 func buildGraphA() (g Graph) {
 	rls1 := &resource.Release{Name: "1"}
@@ -31,7 +31,7 @@ func buildGraphA() (g Graph) {
 }
 
 /*
-  1 -> 2 -> 3 -> 4
+1 -> 2 -> 3 -> 4
 */
 func buildGraphB() (g Graph) {
 	rls1 := &resource.Release{Name: "1"}

@@ -2,8 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/utils"
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/yidaqiang/go-chartmuseum"
+	"os/exec"
+	"strings"
+
 	"github.com/choerodon/c7nctl/pkg/action"
-	c7nclient "github.com/choerodon/c7nctl/pkg/client"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -12,6 +17,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 )
 
 const packageDesc = `Generate a Choerodon offline installation package`
@@ -33,25 +39,27 @@ func newPackageCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 				return err
 			}
 			chartPath := fmt.Sprintf("./choerodon-offline-%s/chart", cvm.Spec.VersionRegexp)
-			//imagePath := fmt.Sprintf("./choerodon-offline-%s/image", cvm.Spec.VersionRegexp)
-			/*
-						chartClient, _ := chartmuseum.NewClient(chartmuseum.WithBaseURL(cvm.Spec.Chart.DefaultSource.Url))
-						chart := cvm.Spec.Chart
+			imagePath := fmt.Sprintf("./choerodon-offline-%s/image/", cvm.Spec.VersionRegexp)
 
-						sureFilePath(cvm.Spec.VersionRegexp)
+			chartClient, _ := chartmuseum.NewClient(chartmuseum.WithBaseURL(cvm.Spec.Chart.DefaultSource.Url))
+			chart := cvm.Spec.Chart
 
-						for _, c := range cvm.Spec.Chart.Component {
-							if c.Version == "" {
-								c.Version, _ = utils.GetReleaseTag(chart.DefaultSource.Url+"/"+chart.DefaultSource.Repo, c.Name, cvm.Spec.VersionRegexp)
-								logrus.Debugf("Chart %s version is %s\n", c.Name, c.Version)
-								chartVersionOption := chartmuseum.NewChartVersionOption(c.Name, c.Version)
-								_, err := chartClient.Charts.DownloadChart(chart.DefaultSource.Repo, chartPath, chartVersionOption)
-								if err != nil {
-									logrus.Error(err)
-								}
-							}
-						}
-			````````````*/
+			sureFilePath(cvm.Spec.VersionRegexp)
+
+			for _, c := range cvm.Spec.Chart.Component {
+				if c.Version == "" {
+					c.Version, _ = utils.GetReleaseTag(chart.DefaultSource.Url+"/"+chart.DefaultSource.Repo, c.Name, cvm.Spec.VersionRegexp)
+					logrus.Debugf("Chart %s version is %s\n", c.Name, c.Version)
+				}
+				chartVersionOption := chartmuseum.NewChartVersionOption(c.Name, c.Version)
+				_, err = chartClient.Charts.DownloadChart(chart.DefaultSource.Repo, chartPath, chartVersionOption)
+				if err != nil {
+					logrus.Error(err)
+				}
+			}
+
+			imageSet := mapset.NewSet[string]()
+			complieRegex := regexp.MustCompile("image: (.*?)\n")
 			files, _ := ioutil.ReadDir(chartPath)
 			for _, fi := range files {
 				if fi.IsDir() {
@@ -59,18 +67,44 @@ func newPackageCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 					logrus.Debug("skip up dir")
 				} else {
 					chartfile := chartPath + "/" + fi.Name()
-					args := c7nclient.ChartArgs{
-						ReleaseName: "RELEASE-NAME",
-						ChartName:   chartfile,
-					}
-					template, err := cfg.HelmClient.Template(args, nil, out)
+
+					template, err := cfg.HelmClient.Template(chartfile, out)
 					if err != nil {
 						return err
 					}
-
-					fmt.Println(template)
+					matchArr := complieRegex.FindAllStringSubmatch(template, -1)
+					for _, image := range matchArr {
+						imageSet.Add(image[1])
+					}
 				}
 			}
+			imageSet.Each(func(image string) bool {
+				cmd := exec.Command("docker", "pull", image)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				err := cmd.Run()
+
+				if err != nil {
+					logrus.Fatalf("cmd.Run() failed with %s\n", err)
+				}
+				imageArr := strings.Split(image, "/")
+				imageNameAndVersion := strings.Split(imageArr[len(imageArr)-1], ":")
+				imagePathOne := imagePath + imageNameAndVersion[0] + "-" + imageNameAndVersion[1] + ".tar"
+				_, exist := utils.IsFileExist(imagePathOne)
+				if exist {
+					logrus.Infof("skip image %s", image)
+				} else {
+					cmd = exec.Command("docker", "save", image, "-o", imagePathOne)
+					cmd.Stdout = os.Stdout
+					cmd.Stderr = os.Stderr
+					err = cmd.Run()
+					if err != nil {
+						logrus.Fatalf("cmd.Run() failed with %s\n", err)
+					}
+				}
+
+				return false
+			})
 			return nil
 		},
 	}
@@ -82,18 +116,14 @@ func newPackageCmd(cfg *action.C7nConfiguration, out io.Writer) *cobra.Command {
 }
 
 func sureFilePath(version string) {
-	err := os.MkdirAll(fmt.Sprintf("./choerodon-offline-%s/chart", version), 0666)
+	err := os.MkdirAll(fmt.Sprintf("./choerodon-offline-%s/chart", version), 0766)
 	if err != nil {
 		return
 	}
-	err = os.MkdirAll(fmt.Sprintf("./choerodon-offline-%s/image", version), 0666)
+	err = os.MkdirAll(fmt.Sprintf("./choerodon-offline-%s/image", version), 0766)
 	if err != nil {
 		return
 	}
-}
-
-func syncResource() {
-
 }
 
 func getPackageConfig(file string) (*config.ChoerodonVersion, error) {
@@ -114,10 +144,4 @@ func getPackageConfig(file string) (*config.ChoerodonVersion, error) {
 	}
 	logrus.Infof("成功读取配置文件 %s", file)
 	return cvm, nil
-}
-
-func walkFunc(path string, info os.FileInfo, err error) error {
-
-	fmt.Println(path)
-	return nil
 }

@@ -1,36 +1,40 @@
 name: choerodon-version
 version: 0.1.0
 spec:
-  version-regexp: 2.0
+  version-regexp: 1.1
   offline: true
   chart:
-    source: https://openchart.choerodon.com.cn/choerodon/c7n/
-    target: http://nexus.choerodon.io:8081/repository/charts/
+    default-source:
+      url: https://charts.ydq.io
+      repo: c7n
+    default-target:
+      url: http://localhost:8081
+      repo: repository/charts/
     component:
-      - name: chartmuseum
-        version: 3.6.2
-        category: infra
-      - name: redis
-        version: 0.2.5
-        category: infra
-      - name: mysql
-        version: 0.1.4
-        category: infra
-      - name: minio
-        version: 5.0.5
-        category: infra
-      - name: harbor
-        version: v1.5.5
-        category: infra
-      - name: gitlab-ha
-        version: 0.4.6
-        category: infra
-      - name: sonarqube
-        version: 1.0.6
-        category: infra
-      - name: sonatype-nexus
-        version: 3.4.0
-        category: infra
+      #- name: chartmuseum
+      #  version: 3.6.2
+      #  category: infra
+      #- name: redis
+      #  version: 0.2.5
+      #  category: infra
+      #- name: mysql
+      #  version: 0.1.4
+      #  category: infra
+      #- name: minio
+      #  version: 5.0.5
+      #  category: infra
+      #- name: harbor
+      #  version: v1.5.5
+      #  category: infra
+      #- name: gitlab-ha
+      #  version: 0.4.6
+      #  category: infra
+      #- name: sonarqube
+      #  version: 1.0.6
+      #  category: infra
+      #- name: sonatype-nexus
+      #  version: 3.4.0
+      #  category: infra
       - name: choerodon-register
         version: ~
         category: framework
@@ -97,35 +101,27 @@ spec:
       - name: choerodon-iam-service-business
         version: 1.3.6
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
-      - name: devops-service-business
+      - name: devops-service
         version: ~
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
       - name: agile-service-business
         version: ~
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
       - name: test-manager-service-business
         version: ~
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
       - name: doc-repo-service
         version: ~
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
-      - name: hrds-qa
-        version: ~
-        category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
-      - name: market-service
-        version: ~
-        category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
+      #- name: hrds-qa
+      #  version: ~
+      #  category: business
+      #- name: market-service
+      #  version: ~
+      #  category: business
       - name: choerodon-front-business
         version: ~
         category: business
-        repo: https://openchart.choerodon.com.cn/choerodon/business
   image:
     auth:
       nexus.choerodon.io:8082:

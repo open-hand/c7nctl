@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"github.com/pkg/errors"
 	liberrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/action"
@@ -10,6 +11,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/kube"
@@ -149,7 +151,7 @@ func (h *Helm3Client) newHelm3Install(cfg *action.Configuration, args ChartArgs)
 	return install
 }
 
-func (h *Helm3Client) newHelm3Teamplte(cfg *action.Configuration) *action.Install {
+func (h *Helm3Client) newHelm3Template(cfg *action.Configuration) *action.Install {
 	client := action.NewInstall(cfg)
 
 	var validate bool
@@ -157,7 +159,7 @@ func (h *Helm3Client) newHelm3Teamplte(cfg *action.Configuration) *action.Instal
 	var extraAPIs []string
 
 	client.DryRun = true
-	client.ReleaseName = "RELEASE-NAME"
+	client.ReleaseName = "release-name"
 	client.Replace = true // Skip the name check
 	client.ClientOnly = !validate
 	client.APIVersions = chartutil.VersionSet(extraAPIs)
@@ -335,10 +337,11 @@ func (h *Helm3Client) Upgrade(cArgs ChartArgs, vals map[string]interface{}, out 
 	return rel, nil
 }
 
-func (h *Helm3Client) Template(cArgs ChartArgs, vals map[string]interface{}, out io.Writer) (string, error) {
-	client := h.newHelm3Teamplte(h.Configuration)
+func (h *Helm3Client) Template(chartFile string, out io.Writer) (string, error) {
+	client := h.newHelm3Template(h.Configuration)
+	valueOpts := &values.Options{}
 
-	rel, err := h.Install(cArgs, vals, out)
+	rel, err := runInstall([]string{chartFile}, client, valueOpts, out)
 
 	if err != nil {
 		return "", err
@@ -370,4 +373,88 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 		return true, nil
 	}
 	return false, liberrors.Errorf("%s charts are not installable", ch.Metadata.Type)
+}
+
+func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
+	log.Debugf("Original chart version: %q", client.Version)
+	if client.Version == "" && client.Devel {
+		log.Debugf("setting version to >0.0.0-0")
+		client.Version = ">0.0.0-0"
+	}
+
+	name, chart, err := client.NameAndChart(args)
+	if err != nil {
+		return nil, err
+	}
+	client.ReleaseName = name
+	settings := cli.New()
+	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("CHART PATH: %s\n", cp)
+
+	p := getter.All(settings)
+	vals, err := valueOpts.MergeValues(p)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check chart dependencies to make sure all are present in /charts
+	chartRequested, err := loader.Load(cp)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := checkIfInstallable(chartRequested); err != nil {
+		return nil, err
+	}
+
+	if chartRequested.Metadata.Deprecated {
+		log.Warn("This chart is deprecated")
+	}
+
+	if req := chartRequested.Metadata.Dependencies; req != nil {
+		// If CheckDependencies returns an error, we have unfulfilled dependencies.
+		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// https://github.com/helm/helm/issues/2209
+		if err := action.CheckDependencies(chartRequested, req); err != nil {
+			if client.DependencyUpdate {
+				man := &downloader.Manager{
+					Out:              out,
+					ChartPath:        cp,
+					Keyring:          client.ChartPathOptions.Keyring,
+					SkipUpdate:       false,
+					Getters:          p,
+					RepositoryConfig: settings.RepositoryConfig,
+					RepositoryCache:  settings.RepositoryCache,
+					Debug:            settings.Debug,
+				}
+				if err := man.Update(); err != nil {
+					return nil, err
+				}
+				// Reload the chart with the updated Chart.lock file.
+				if chartRequested, err = loader.Load(cp); err != nil {
+					return nil, errors.Wrap(err, "failed reloading chart after repo update")
+				}
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	client.Namespace = settings.Namespace()
+	return client.Run(chartRequested, vals)
+}
+
+// checkIfInstallable validates if a chart can be installed
+//
+// Application chart type is only installable
+func checkIfInstallable(ch *chart.Chart) error {
+	switch ch.Metadata.Type {
+	case "", "application":
+		return nil
+	}
+	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
 }

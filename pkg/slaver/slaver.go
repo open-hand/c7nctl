@@ -74,7 +74,8 @@ func (s *Slaver) InitSalver(clientset *kubernetes.Clientset, namespace string, s
 	return s, nil
 }
 
-/**
+/*
+*
 Type: httpGet or socket
 */
 func (s *Slaver) CheckInstall() (*v1.DaemonSet, error) {

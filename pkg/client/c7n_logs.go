@@ -25,8 +25,10 @@ type C7nLogs struct {
 	Tasks map[string]*[]TaskInfo
 }
 
-/* TaskInfo 用于保存安装过程中的信息，包括 Release 的配置项，以及其他的状态等
-   保存到 k8s cm 中，Type 将 task 分为3类：release，task，persistent
+/*
+TaskInfo 用于保存安装过程中的信息，包括 Release 的配置项，以及其他的状态等
+
+	保存到 k8s cm 中，Type 将 task 分为3类：release，task，persistent
 */
 type TaskInfo struct {
 	// 唯一值
