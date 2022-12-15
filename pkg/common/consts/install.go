@@ -12,7 +12,7 @@ const (
 	// DefaultImageRepository 默认镜像仓库地址，因为同步 chart 包的时候会替换镜像仓库地址，所以不使用这个镜像地址
 	DefaultImageRepository = "registry.cn-shanghai.aliyuncs.com/c7n/"
 	// DefaultRepoUrl 默认 chart 仓库地址，当 install.yml 中没有定义时使用
-	DefaultRepoUrl = "https://openchart.choerodon.com.cn/choerodon/c7n/"
+	DefaultRepoUrl = "https://charts.ydq.io/c7n/"
 
 	// Version c7nctl 版本号
 	Version = "0.25"

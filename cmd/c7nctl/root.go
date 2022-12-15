@@ -41,17 +41,12 @@ func newRootCmd(actionConfig *action.C7nConfiguration, out io.Writer, args []str
 
 	// Add sub command
 	cmd.AddCommand(
-		newCreateCmd(out),
 		newDeleteCmd(out),
-		newGetCmd(out),
 		newInstallCmd(actionConfig, out),
 		newKubernetesCmd(out, args),
-		newLoginCmd(out),
-		newLogoutCmd(out),
-		newContextCmd(out),
 		newUpgradeCmd(out),
-		newUseCmd(out),
 		newVersionCmd(out),
+		newPackageCmd(actionConfig, out),
 	)
 
 	// TODO 完成命令自动补全功能

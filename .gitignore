@@ -10,3 +10,4 @@ _offline_biz/
 .DS_Store
 
 *.biz.yaml
+*.tgz

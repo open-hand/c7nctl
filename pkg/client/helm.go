@@ -1,12 +1,14 @@
 package client
 
 import (
+	"bytes"
 	"fmt"
 	liberrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -15,6 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"io"
 	"os"
+	"strings"
 )
 
 var helmClient *Helm3Client
@@ -61,6 +64,7 @@ func (h *Helm3Client) Install(cArgs ChartArgs, vals map[string]interface{}, out 
 		log.Debugf("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
+
 	// TODO 移动到 helm3Client
 	os.Setenv("HELM_NAMESPACE", cArgs.Namespace)
 	settings := cli.New()
@@ -145,6 +149,22 @@ func (h *Helm3Client) newHelm3Install(cfg *action.Configuration, args ChartArgs)
 	return install
 }
 
+func (h *Helm3Client) newHelm3Teamplte(cfg *action.Configuration) *action.Install {
+	client := action.NewInstall(cfg)
+
+	var validate bool
+	var includeCrds bool
+	var extraAPIs []string
+
+	client.DryRun = true
+	client.ReleaseName = "RELEASE-NAME"
+	client.Replace = true // Skip the name check
+	client.ClientOnly = !validate
+	client.APIVersions = chartutil.VersionSet(extraAPIs)
+	client.IncludeCRDs = includeCrds
+
+	return client
+}
 func (h *Helm3Client) newHelm3Upgrade(cfg *action.Configuration, args ChartArgs) *action.Upgrade {
 	upgrade := action.NewUpgrade(cfg)
 	upgrade.ChartPathOptions = action.ChartPathOptions{
@@ -313,6 +333,32 @@ func (h *Helm3Client) Upgrade(cArgs ChartArgs, vals map[string]interface{}, out 
 	}
 
 	return rel, nil
+}
+
+func (h *Helm3Client) Template(cArgs ChartArgs, vals map[string]interface{}, out io.Writer) (string, error) {
+	client := h.newHelm3Teamplte(h.Configuration)
+
+	rel, err := h.Install(cArgs, vals, out)
+
+	if err != nil {
+		return "", err
+	}
+
+	// We ignore a potential error here because, when the --debug flag was specified,
+	// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
+	var manifests bytes.Buffer
+	if rel != nil {
+
+		fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+
+		if !client.DisableHooks {
+			for _, m := range rel.Hooks {
+				fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+			}
+		}
+	}
+
+	return manifests.String(), err
 }
 
 // isChartInstallable validates if a chart can be installed

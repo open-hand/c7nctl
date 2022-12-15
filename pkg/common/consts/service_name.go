@@ -30,4 +30,40 @@ const (
 	CodeRepoService      = "code-repo-service"
 	ChoerodonFrontHzero  = "choerodon-front-hzero"
 	ChoerodonFront       = "choerodon-front"
+
+	ChoerodonClusterAgent       = "choerodon-cluster-agent"
+	ChoerodonIamServiceBusiness = "choerodon-iam-service-business"
+	DevopsServiceBusiness       = "devops-service-business"
+	AgileServiceBusiness        = "agile-service-business"
+	DocRepoService              = "doc-repo-service"
+	// HrdsQA                      = "hrds-qa"
+	// MarketService               = "market-service"
+	TestManagerServiceBusiness = "test-manager-service-business"
+	ChoerodonFrontBusiness     = "choerodon-front-business"
 )
+
+var ServerListBiz = []string{
+	ChoerodonRegister,
+	ChoerodonPlatform,
+	ChoerodonAdmin,
+	ChoerodonIamServiceBusiness,
+	ChoerodonMessage,
+	ChoerodonOauth,
+	ChoerodonGateWay,
+	ChoerodonAsgard,
+	ChoerodonSwagger,
+	ChoerodonMonitor,
+	ChoerodonFile,
+	DevopsServiceBusiness,
+	GitlabService,
+	WorkflowService,
+	AgileServiceBusiness,
+	TestManagerService,
+	ElasticsearchKb,
+	KnowledgebaseService,
+	ProdRepoService,
+	CodeRepoService,
+	DocRepoService,
+	ChoerodonFrontHzero,
+	ChoerodonFrontBusiness,
+}

@@ -9,11 +9,10 @@ FROM vinkdong/helm:2.11.0
 
 COPY --from=builder /go/src/github.com/choerodon/c7nctl/c7nctl usr/local/bin/
 
-RUN \
-set -ex \
+RUN set -ex \
    && apk add --no-cache ca-certificates
 
-WORKDIR /etc/c7nclt
+WORKDIR /etc/c7nctl
 
 COPY install.yml /etc/c7nctl/install.yml
 

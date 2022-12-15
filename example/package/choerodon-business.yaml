@@ -1,0 +1,140 @@
+name: choerodon-version
+version: 0.1.0
+spec:
+  version-regexp: 2.0
+  offline: true
+  chart:
+    source: https://openchart.choerodon.com.cn/choerodon/c7n/
+    target: http://nexus.choerodon.io:8081/repository/charts/
+    component:
+      - name: chartmuseum
+        version: 3.6.2
+        category: infra
+      - name: redis
+        version: 0.2.5
+        category: infra
+      - name: mysql
+        version: 0.1.4
+        category: infra
+      - name: minio
+        version: 5.0.5
+        category: infra
+      - name: harbor
+        version: v1.5.5
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.6
+        category: infra
+      - name: sonarqube
+        version: 1.0.6
+        category: infra
+      - name: sonatype-nexus
+        version: 3.4.0
+        category: infra
+      - name: choerodon-register
+        version: ~
+        category: framework
+      - name: choerodon-platform
+        version: ~
+        category: framework
+      - name: choerodon-admin
+        version: ~
+        category: framework
+      - name: choerodon-oauth
+        version: ~
+        category: framework
+      - name: choerodon-gateway
+        version: ~
+        category: framework
+      - name: choerodon-asgard
+        version: ~
+        category: framework
+      - name: choerodon-file
+        version: ~
+        category: framework
+      - name: choerodon-message
+        version: ~
+        category: framework
+      - name: choerodon-swagger
+        version: ~
+        category: framework
+      - name: choerodon-monitor
+        version: ~
+        category: framework
+      - name: workflow-service
+        version: ~
+        category: devops
+      #- name: devops-service
+      # version: ~
+      #  category: devops
+      - name: gitlab-service
+        version: ~
+        category: devops
+      #- name: agile-service
+      #  version: ~
+      #  category: agile
+      #- name: test-manager-service
+      #  version: ~
+      #  category: agile
+      - name: elasticsearch-kb
+        version: ~
+        category: knowledgebase
+      - name: knowledgebase-service
+        version: ~
+        category: knowledgebase
+      - name: prod-repo-service
+        version: ~
+        category: devops
+      - name: code-repo-service
+        version: ~
+        category: devops
+      - name: choerodon-front-hzero
+        version: 1.2.2
+        category: front
+      #- name: choerodon-front
+      #  version: ~
+      #  category: front
+      - name: choerodon-iam-service-business
+        version: 1.3.6
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: devops-service-business
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: agile-service-business
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: test-manager-service-business
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: doc-repo-service
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: hrds-qa
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: market-service
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+      - name: choerodon-front-business
+        version: ~
+        category: business
+        repo: https://openchart.choerodon.com.cn/choerodon/business
+  image:
+    auth:
+      nexus.choerodon.io:8082:
+        username: admin
+        password: handhand
+        insecure: true
+      #docker.io:
+      #  username: yishuida
+      #  password: password
+      #  insecure: false
+    images:
+      #quay.io/coreos/kube-rbac-proxy: quay.io/ruohe/kube-rbac-proxy

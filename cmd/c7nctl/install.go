@@ -90,10 +90,14 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 	log.Infof("The current installing choerodon version is %s", client.Version)
 
 	instDef := &resource.InstallDefinition{}
-	if instDef, err = client.ResourceClient.GetInstallDefinition(client.Version); err != nil {
+	var instDefByte []byte
+	if instDefByte, err = c7nutils.GetInstallDefinition("", client.Version); err != nil {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
-
+	err = yaml_v2.Unmarshal(instDefByte, instDef)
+	if err != nil {
+		return err
+	}
 	if !instDef.IsApplication(client.Name) {
 		return std_errors.New("Please input right release name!")
 	}

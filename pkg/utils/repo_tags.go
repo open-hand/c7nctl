@@ -1,15 +1,13 @@
 package utils
 
 import (
-	"context"
 	"fmt"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
 	std_errors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/yidaqiang/go-chartmuseum/chartmuseum"
+	chartmuseum "github.com/yidaqiang/go-chartmuseum"
 	helm_repo "helm.sh/helm/v3/pkg/repo"
 	"regexp"
-	"strings"
 )
 
 var client *chartmuseum.Client
@@ -20,13 +18,15 @@ func GetReleaseTag(repo, app, version string) (targetVersion string, err error) 
 	}
 	url, path := matchChartRepo(repo)
 	if client == nil {
-		if client, err = chartmuseum.NewClient(url, nil); err != nil {
+		if client, err = chartmuseum.NewClient(chartmuseum.WithBaseURL(url)); err != nil {
 			return "", err
 		}
 	}
 
 	charts := new(helm_repo.ChartVersions)
-	if resp, err := client.ChartService.ListChartVersion(context.Background(), path, app, charts); err != nil {
+	var resp *chartmuseum.Response
+	chartOption := chartmuseum.NewChartOption(app)
+	if charts, resp, err = client.Charts.ListVersions(path, chartOption); err != nil {
 		log.Debug(resp)
 		return "", std_errors.WithMessage(err, fmt.Sprintf("Get Relesea %s version failed", app))
 	}
@@ -48,11 +48,11 @@ func GetReleaseTag(repo, app, version string) (targetVersion string, err error) 
 }
 
 func matchChartRepo(repo string) (string, string) {
-	spaceReg, _ := regexp.Compile(`/([a-zA-Z0-9]+)/`)
+	spaceReg, _ := regexp.Compile(`^((http://)|(https://))?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}(/)`)
 
-	idx := spaceReg.FindStringSubmatchIndex(repo)
+	idx := spaceReg.FindStringIndex(repo)
 
-	return repo[:idx[2]], strings.Trim(repo[idx[2]:], "/")
+	return repo[:idx[1]], repo[idx[1]:]
 }
 
 func VersionOrdinal(version string) string {

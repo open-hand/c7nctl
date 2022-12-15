@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"testing"
 )
@@ -10,38 +11,50 @@ func TestGetReleaseTag(t *testing.T) {
 		Name    string
 		Version string
 	}{
-		{consts.ChoerodonRegister, "1.0.1"},
-		{consts.ChoerodonPlatform, "1.0.0"},
-		{consts.ChoerodonAdmin, "1.0.0"},
-		{consts.ChoerodonIam, "1.0.4"},
-		{consts.ChoerodonAsgard, "1.0.0"},
-		{consts.ChoerodonSwagger, "1.0.0"},
-		{consts.ChoerodonGateWay, "1.0.1"},
-		{consts.ChoerodonOauth, "1.0.1"},
-		{consts.ChoerodonMonitor, "1.0.0"},
-		{consts.ChoerodonFile, "1.0.0"},
-		{consts.ChoerodonMessage, "1.0.1"},
-		{consts.DevopsService, "1.0.8"},
-		{consts.WorkflowService, "1.0.0"},
-		{consts.GitlabService, "1.0.1"},
-		{consts.AgileService, "1.0.3"},
-		{consts.TestManagerService, "1.0.2"},
-		{consts.KnowledgebaseService, "1.0.1"},
-		{consts.ElasticsearchKb, "1.0.0"},
-		{consts.ProdRepoService, "1.0.0"},
-		{consts.CodeRepoService, "1.0.7"},
-		{consts.ChoerodonFrontHzero, "1.0.0"},
-		{consts.ChoerodonFront, "1.0.0"},
+		{consts.ChoerodonRegister, "2.1.0"},
+		{consts.ChoerodonPlatform, "2.1.0"},
+		{consts.ChoerodonAdmin, "2.1.0"},
+		{consts.ChoerodonIam, "2.1.0"},
+		{consts.ChoerodonAsgard, "2.1.0"},
+		{consts.ChoerodonSwagger, "2.1.0"},
+		{consts.ChoerodonGateWay, "2.1.0"},
+		{consts.ChoerodonOauth, "2.1.0"},
+		{consts.ChoerodonMonitor, "2.1.0"},
+		{consts.ChoerodonFile, "2.1.0"},
+		{consts.ChoerodonMessage, "2.1.0"},
+		{consts.DevopsService, "2.1.0"},
+		{consts.WorkflowService, "2.1.0"},
+		{consts.GitlabService, "2.1.0"},
+		{consts.AgileService, "2.1.0"},
+		{consts.TestManagerService, "2.0.0"},
+		{consts.KnowledgebaseService, "2.0.0"},
+		{consts.ElasticsearchKb, "2.0.0"},
+		{consts.ProdRepoService, "2.0.0"},
+		{consts.CodeRepoService, "2.0.0"},
+		{consts.ChoerodonFrontHzero, "2.0.0"},
+		{consts.ChoerodonFront, "2.0.0"},
+		{consts.ChoerodonClusterAgent, "2.2.0"},
+		{consts.ChoerodonIamServiceBusiness, "2.0.0"},
+		{consts.DevopsServiceBusiness, "2.0.0"},
+		{consts.AgileServiceBusiness, "2.0.0"},
+		{consts.DocRepoService, "2.0.0"},
+		//{consts.HrdsQA, "2.0.0"},
+		//{consts.MarketService, "2.0.0"},
+		{consts.ChoerodonFrontBusiness, "2.0.0"},
+		{consts.TestManagerServiceBusiness, "2.0.0"},
 	}
 	for _, app := range apps {
-		version, _ := GetReleaseTag(consts.DefaultRepoUrl, app.Name, "1.0")
-		// fmt.Printf("    [\"registry.cn-shanghai.aliyuncs.com/c7n/%s\"]=\"%s\"\n", app.Name, version)
-		if VersionOrdinal(version) != VersionOrdinal(app.Version) {
-			t.Errorf("%s  %s is not newest version, newer version is %s", app.Name, app.Version, version)
-			continue
-		}
-		t.Logf("%s version is %s", app.Name, version)
+		version, _ := GetReleaseTag(consts.DefaultRepoUrl, app.Name, "2.2")
+		//fmt.Printf("    [\"registry.cn-shanghai.aliyuncs.com/c7n/%s\"]=\"%s\"\n", app.Name, version)
+		//if VersionOrdinal(version) != VersionOrdinal(app.Version) {
+		//	t.Errorf("%s  %s is not newest version, newer version is %s", app.Name, app.Version, version)
+		//	continue
+		//}
+		fmt.Printf("helm pull vista-c7n/%s --version %s\n", app.Name, version)
+
+		//t.Logf("%s: %s", app.Name, version)
 	}
+
 }
 
 func TestCheckMatch2(t *testing.T) {

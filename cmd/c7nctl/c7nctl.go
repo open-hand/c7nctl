@@ -15,7 +15,6 @@ package main
 
 import (
 	"github.com/choerodon/c7nctl/pkg/action"
-	"github.com/choerodon/c7nctl/pkg/c7nclient"
 	"github.com/choerodon/c7nctl/pkg/cli"
 	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
@@ -28,9 +27,7 @@ import (
 )
 
 var (
-	clientPlatformConfig c7nclient.C7NConfig
-	clientConfig         c7nclient.C7NContext
-
+	// 获取默认的变量值
 	settings = cli.New()
 )
 
@@ -43,7 +40,7 @@ func main() {
 		if settings.Debug {
 			log.SetLevel(log.DebugLevel)
 		}
-		c7nCfg.Init(settings.KubeConfig, settings.Namespace)
+		c7nCfg.Init(settings.ConfigFile, settings.Namespace)
 	})
 	if err := cmd.Execute(); err != nil {
 		log.Error(err)
@@ -69,7 +66,7 @@ func initConfig() {
 			if err = fileutils.CreateIfNotExists(configPath, false); err != nil {
 				log.Debug(err)
 			}
-			log.Infof("Created default config file %s", file)
+			//log.Infof("Created default config file %s", file)
 		} else {
 			log.Error(err)
 			os.Exit(consts.InitConfigErrorCode)

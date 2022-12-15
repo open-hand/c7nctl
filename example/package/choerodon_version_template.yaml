@@ -1,0 +1,117 @@
+name: choerodon-version
+version: 0.1.0
+spec:
+  version-regexp: 1.2
+  offline: true
+  chart:
+    default-source:
+      url: https://charts.ydq.io
+      repo: c7n
+    default-target:
+      url: http://localhost:8081
+      repo: repository/charts/
+      username: admin
+      password: handhand
+    component:
+      - name: chartmuseum
+        version: 3.6.2
+        category: infra
+      - name: redis
+        version: 0.2.5
+        category: infra
+      - name: mysql
+        version: 0.1.4
+        category: infra
+      - name: minio
+        version: 5.0.5
+        category: infra
+      - name: harbor
+        version: v1.5.5
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.8
+        category: infra
+      - name: sonarqube
+        version: 0.15.0-3
+        category: infra
+      - name: sonatype-nexus
+        version: 3.4.0
+        category: infra
+      - name: choerodon-register
+        version: ~
+        category: framework
+      - name: choerodon-platform
+        version: ~
+        category: framework
+      - name: choerodon-admin
+        version: ~
+        category: framework
+      - name: choerodon-oauth
+        version: ~
+        category: framework
+      - name: choerodon-gateway
+        version: ~
+        category: framework
+      - name: choerodon-asgard
+        version: ~
+        category: framework
+      - name: choerodon-file
+        version: ~
+        category: framework
+      - name: choerodon-message
+        version: ~
+        category: framework
+      - name: choerodon-swagger
+        version: ~
+        category: framework
+      - name: choerodon-monitor
+        version: ~
+        category: framework
+      - name: workflow-service
+        version: ~
+        category: devops
+      - name: devops-service
+        version: ~
+        category: devops
+      - name: gitlab-service
+        version: ~
+        category: devops
+      - name: agile-service
+        version: ~
+        category: agile
+      - name: test-manager-service
+        version: ~
+        category: agile
+      - name: elasticsearch-kb
+        version: ~
+        category: knowledgebase
+      - name: knowledgebase-service
+        version: ~
+        category: knowledgebase
+      - name: prod-repo-service
+        version: ~
+        category: devops
+      - name: code-repo-service
+        version: ~
+        category: devops
+      - name: choerodon-front-hzero
+        version: ~
+        category: front
+      - name: choerodon-front
+        version: ~
+        category: front
+  image:
+    registry:
+      # 将第一个镜像仓库当作推送镜像的目标仓库
+      - domain: "localhost:8082"
+        repository: repository/docker-c7n
+        username: admin
+        password: handhand
+        insecure: true
+      - domain: "docker.io"
+        repository: ~
+        username: yishuida
+        password: password
+        insecure: false
+    images:
+      - nginx:latest

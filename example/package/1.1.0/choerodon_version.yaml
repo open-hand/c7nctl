@@ -1,0 +1,4 @@
+name: choerodon-version
+version: 1.1.0
+component:
+  choerodon-register: 1.1.0
