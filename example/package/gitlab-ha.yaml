@@ -1,0 +1,64 @@
+name: choerodon-version
+version: 0.1.0
+spec:
+  version-regexp: 1.1
+  offline: true
+  chart:
+    default-source:
+      url: https://charts.ydq.io
+      repo: c7n
+    default-target:
+      url: http://localhost:8081
+      repo: repository/charts/
+    component:
+      - name: gitlab-ha
+        version: 0.2.4
+        category: infra
+      - name: gitlab-ha
+        version: 0.3.0
+        category: infra
+      - name: gitlab-ha
+        version: 0.3.1
+        category: infra
+      - name: gitlab-ha
+        version: 0.3.2
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.0
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.1
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.2
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.3
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.4
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.5
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.6
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.7
+        category: infra
+      - name: gitlab-ha
+        version: 0.4.8
+        category: infra
+  image:
+    auth:
+      nexus.choerodon.io:8082:
+        username: admin
+        password: handhand
+        insecure: true
+      #docker.io:
+      #  username: yishuida
+      #  password: password
+      #  insecure: false
+    images:
+      #quay.io/coreos/kube-rbac-proxy: quay.io/ruohe/kube-rbac-proxy
