@@ -27,8 +27,8 @@ require (
 	github.com/ugorji/go/codec v1.1.7
 	github.com/vinkdong/gox v0.0.0-20191217071044-432e0b72e0f8
 	github.com/yidaqiang/go-chartmuseum v0.0.0-20201224074224-f834902c8445
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/crypto v0.1.0
+	golang.org/x/net v0.1.0
 	google.golang.org/grpc v1.27.0
 	gopkg.in/yaml.v2 v2.2.8
 	helm.sh/helm/v3 v3.4.2
