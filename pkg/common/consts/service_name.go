@@ -40,6 +40,31 @@ const (
 	// MarketService               = "market-service"
 	TestManagerServiceBusiness = "test-manager-service-business"
 	ChoerodonFrontBusiness     = "choerodon-front-business"
+
+	ZknowPlatform = "zknow-platform"
+	ZknowAdmin    = "zknow-admin"
+	ZknowIam      = "zknow-iam"
+	ZknowGateway  = "zknow-gateway"
+	ZknowOauth    = "zknow-oauth"
+	ZknowFile     = "zknow-file"
+	ZknowMessage  = "zknow-message"
+	ZknowAsgard   = "zknow-asgard"
+	ChoerodonBase = "choerodon-base"
+
+	// front
+	ChoerodonFrontBase          = "choerodon-front-base"
+	ChoerodonFrontCodeRepo      = "choerodon-front-code-repo"
+	ChoerodonFrontDevops        = "choerodon-front-devops"
+	ChoerodonFrontDocRepo       = "choerodon-front-doc-repo"
+	ChoerodonFrontProdRepo      = "choerodon-front-prod-repo"
+	ChoerodonFrontAgilePro      = "choerodon-front-agile-pro"
+	ChoerodonFrontKnowledgebase = "choerodon-front-knowledgebase"
+	ChoerodonFrontMobile        = "choerodon-front-mobile"
+	ChoerodonFrontAsgard        = "choerodon-front-asgard"
+	ChoerodonFrontBaseBusiness  = "choerodon-front-base-business"
+	ChoerodonFrontManager       = "choerodon-front-manager"
+	ChoerodonFrontNotify        = "choerodon-front-notify"
+	ChoerodonFrontTestPro       = "choerodon-front-test-pro"
 )
 
 var ServerListBiz = []string{
