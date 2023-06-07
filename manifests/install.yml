@@ -1,4 +1,4 @@
-version: "1.1"
+version: "2.0"
 # this is a annotation
 metadata:
   name: resource
@@ -9,7 +9,7 @@ spec:
       memory: 38Gi
   basic:
     commonLabels:
-      choerodon-version: "0.25"
+      choerodon-version: "2.0"
     # ImageRepository: "registry.cn-shanghai.aliyuncs.com/c7n/"
     chartRepository: "https://openchart.choerodon.com.cn/choerodon/c7n/"
     datasourceTpl: "jdbc:mysql://%s:3306/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&useInformationSchema=true&remarks=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai"
@@ -26,7 +26,7 @@ spec:
       - containerPort: 9000
         name: http
         protocol: TCP
-      - containerPort: 9001
+      - containerPort: '9001'
         name: grpc
         protocol: TCP
       volumeMounts:

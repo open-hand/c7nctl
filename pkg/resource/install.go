@@ -39,8 +39,8 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Basic       Basic
-	Resources   v1.ResourceRequirements
+	Basic Basic
+	//Resources   v1.ResourceRequirements
 	Application map[string][]string
 	Release     map[string][]*Release
 }

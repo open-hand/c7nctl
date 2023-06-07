@@ -106,9 +106,9 @@ func (i *Install) Run(instDef *resource.InstallDefinition) (err error) {
 	// 检查资源，并将现有集群的硬件信息保存到 metrics
 	if i.ClientOnly || i.ThinMode {
 		log.Info("Running Client only, So skip up check cluster resource")
-	} else if err = i.cfg.CheckResource(&instDef.Spec.Resources); err != nil {
+	} /*else if err = i.cfg.CheckResource(&instDef.Spec.Resources); err != nil {
 		return err
-	}
+	}*/
 	if err = i.CheckNamespace(); err != nil {
 		return err
 	}
