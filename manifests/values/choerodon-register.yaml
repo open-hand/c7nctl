@@ -10,9 +10,8 @@ plugins:
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
 
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+extraEnv:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
 ingress:
   enabled: false
 {{- if .IsThinMode }}

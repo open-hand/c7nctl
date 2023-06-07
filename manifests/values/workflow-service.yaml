@@ -9,39 +9,32 @@ plugins:
   # skywalking agent 镜像地址
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
-
-preJob:
-  timeout: 1200
-{{- if ne .GetImageRepository "" }}
-  image: {{ .GetImageRepository }}/dbtool:0.7.2
-{{- end }}
-  preInitDB:
-    datasource:
+initDatabases:
+  datasource:
+    url: {{ .GetDatabaseUrl "" }}
+    username: choerodon
+    password: password
+  datasources:
+    # 多数据源初始化 初始化菜单数据
+    platform:
       url: {{ .GetDatabaseUrl "" }}
       username: choerodon
       password: password
-    datasources:
-      # 多数据源初始化 初始化菜单数据
-      platform:
-        url: {{ .GetDatabaseUrl "" }}
-        username: choerodon
-        password: password
-        driver: com.mysql.jdbc.Driver
-      message:
-        url: {{ .GetDatabaseUrl "" }}
-        username: choerodon
-        password: password
-        driver: com.mysql.jdbc.Driver
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "workflow_service" }}
-    SPRING_DATASOURCE_USERNAME: choerodon
-    SPRING_DATASOURCE_PASSWORD: password
-    HWKF_WEB_DOMAIN_NAME: {{ .GetResourceDomainUrl "choerodon-front" }}
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    SPRING_REDIS_DATABASE: 1
+      driver: com.mysql.jdbc.Driver
+    message:
+      url: {{ .GetDatabaseUrl "" }}
+      username: choerodon
+      password: password
+      driver: com.mysql.jdbc.Driver
+extraEnv:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+  SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "workflow_service" }}
+  SPRING_DATASOURCE_USERNAME: choerodon
+  SPRING_DATASOURCE_PASSWORD: password
+  HWKF_WEB_DOMAIN_NAME: {{ .GetResourceDomainUrl "choerodon-front" }}
+  SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+  SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+  SPRING_REDIS_DATABASE: 1
 {{- if .IsThinMode }}
 resources:
   limits:

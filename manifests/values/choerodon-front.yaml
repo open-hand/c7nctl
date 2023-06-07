@@ -2,19 +2,17 @@
 image:
   repository: {{ .GetImageRepository }}/choeroedon-front
 {{- end }}
-
-env:
-  open:
-    LOCAL: false
-    CLIENT_ID: choerodon
-    API_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    DEVOPS_HOST: {{ .GetResourceDomainUrl "devops-service" }}
-    HEADER_TITLE_NAME: Choerodon | 多云应用技术集成平台
-    COOKIE_SERVER: {{ .GetResourceDomainUrl "choerodon-front" }}
-    TITLE_NAME: Choerodon | 多云应用技术集成平台
-    WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "choerodon-message" }}
-    FILE_SERVER: {{ .GetResourceDomainUrl "minio" }}
-    HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front-hzero" }}
-    DEVOPS_WEBSOCKET_SECRET_KEY: devops_ws
+extraEnv:
+  LOCAL: false
+  CLIENT_ID: choerodon
+  API_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+  DEVOPS_HOST: {{ .GetResourceDomainUrl "devops-service" }}
+  HEADER_TITLE_NAME: Choerodon | 多云应用技术集成平台
+  COOKIE_SERVER: {{ .GetResourceDomainUrl "choerodon-front" }}
+  TITLE_NAME: Choerodon | 多云应用技术集成平台
+  WEBSOCKET_SERVER: {{ .GetResourceDomainUrl "choerodon-message" }}
+  FILE_SERVER: {{ .GetResourceDomainUrl "minio" }}
+  HZERO_FRONT: {{ .GetResourceDomainUrl "choerodon-front-hzero" }}
+  DEVOPS_WEBSOCKET_SECRET_KEY: devops_ws
 ingress:
   enabled: true

@@ -10,33 +10,26 @@ plugins:
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
 
-preJob:
-{{- if ne .GetImageRepository "" }}
-  image: {{ .GetImageRepository }}/dbtool:0.7.1
-{{- end }}
-  preInitDB:
-    datasource:
-      url: {{ .GetDatabaseUrl "" }}
-      username: choerodon
-      password: password
-      driver: com.mysql.jdbc.Driver
-
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    HZERO_AUTO_REFRESH_SWAGGER_ENABLE: true
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    # 此db不可更改
-    SPRING_REDIS_DATABASE: 7
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "asgard_service" }}
-    SPRING_DATASOURCE_USERNAME: choerodon
-    SPRING_DATASOURCE_PASSWORD: password
-    CHOERODON_ASGARD_TIME-OUT: 4000
-    # HYSTRIC熔断时间
-    HYSTRIX_COMMAND_TIMEOUT_IN_MILLISECONDS: 30000
-    # 读取超时时间
-    RIBBON_READ_TIMEOUT: 10000
+initDatabases:
+  datasource:
+    url: {{ .GetDatabaseUrl "" }}
+    username: choerodon
+    password: password
+extraEnv:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+  HZERO_AUTO_REFRESH_SWAGGER_ENABLE: true
+  SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+  SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+  # 此db不可更改
+  SPRING_REDIS_DATABASE: 7
+  SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "asgard_service" }}
+  SPRING_DATASOURCE_USERNAME: choerodon
+  SPRING_DATASOURCE_PASSWORD: password
+  CHOERODON_ASGARD_TIME-OUT: 4000
+  # HYSTRIC熔断时间
+  HYSTRIX_COMMAND_TIMEOUT_IN_MILLISECONDS: 30000
+  # 读取超时时间
+  RIBBON_READ_TIMEOUT: 10000
 {{- if .IsThinMode }}
 resources:
   limits:

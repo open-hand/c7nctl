@@ -39,29 +39,10 @@ spec:
       - devops-middleware
       - c7n-framework
       - c7n-devops
-      - c7n-agile
-      - c7n-test
-      - c7n-knowlagebase
       - c7n-front
     framework:
       - middleware
       - c7n-framework
-    agile:
-      - middleware
-      - c7n-framework
-      - c7n-agile
-      - c7n-front
-    test-manager:
-      - middleware
-      - c7n-framework
-      - c7n-test
-      - c7n-front
-    knowlagebase:
-      - middleware
-      - c7n-framework
-      - c7n-agile
-      - c7n-knowlagebase
-      - c7n-front
     devops:
       - middleware
       - devops-middleware
@@ -131,7 +112,7 @@ spec:
     devops-middleware:
       - name: gitlab
         chart: gitlab-ha
-        version: 0.2.4
+        version: 0.4.8
         # 首先读取 用户配置文件，如果用户配置文件中没有则让用户输入
         resource:
           schema: http
@@ -212,7 +193,7 @@ spec:
                   name: "必须包含数字"
       - name: chartmuseum
         chart: chartmuseum
-        version: 2.15.0
+        version: 3.9.3
         resource:
           host: chartmuseum
           port: 80
@@ -243,7 +224,7 @@ spec:
                   name: "不能为纯数字"
       - name: sonarqube
         chart: sonarqube
-        version: 0.15.0-3
+        version: 1.0.6
         resource:
           schema: "http"
           host: '{{ .GetReleaseName "sonarqube" }}-postgresql'
@@ -425,7 +406,7 @@ spec:
             infraRef: c7n-mysql
         values:
       - name: choerodon-front-hzero
-        version: 0.25.0
+        version: 2.0.0
         chart: choerodon-front-hzero
         resource:
           host: choerodon-front-hzero
@@ -595,67 +576,6 @@ spec:
               - GRANT ALL PRIVILEGES ON hrds_prod_repo.* TO choerodon@"%";
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
-    c7n-agile:
-      - name: agile-service
-        chart: agile-service
-        resource:
-          host: agile-service
-          port: 8379
-          schema: http
-        requirements:
-          - choerodon-front-hzero
-        preInstall:
-          - name: agile-service-predb
-            commands:
-              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-              - CREATE DATABASE IF NOT EXISTS agile_service DEFAULT CHARACTER SET utf8;
-              - GRANT ALL PRIVILEGES ON agile_service.* TO choerodon@"%";
-              - FLUSH PRIVILEGES;
-            infraRef: c7n-mysql
-        values:
-    c7n-test:
-      - name: test-manager-service
-        chart: test-manager-service
-        resource:
-          host: test-manager-service
-          port: 8394
-          schema: http
-        requirements:
-          - choerodon-front-hzero
-        preInstall:
-          - name: test-manager-service-predb
-            commands:
-              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-              - CREATE DATABASE IF NOT EXISTS test_manager_service DEFAULT CHARACTER SET utf8;
-              - GRANT ALL PRIVILEGES ON test_manager_service.* TO choerodon@"%";
-              - FLUSH PRIVILEGES;
-            infraRef: c7n-mysql
-    c7n-knowlagebase:
-      - name: elasticsearch-kb
-        chart: elasticsearch-kb
-        version: "0.25.0"
-        resource:
-          port: 9200
-          host: "elasticsearch-kb"
-        values:
-      - name: knowledgebase-service
-        chart: knowledgebase-service
-        resource:
-          host: knowledgebase-service
-          port: 8280
-          schema: http
-        requirements:
-          - choerodon-front-hzero
-          - elasticsearch-kb
-        preInstall:
-          - name: knowledgebase-service-predb
-            commands:
-              - CREATE USER IF NOT EXISTS "choerodon"@"%" IDENTIFIED BY "password";
-              - CREATE DATABASE IF NOT EXISTS knowledgebase_service DEFAULT CHARACTER SET utf8;
-              - GRANT ALL PRIVILEGES ON knowledgebase_service.* TO choerodon@"%";
-              - FLUSH PRIVILEGES;
-            infraRef: c7n-mysql
-        values:
     c7n-front:
       - name: choerodon-front
         chart: choerodon-front

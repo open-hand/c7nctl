@@ -1,10 +1,9 @@
 ingress:
   enabled: true
-env:
-  open:
-    BUILD_CLIENT_ID: hzero
-    BUILD_API_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    BUILD_WEBSOCKET_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}/hpfm/sock-js
+extraEnv:
+  BUILD_CLIENT_ID: hzero
+  BUILD_API_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+  BUILD_WEBSOCKET_HOST: {{ .GetResourceDomainUrl "choerodon-gateway" }}/hpfm/sock-js
 {{- if .IsThinMode }}
 resources:
   limits:

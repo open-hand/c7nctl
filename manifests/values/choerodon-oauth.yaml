@@ -10,22 +10,21 @@ plugins:
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
 
-env:
-  open:
-    # 如果使用https 该参数设置为true
-    HZERO_OAUTH_LOGIN_ENABLE_HTTPS: false
-    HZERO_OAUTH_LOGIN_SUCCESS_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
-    HZERO_OAUTH_LOGIN_DEFAULT_CLIENT_ID: choerodon
-    HZERO_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    HZERO_OAUTH_BASE_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}/oauth
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
-    SPRING_DATASOURCE_USERNAME: choerodon
-    SPRING_DATASOURCE_PASSWORD: password
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    # 此db不可更改
-    SPRING_REDIS_DATABASE: 3
+extraEnv:
+  # 如果使用https 该参数设置为true
+  HZERO_OAUTH_LOGIN_ENABLE_HTTPS: false
+  HZERO_OAUTH_LOGIN_SUCCESS_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
+  HZERO_OAUTH_LOGIN_DEFAULT_CLIENT_ID: choerodon
+  HZERO_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+  HZERO_OAUTH_BASE_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}/oauth
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+  SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
+  SPRING_DATASOURCE_USERNAME: choerodon
+  SPRING_DATASOURCE_PASSWORD: password
+  SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+  SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+  # 此db不可更改
+  SPRING_REDIS_DATABASE: 3
 {{- if .IsThinMode }}
 resources:
   limits:

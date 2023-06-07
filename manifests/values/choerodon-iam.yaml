@@ -9,30 +9,23 @@ plugins:
   # skywalking agent 镜像地址
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
-
-preJob:
-{{- if ne .GetImageRepository "" }}
-  image: {{ .GetImageRepository }}/dbtool:0.7.1
-{{- end }}
-  preInitDB:
-    datasource:
-      url: {{ .GetDatabaseUrl "" }}
-      username: choerodon
-      password: password
-      driver: com.mysql.jdbc.Driver
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    CHOERODON_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    # 此db不可更改
-    SPRING_REDIS_DATABASE: 1
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
-    SPRING_DATASOURCE_USERNAME: choerodon
-    SPRING_DATASOURCE_PASSWORD: password
-    HZERO_EXPORT_COREPOOLSIZE: 1
-    SERVICES_FRONT_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
+initDatabases:
+  datasource:
+    url: {{ .GetDatabaseUrl "" }}
+    username: choerodon
+    password: password
+extraEnv:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+  CHOERODON_GATEWAY_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}
+  SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+  SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+  # 此db不可更改
+  SPRING_REDIS_DATABASE: 1
+  SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_platform" }}
+  SPRING_DATASOURCE_USERNAME: choerodon
+  SPRING_DATASOURCE_PASSWORD: password
+  HZERO_EXPORT_COREPOOLSIZE: 1
+  SERVICES_FRONT_URL: {{ .GetResourceDomainUrl "choerodon-front" }}
 {{- if .IsThinMode }}
 resources:
   limits:

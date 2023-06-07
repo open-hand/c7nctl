@@ -10,17 +10,16 @@ plugins:
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
 
-env:
-  open:
-    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-    HZERO_OAUTH_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}/oauth/oauth/authorize
-    SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
-    SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
-    # 此db不可更改
-    SPRING_REDIS_DATABASE: 1
-    SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_admin" }}
-    SPRING_DATASOURCE_USERNAME: choerodon
-    SPRING_DATASOURCE_PASSWORD: password
+extraEnv:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
+  HZERO_OAUTH_URL: {{ .GetResourceDomainUrl "choerodon-gateway" }}/oauth/oauth/authorize
+  SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
+  SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
+  # 此db不可更改
+  SPRING_REDIS_DATABASE: 1
+  SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hzero_admin" }}
+  SPRING_DATASOURCE_USERNAME: choerodon
+  SPRING_DATASOURCE_PASSWORD: password
 {{- if .IsThinMode }}
 resources:
   limits:

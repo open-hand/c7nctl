@@ -7,7 +7,7 @@ metrics:
 
 config:
   character_set_server: utf8mb4
-  collation_server: utf8mb4_general_ci
+  collation_server: utf8mb4_unicode_ci
   lower_case_table_names: 1
   max_allowed_packet: 32M
   max_connections: 1500
