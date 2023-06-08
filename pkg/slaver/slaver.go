@@ -63,6 +63,8 @@ func (s *Slaver) InitSalver(clientset *kubernetes.Clientset, namespace string, s
 	s.CommonLabels = c7nconsts.CommonLabels
 	s.Namespace = namespace
 	s.Client = clientset
+	s.Ports[0].ContainerPort = 9000
+	s.Ports[1].ContainerPort = 9001
 
 	if _, err := s.CheckInstall(); err != nil {
 		return s, err

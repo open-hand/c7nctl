@@ -35,6 +35,7 @@ extraEnv:
   SPRING_REDIS_HOST: {{ ( .GetResource "c7n-redis").Host }}
   SPRING_REDIS_PORT: {{ ( .GetResource "c7n-redis").Port }}
   SPRING_REDIS_DATABASE: 1
+  SPRING_REDIS_PASSWORD: ''
 {{- if .IsThinMode }}
 resources:
   limits:

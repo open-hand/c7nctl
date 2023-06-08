@@ -46,6 +46,7 @@ func (c *C7nConfiguration) CheckReleasePodRunning(rls, namespace string) {
 	labels := []string{
 		fmt.Sprintf("choerodon.io/release=%s", rls),
 		fmt.Sprintf("app=%s", rls),
+		fmt.Sprintf("app.kubernetes.io/instance=%s", rls),
 	}
 
 	log.Infof("Waiting %s running", rls)

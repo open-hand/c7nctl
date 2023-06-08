@@ -14,22 +14,22 @@ import (
 )
 
 type Release struct {
-	Name         string
-	Chart        string
-	Version      string
-	Namespace    string
-	RepoURL      string
-	Values       []c7nclient.ChartValue
-	Persistence  []*Persistence
-	PreInstall   []ReleaseJob
-	AfterInstall []ReleaseJob
-	Requirements []string
-	Resource     *config.Resource
+	Name         string                 `yaml:"name"`
+	Chart        string                 `yaml:"chart"`
+	Version      string                 `yaml:"version"`
+	Namespace    string                 `yaml:"namespace"`
+	RepoURL      string                 `yaml:"repoURL"`
+	Values       []c7nclient.ChartValue `yaml:"values"`
+	Persistence  []*Persistence         `yaml:"persistence"`
+	PreInstall   []ReleaseJob           `yaml:"preInstall"`
+	AfterInstall []ReleaseJob           `yaml:"afterInstall"`
+	Requirements []string               `yaml:"requirements"`
+	Resource     *config.Resource       `yaml:"resource"`
 	// TODO Remove
-	Timeout     int
-	Prefix      string
-	SkipInput   bool
-	PaaSVersion string
+	Timeout     int    `yaml:"timeout"`
+	Prefix      string `yaml:"prefix"`
+	SkipInput   bool   `yaml:"skipInput"`
+	PaaSVersion string `yaml:"paaSVersion"`
 }
 
 type ReleaseJob struct {

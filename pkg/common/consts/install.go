@@ -19,7 +19,7 @@ const (
 
 	// OpenSourceResourceURL 默认的开源版和商业版资源获取路径
 	OpenSourceResourceURL      = "https://gitee.com/open-hand/"
-	OpenSourceResourceBasePath = "c7nctl/raw/%s/manifests/%s"
+	OpenSourceResourceBasePath = "c7nctl/raw/%s/manifests"
 	BusinessResourcePath       = "http://get.devops.hand-china.com/"
 	BusinessResourceBasePath   = "assets/biz/%s/%s?token=%v"
 	ResourceInstallFile        = "install.yml"

@@ -26,6 +26,7 @@ import (
 	pflag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	yaml_v2 "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/cmd/helm/require"
 	"io"
 	"io/ioutil"
@@ -94,7 +95,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) error {
 	if instDefByte, err = c7nutils.GetInstallDefinition("", client.Version); err != nil {
 		return std_errors.WithMessage(err, "Failed to get install configuration file")
 	}
-	err = yaml_v2.Unmarshal(instDefByte, instDef)
+	err = yaml.Unmarshal(instDefByte, instDef)
 	if err != nil {
 		return err
 	}

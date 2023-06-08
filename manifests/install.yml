@@ -329,6 +329,7 @@ spec:
           schema: http
         requirements:
           - choerodon-gateway
+          - choerodon-iam
         values:
       - name: choerodon-iam
         chart: choerodon-iam
@@ -337,7 +338,6 @@ spec:
           port: 8030
           schema: http
         requirements:
-          - choerodon-oauth
           - choerodon-admin
         values:
       - name: choerodon-file

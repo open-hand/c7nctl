@@ -26,11 +26,11 @@ const (
 
 type InstallDefinition struct {
 	// api 版本
-	Version string
+	Version string `yaml:"version"`
 	// Choerodon 平台版本
-	PaaSVersion string
-	Metadata    Metadata
-	Spec        Spec
+	PaaSVersion string   `yaml:"paaSVersion"`
+	Metadata    Metadata `yaml:"metadata"`
+	Spec        Spec     `yaml:"spec"`
 }
 
 type Metadata struct {
@@ -39,28 +39,28 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Basic Basic
+	Basic Basic `yaml:"basic"`
 	//Resources   v1.ResourceRequirements
-	Application map[string][]string
-	Release     map[string][]*Release
+	Application map[string][]string   `yaml:"application"`
+	Release     map[string][]*Release `yaml:"release"`
 }
 
 type Basic struct {
-	CommonLabels       map[string]string
-	DefaultAccessModes []v1.PersistentVolumeAccessMode
-	StorageClass       string
+	CommonLabels       map[string]string               `yaml:"commonLabels"`
+	DefaultAccessModes []v1.PersistentVolumeAccessMode `yaml:"defaultAccessModes"`
+	StorageClass       string                          `yaml:"storageClass"`
 
-	DockerRegistry []DockerRegistry
-	Prefix         string
+	DockerRegistry []DockerRegistry `yaml:"dockerRegistry"`
+	Prefix         string           `yaml:"prefix"`
 	// 默认为空
-	ImageRepository string
-	ChartRepository string
-	DatasourceTpl   string
-	ThinMode        bool
+	ImageRepository string `yaml:"imageRepository"`
+	ChartRepository string `yaml:"chartRepository"`
+	DatasourceTpl   string `yaml:"datasourceTpl"`
+	ThinMode        bool   `yaml:"thinMode"`
 
-	SkipInput bool
-	Timeout   int
-	Slaver    c7nslaver.Slaver
+	SkipInput bool             `yaml:"skipInput"`
+	Timeout   int              `yaml:"timeout"`
+	Slaver    c7nslaver.Slaver `yaml:"slaver"`
 }
 
 func (i *InstallDefinition) IsApplication(name string) bool {
@@ -167,6 +167,7 @@ func (i *InstallDefinition) CreatePersistence(r *Release, client *c7nclient.K8sC
 // 必须基于 InstallDefinition 渲染 value.yaml 文件
 func (i *InstallDefinition) RenderHelmValues(r *Release, fileVals string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
+	//rlsVals = append(rlsVals, fmt.Sprintf("commonLabels.'choerodon.io/release'=%s", r.Name))
 	var fileValsByte bytes.Buffer
 	var err error
 
@@ -176,8 +177,9 @@ func (i *InstallDefinition) RenderHelmValues(r *Release, fileVals string) (map[s
 			return nil, err
 		}
 	}
-
-	return c7nutils.Vals(rlsVals, fileValsByte.String())
+	filevalsStr := fileValsByte.String()
+	filevalsStr += fmt.Sprintf("\ncommonLabels:\n  choerodon.io/release: %s", r.Name)
+	return c7nutils.Vals(rlsVals, filevalsStr)
 }
 
 func (i *InstallDefinition) SetPrefix(prefix string) {
