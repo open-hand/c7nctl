@@ -24,12 +24,12 @@ func GetInstallDefinition(file string, version string) (rd []byte, err error) {
 		url := fmt.Sprintf(githubResourceUrl, version, InstallConfigPath)
 		rd, err = GetRemoteResource(url)
 		if err != nil {
-			return nil, errors.WithMessage(err, "Failed to get install.yaml")
+			return nil, errors.WithMessage(err, "Failed to get install.yml")
 		}
 	} else {
 		rd, err = ioutil.ReadFile(file)
 		if err != nil {
-			return nil, errors.WithMessage(err, "Failed to Read install.yaml")
+			return nil, errors.WithMessage(err, "Failed to Read install.yml")
 		}
 	}
 	log.Info("")

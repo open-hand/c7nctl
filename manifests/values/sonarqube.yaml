@@ -3,6 +3,10 @@ persistence:
   storageClass: {{ .GetStorageClass }}
 postgresql:
   enabled: true
+  auth:
+    password: "sonarqube_pw"
+    username: bn_sonarqube
+    database: bitnami_sonarqube
   primary:
     persistence:
       storageClass: {{ .GetStorageClass }}

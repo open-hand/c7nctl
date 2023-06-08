@@ -229,8 +229,8 @@ spec:
           schema: "http"
           host: '{{ .GetReleaseName "sonarqube" }}-postgresql'
           port: 5432
-          username: "sonarUser"
-          password: "sonarPass"
+          username: "bn_sonarqube"
+          password: "sonarqube_pw"
         values:
           - name: "ingress.hosts[0]"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
@@ -318,7 +318,7 @@ spec:
         requirements:
           - choerodon-admin
         values:
-          - name: "ingress.host"
+          - name: "ingress.hostname"
             value: '{{ (.GetResource "choerodon-gateway" ).Domain }}'
             check: clusterdomain
       - name: choerodon-oauth
@@ -329,7 +329,7 @@ spec:
           schema: http
         requirements:
           - choerodon-gateway
-          - choerodon-iam
+          - choerodon-iamÏ
         values:
       - name: choerodon-iam
         chart: choerodon-iam
@@ -385,7 +385,7 @@ spec:
               - FLUSH PRIVILEGES;
             infraRef: c7n-mysql
         values:
-          - name: "ingress.host"
+          - name: "ingress.hostname"
             value: '{{ (.GetResource "choerodon-message" ).Domain }}'
             check: clusterdomain
       - name: choerodon-monitor
@@ -417,7 +417,7 @@ spec:
           - choerodon-swagger
           - choerodon-message
         values:
-          - name: "ingress.host"
+          - name: "ingress.hostname"
             value: '{{ ( .GetResource "choerodon-front-hzero" ).Domain }}'
         preInstall:
           - name: create-choerodon-front-hzero-client
@@ -469,18 +469,18 @@ spec:
                       "password,implicit,client_credentials,authorization_code,refresh_token",
                       '{{ ( .GetResource "sonarqube").Schema }}://{{ ( .GetResource "sonarqube").Domain }}/oauth2/callback/choerodon',3600,3600,"{}","default",1,0,NOW(),0,NOW());
             infraRef: c7n-mysql
-          - name: sonarqube-init-predb
-            psql:
-              - UPDATE organizations SET new_project_private = true WHERE kee='default-organization';
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.url', 'http://{{ ( .GetResource "sonarqube" ).Domain }}/', false, EXTRACT(epoch FROM NOW()) * 1000);
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.url', 'http://{{ ( .GetResource "choerodon-gateway" ).Domain }}', false, EXTRACT(epoch FROM NOW()) * 1000);
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.applicationId', 'sonar', false, EXTRACT(epoch FROM NOW()) * 1000);
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.secret', 'secret', false, EXTRACT(epoch FROM NOW()) * 1000);
-              - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.enabled', 'true', false, EXTRACT(epoch FROM NOW()) * 1000);
-            infraRef: sonarqube
-            database: sonarDB
+          #- name: sonarqube-init-predb
+          #  psql:
+          #    - UPDATE organizations SET new_project_private = true WHERE kee='default-organization';
+          #    - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.url', 'http://{{ ( .GetResource "sonarqube" ).Domain }}/', false, EXTRACT(epoch FROM NOW()) * 1000);
+          #    - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.url', 'http://{{ ( .GetResource "choerodon-gateway" ).Domain }}', false, EXTRACT(epoch FROM NOW()) * 1000);
+          #    - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.applicationId', 'sonar', false, EXTRACT(epoch FROM NOW()) * 1000);
+          #    - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.secret', 'secret', false, EXTRACT(epoch FROM NOW()) * 1000);
+          #    - INSERT INTO properties (prop_key, text_value, is_empty, created_at) VALUES ('sonar.auth.choerodon.enabled', 'true', false, EXTRACT(epoch FROM NOW()) * 1000);
+          #  infraRef: sonarqube
+          #  database: bitnami_sonarqube
         values:
-          - name: "ingress.host"
+          - name: "ingress.hostname"
             value: '{{ ( .GetResource "devops-service" ).Domain }}'
             check: clusterdomain
       - name: gitlab-service
@@ -601,7 +601,7 @@ spec:
                       '{{ ( .GetResource "choerodon-front").Schema }}://{{ ( .GetResource "choerodon-front").Domain }}',3600,3600,"{}","default",1,0,NOW(),0,NOW());
             infraRef: c7n-mysql
         values:
-          - name: "ingress.host"
+          - name: "ingress.hostname"
             value: '{{ ( .GetResource "choerodon-front").Domain }}'
             check: clusterdomain
     runner:
