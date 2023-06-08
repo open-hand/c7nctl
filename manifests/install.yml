@@ -329,7 +329,7 @@ spec:
           schema: http
         requirements:
           - choerodon-gateway
-          - choerodon-iamÏ
+          - choerodon-iam
         values:
       - name: choerodon-iam
         chart: choerodon-iam
