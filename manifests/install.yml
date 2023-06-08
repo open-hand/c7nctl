@@ -232,7 +232,7 @@ spec:
           username: "bn_sonarqube"
           password: "sonarqube_pw"
         values:
-          - name: "ingress.hosts[0]"
+          - name: "ingress.hostname"
             value: '{{ ( .GetResource "sonarqube" ).Domain }}'
             check: clusterdomain
     c7n-framework:

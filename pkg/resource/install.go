@@ -167,7 +167,6 @@ func (i *InstallDefinition) CreatePersistence(r *Release, client *c7nclient.K8sC
 // 必须基于 InstallDefinition 渲染 value.yaml 文件
 func (i *InstallDefinition) RenderHelmValues(r *Release, fileVals string) (map[string]interface{}, error) {
 	rlsVals := r.HelmValues()
-	//rlsVals = append(rlsVals, fmt.Sprintf("commonLabels.'choerodon.io/release'=%s", r.Name))
 	var fileValsByte bytes.Buffer
 	var err error
 
