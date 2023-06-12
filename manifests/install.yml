@@ -516,7 +516,7 @@ spec:
                   value: "application/json"
                 # TODO get GITLAB_OAUTH_TOKEN
                 - name: "private-token"
-                  value: '{{.GetReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN"}}'
+                  value: '{{.GetReleaseValue "gitlab-service" "extraEnv.GITLAB_PRIVATETOKEN"}}'
               url: '{{(.GetResource "gitlab").Schema }}://{{(.GetResource "gitlab").Domain}}/api/v4/application/settings'
               body: |
                 {
@@ -524,7 +524,7 @@ spec:
                 }
               method: PUT
         values:
-          - name: "env.open.GITLAB_PRIVATETOKEN"
+          - name: "extraEnv.GITLAB_PRIVATETOKEN"
             value: "{{ generateAlphaNum 20 }}"
       - name: workflow-service
         chart: workflow-service

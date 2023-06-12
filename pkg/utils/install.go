@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	"github.com/choerodon/c7nctl/pkg/config"
 	"github.com/pkg/errors"
 	"github.com/vinkdong/gox/log"
@@ -17,12 +18,13 @@ const (
 	UpgradeConfigPath = "upgrade.yml"
 	// githubResourceUrl = "https://gitee.com/open-hand/c7nctl/raw/%s/manifests/%s"
 	githubResourceUrl = "https://raw.githubusercontent.com/yidaqiang/c7nctl/%s/manifests/%s"
+	giteeResourceUrl  = "https://gitee.com/open-hand/c7nctl/raw/%s/manifests/%s"
 	fileResourceUrl   = "https://file.choerodon.com.cn/choerodon-install/%s/%s"
 )
 
 func GetInstallDefinition(file string, version string) (rd []byte, err error) {
 	if file == "" {
-		url := fmt.Sprintf(githubResourceUrl, version, InstallConfigPath)
+		url := fmt.Sprintf(consts.OpenSourceResourceURL+consts.OpenSourceResourceBasePath+"/%s", version, InstallConfigPath)
 		rd, err = GetRemoteResource(url)
 		if err != nil {
 			return nil, errors.WithMessage(err, "Failed to get install.yml")

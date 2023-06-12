@@ -24,7 +24,7 @@ initDatabases:
       password: password
 extraEnv:
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
-  GITLAB_PRIVATETOKEN: {{ .GetReleaseValue "gitlab-service" "env.open.GITLAB_PRIVATETOKEN" }}
+  GITLAB_PRIVATETOKEN: {{ .GetReleaseValue "gitlab-service" "extraEnv.GITLAB_PRIVATETOKEN" }}
   GITLAB_URL: {{ .GetResourceDomainUrl "gitlab" }}
   SPRING_DATASOURCE_URL: {{ .GetDatabaseUrl "hrds_code_repo" }}
   SPRING_DATASOURCE_USERNAME: choerodon

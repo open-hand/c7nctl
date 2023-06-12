@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"github.com/choerodon/c7nctl/pkg/common/consts"
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"io/ioutil"
@@ -42,7 +43,7 @@ func (m *Metrics) Send() {
 	}
 
 	body := bytes.NewBuffer(b)
-	resp, err := http.Post(metricsUrl, contentType, body)
+	resp, err := http.Post(consts.MetricsUrl, contentType, body)
 	if err != nil {
 		log.Println("Post failed:", err)
 		return
