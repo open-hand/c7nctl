@@ -10,23 +10,18 @@ plugins:
   skywalkingAgentImage: {{ .GetImageRepository }}/skywalking-agent:6.6.0
 {{- end }}
 
-preJob:
-{{- if ne .GetImageRepository "" }}
-  image: {{ .GetImageRepository }}/dbtool:0.7.1
-{{- end }}
-  preInitDB:
-    datasource:
+initDatabases:
+  datasource:
+    url: {{ .GetDatabaseUrl "" }}
+    username: choerodon
+    password: password
+  datasources:
+    # 多数据源初始化 初始化菜单数据
+    # 支持框架数据和agile进行分库 指定菜单初始化地址
+    platform:
       url: {{ .GetDatabaseUrl "" }}
       username: choerodon
       password: password
-    datasources:
-      # 多数据源初始化 初始化菜单数据
-      # 支持框架数据和agile进行分库 指定菜单初始化地址
-      platform:
-        url: {{ .GetDatabaseUrl "" }}
-        username: choerodon
-        password: password
-        driver: com.mysql.jdbc.Driver
 extraEnv:
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .GetEurekaUrl }}
   HARBOR_BASE_URL: {{ .GetResourceDomainUrl "harbor" }}

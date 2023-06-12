@@ -4,7 +4,7 @@ metadata:
   namespace: c7n-system  # 指定命名空间安装choerodon
 spec:
   persistence:
-    storageClassName: nfs-provisioner
+    storageClassName: nfs-client
   resources:
     gitlab:
       domain: gitlab.example.choerodon.io
