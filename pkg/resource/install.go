@@ -399,7 +399,7 @@ func (i *InstallDefinition) GetReleaseValue(rls, value string) string {
 }
 
 func (i *InstallDefinition) EncryptGitlabAccessToken() string {
-	token := i.GetReleaseValue("gitlab-service", "env.open.GITLAB_PRIVATETOKEN")
+	token := i.GetReleaseValue("gitlab-service", "extraEnv.GITLAB_PRIVATETOKEN")
 	dbKeyBase := i.GetReleaseValue("gitlab", "core.env.GITLAB_SECRETS_DB_KEY_BASE")
 	str := fmt.Sprintf("%s%s", token, dbKeyBase[:32])
 

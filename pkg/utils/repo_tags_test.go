@@ -11,6 +11,70 @@ func TestGetReleaseTag(t *testing.T) {
 		Name    string
 		Version string
 	}{
+		{consts.ChoerodonRegister, "2.5.0"},
+		{consts.ZknowPlatform, "2.5.0"},
+		{consts.ZknowAdmin, "2.5.0"},
+		{consts.ZknowIam, "2.5.0"},
+		{consts.ZknowAsgard, "2.5.0"},
+		{consts.ChoerodonSwagger, "2.5.0"},
+		{consts.ZknowGateway, "2.5.0"},
+		{consts.ZknowOauth, "2.5.0"},
+		{consts.ChoerodonMonitor, "2.5.0"},
+		{consts.ChoerodonBase, "2.5.0"},
+		{consts.ZknowFile, "2.5.0"},
+		{consts.ZknowMessage, "2.5.0"},
+		{consts.DevopsService, "2.5.0"},
+		{consts.WorkflowService, "2.5.0"},
+		{consts.GitlabService, "2.5.0"},
+		{consts.AgileService, "2.5.0"},
+		{consts.TestManagerService, "2.5.0"},
+		{consts.KnowledgebaseService, "2.5.0"},
+		{consts.ElasticsearchKb, "2.5.0"},
+		{consts.ProdRepoService, "2.5.0"},
+		{consts.CodeRepoService, "2.5.0"},
+		{consts.ChoerodonFrontHzero, "2.5.0"},
+		{consts.ChoerodonFront, "2.5.0"},
+		{consts.ChoerodonClusterAgent, "2.5.0"},
+		{consts.ChoerodonIamServiceBusiness, "2.5.0"},
+		{consts.DevopsServiceBusiness, "2.5.0"},
+		{consts.AgileServiceBusiness, "2.5.0"},
+		{consts.DocRepoService, "2.5.0"},
+		{consts.HrdsQA, "2.0.0"},
+		{consts.MarketService, "2.0.0"},
+		{consts.ChoerodonFrontBusiness, "2.5.0"},
+		{consts.TestManagerServiceBusiness, "2.5.0"},
+		{consts.ChoerodonFrontBase, "2.5.0"},
+		{consts.ChoerodonFrontCodeRepo, "2.5.0"},
+		{consts.ChoerodonFrontDevops, "2.5.0"},
+		{consts.ChoerodonFrontDocRepo, "2.5.0"},
+		{consts.ChoerodonFrontProdRepo, "2.5.0"},
+		{consts.ChoerodonFrontAgilePro, "2.5.0"},
+		{consts.ChoerodonFrontKnowledgebase, "2.5.0"},
+		{consts.ChoerodonFrontMobile, "2.5.0"},
+		{consts.ChoerodonFrontBaseBusiness, "2.5.0"},
+		{consts.ChoerodonFrontAsgard, "2.5.0"},
+		{consts.ChoerodonFrontManager, "2.5.0"},
+		{consts.ChoerodonFrontNotify, "2.5.0"},
+		{consts.ChoerodonFrontTestPro, "2.5.0"},
+	}
+	for _, app := range apps {
+		version, _ := GetReleaseTag(consts.DefaultRepoUrl, app.Name, "2.6.0-alpha")
+		//fmt.Printf("    [\"registry.cn-shanghai.aliyuncs.com/c7n/%s\"]=\"%s\"\n", app.Name, version)
+		//if VersionOrdinal(version) != VersionOrdinal(app.Version) {
+		//	t.Errorf("%s  %s is not newest version, newer version is %s", app.Name, app.Version, version)
+		//	continue
+		//}
+		fmt.Printf("%s : %s\n", app.Name, version)
+
+		//t.Logf("%s: %s", app.Name, version)
+	}
+}
+
+func TestGetRelease24Tag(t *testing.T) {
+	apps := []struct {
+		Name    string
+		Version string
+	}{
 		{consts.ChoerodonRegister, "2.4.0"},
 		{consts.ZknowPlatform, "2.4.0"},
 		{consts.ZknowAdmin, "2.4.0"},

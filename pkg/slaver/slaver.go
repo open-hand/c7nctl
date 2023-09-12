@@ -93,7 +93,9 @@ func (s *Slaver) CheckInstall() (*v1.DaemonSet, error) {
 }
 
 func (s *Slaver) Install() (*v1.DaemonSet, error) {
-
+	// TODO
+	s.Ports[0].ContainerPort = 9000
+	s.Ports[1].ContainerPort = 9001
 	dsContainer := core_v1.Container{
 		Name:            s.Name,
 		Image:           s.Image,
